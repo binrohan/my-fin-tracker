@@ -97,7 +97,7 @@ class _ThisMonth extends StatelessWidget {
       AmountRow('Carried forward', s.carriedForward),
       for (final line in income) AmountRow(line.category.name, line.actual, signed: true),
       if (s.setAside != 0)
-        AmountRow('Set aside', -s.setAside, detail: 'savings · goals · investments', signed: true),
+        AmountRow('Set aside', -s.setAside, detail: 'savings, goals, DPS', signed: true),
       AmountRow('Spent', -s.spendingExpenses, signed: true),
       if (s.loanNet != 0)
         AmountRow(s.loanNet > 0 ? 'Borrowed' : 'Loan repayment', s.loanNet, signed: true),
@@ -120,28 +120,25 @@ class _WhereAndWhat extends StatelessWidget {
         .fold<Poisha>(0, (t, f) => t + ledger.fundBalance(f.id));
     final total = ledger.liquidTotal();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 10,
+    // Stacked, not side by side: at phone width with Android's font sizes
+    // two half-width cards wrap names like "Spending".
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
       children: [
-        Expanded(
-          child: SectionCard(children: [
-            const Label('Where it is'),
-            for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
-            AmountRow('Total', total, total: true),
-          ]),
-        ),
-        Expanded(
-          child: SectionCard(children: [
-            const Label("What it's for"),
-            AmountRow('Spending', ledger.fundBalance(ledger.spendingFund.id)),
-            for (final f in ledger.fundsOfKind(FundKind.savings))
-              AmountRow(f.name == 'Monthly Savings' ? 'Savings' : f.name,
-                  ledger.fundBalance(f.id)),
-            if (goals != 0) AmountRow('Goals', goals),
-            AmountRow('Total', total, total: true),
-          ]),
-        ),
+        SectionCard(children: [
+          const Label('Where it is'),
+          for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
+          AmountRow('Total', total, total: true),
+        ]),
+        SectionCard(children: [
+          const Label("What it's for"),
+          AmountRow('Spending', ledger.fundBalance(ledger.spendingFund.id)),
+          for (final f in ledger.fundsOfKind(FundKind.savings))
+            AmountRow(f.name, ledger.fundBalance(f.id)),
+          if (goals != 0) AmountRow('Goals', goals),
+          AmountRow('Total', total, total: true),
+        ]),
       ],
     );
   }

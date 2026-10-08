@@ -130,6 +130,7 @@ class AmountRow extends StatelessWidget {
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
+      spacing: 10,
       children: [
         Expanded(
           child: Text.rich(
