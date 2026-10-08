@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Fin Tracker Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (max 1100px); wide bands for phone mockups and A4 report pages; ledger-green accent, paper stays white in both themes */
+:root {
+  --bg: #F4F7F5; --surface: #FFFFFF; --sunk: #E9EFEB; --fg: #14201A; --muted: #56665E; --line: #D5DED8;
+  --accent: #0D6A55; --accent-soft: #D9EEE6; --on-accent: #FFFFFF;
+  --good: #1D7A4B; --good-soft: #DCF0E3; --warn: #9C5A05; --warn-soft: #FAEACF; --bad: #B3322B; --bad-soft: #F7DDDA;
+  --bezel: #1A2420; --scrim: rgba(10, 20, 16, .45);
+  --paper: #FFFFFF; --paper-ink: #1A1F1C; --paper-muted: #66706B; --paper-line: #D9DFDB; --paper-accent: #0D6A55; --paper-soft: #EEF4F1; --paper-bad: #B3322B; --paper-good: #1D7A4B;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1311; --surface: #151D1A; --sunk: #1C2622; --fg: #E1EAE5; --muted: #93A39B; --line: #2A3631;
+    --accent: #4EC2A0; --accent-soft: #173A30; --on-accent: #07231A;
+    --good: #5BCB8A; --good-soft: #16321F; --warn: #E3A64C; --warn-soft: #382913; --bad: #EF7A70; --bad-soft: #3B1C19;
+    --bezel: #000000; --scrim: rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1311; --surface: #151D1A; --sunk: #1C2622; --fg: #E1EAE5; --muted: #93A39B; --line: #2A3631;
+  --accent: #4EC2A0; --accent-soft: #173A30; --on-accent: #07231A;
+  --good: #5BCB8A; --good-soft: #16321F; --warn: #E3A64C; --warn-soft: #382913; --bad: #EF7A70; --bad-soft: #3B1C19;
+  --bezel: #000000; --scrim: rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--f-body); padding-inline: 16px; padding-block: 0 64px; }
+.wrap { max-width: 1100px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700; letter-spacing: -.02em; }
+h2 { font-size: 1.65rem; font-weight: 700; letter-spacing: -.01em; }
+h3 { font-size: 1.08rem; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+.num { font-variant-numeric: tabular-nums; }
+.eyebrow { font: 500 .72rem/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.08rem; color: var(--muted); max-width: 64ch; }
+
+header.top { padding-block: 48px 28px; display: grid; gap: 16px; border-bottom: 1px solid var(--line); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: .88rem; }
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 8px; }
+.decision { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+.decision b { font-family: var(--f-display); font-size: 1.05rem; }
+.decision span { color: var(--muted); font-size: .88rem; line-height: 1.45; }
+
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px; padding-block: 16px; border-bottom: 1px solid var(--line); }
+nav.toc a { text-decoration: none; color: var(--fg); background: var(--sunk); border-radius: 999px; padding: 4px 12px; font-size: .84rem; }
+nav.toc a:hover { background: var(--accent-soft); color: var(--accent); }
+
+section { padding-block: 48px 8px; display: grid; gap: 18px; }
+section > header { display: grid; gap: 8px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.two > * { min-width: 0; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 14px 16px; font-size: .92rem; max-width: 80ch; }
+.note b { color: var(--accent); }
+ul.tight { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+ul.tight li { max-width: 70ch; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 .72rem/1.3 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--sunk); }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.total td { font-weight: 600; background: var(--sunk); }
+.matrix td.r { font-family: var(--f-mono); font-size: .86rem; }
+.matrix td.hl { background: var(--accent-soft); }
+
+/* posting example */
+.postings { display: grid; gap: 10px; }
+.posting { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+.posting .t { font-weight: 600; }
+.posting .legs { font-family: var(--f-mono); font-size: .8rem; display: grid; gap: 2px; color: var(--muted); }
+.posting .legs .p { color: var(--good); } .posting .legs .m { color: var(--bad); }
+
+/* features */
+.features { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.feature { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.feature .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.feature .tag { font: 500 .68rem/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; padding: 4px 7px; border-radius: 4px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.feature .tag.p1 { background: var(--accent-soft); color: var(--accent); }
+.feature p { font-size: .9rem; color: var(--muted); }
+.feature ul { font-size: .88rem; }
+
+/* phones */
+.phones { display: grid; grid-template-columns: repeat(auto-fill, minmax(296px, 1fr)); gap: 28px 20px; justify-items: center; }
+.phone { margin: 0; display: grid; gap: 10px; width: 296px; max-width: 100%; }
+.phone figcaption { font-size: .84rem; color: var(--muted); line-height: 1.45; }
+.phone figcaption b { color: var(--fg); font-family: var(--f-display); font-size: .98rem; display: block; }
+.device { background: var(--bezel); border-radius: 38px; padding: 9px; }
+.screen { background: var(--bg); border-radius: 30px; height: 610px; overflow: hidden; display: flex; flex-direction: column; font-size: 12px; line-height: 1.4; position: relative; }
+.sb { display: flex; justify-content: space-between; padding: 10px 20px 4px; font: 500 10.5px/1 var(--f-mono); color: var(--muted); }
+.ab { display: flex; justify-content: space-between; align-items: center; padding: 6px 16px 8px; gap: 8px; }
+.ab .ttl { font: 700 17px/1.1 var(--f-display); }
+.ab .sub { color: var(--muted); font-size: 10.5px; }
+.body { flex: 1; overflow: hidden; padding: 0 12px 10px; display: flex; flex-direction: column; gap: 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 6px; }
+.card.hero { background: var(--accent); color: var(--on-accent); border: 0; }
+.card.hero .k { opacity: .85; }
+.big { font: 700 28px/1.05 var(--f-display); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.k { font: 500 9.5px/1.2 var(--f-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.row > span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row.sm { font-size: 11px; }
+.row.sum { border-top: 1px solid var(--line); padding-top: 4px; font-weight: 600; }
+.mut { color: var(--muted); }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.chip.good { background: var(--good-soft); color: var(--good); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.acc { background: var(--accent-soft); color: var(--accent); }
+.chip.out { border: 1px solid var(--line); color: var(--fg); font-weight: 500; }
+.bar { height: 6px; background: var(--sunk); border-radius: 99px; overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.bar i.w { background: var(--warn); } .bar i.b { background: var(--bad); } .bar i.g { background: var(--good); } .bar i.m { background: var(--muted); opacity: .45; }
+.hero .bar { background: rgba(255,255,255,.25); } .hero .bar i { background: var(--on-accent); } .hero .bar i.m { background: var(--on-accent); opacity: .45; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tabbar { display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--line); background: var(--surface); padding: 6px 4px 12px; font-size: 9.5px; color: var(--muted); }
+.tabbar span { display: grid; justify-items: center; gap: 2px; }
+.tabbar span.on { color: var(--accent); font-weight: 600; }
+.tabbar .ico { width: 18px; height: 18px; border-radius: 5px; border: 1.6px solid currentColor; }
+.tabbar .fab { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); color: var(--on-accent); font: 400 26px/44px var(--f-body); text-align: center; margin-top: -18px; }
+.list { display: grid; }
+.list .row { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.list .row:last-child { border-bottom: 0; }
+.cat { display: grid; gap: 4px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.cat:last-child { border-bottom: 0; }
+.subs { display: grid; gap: 2px; padding-left: 10px; border-left: 2px solid var(--line); margin: 2px 0 0 2px; }
+.btn { display: block; text-align: center; border-radius: 10px; padding: 8px; font-weight: 600; font-size: 11.5px; background: var(--accent); color: var(--on-accent); }
+.btn.ghost { background: var(--sunk); color: var(--fg); }
+.btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.btns .btn { padding: 7px 4px; }
+
+/* quick add sheet */
+.dim { position: absolute; inset: 0; background: var(--scrim); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 22px 22px 0 0; padding: 8px 14px 14px; display: grid; gap: 9px; }
+.grab { width: 36px; height: 4px; border-radius: 9px; background: var(--line); margin: 0 auto; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--sunk); border-radius: 9px; padding: 3px; font-size: 11px; text-align: center; }
+.seg span { padding: 5px; border-radius: 7px; }
+.seg span.on { background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.amount { font: 700 34px/1 var(--f-display); text-align: center; font-variant-numeric: tabular-nums; padding: 4px 0; }
+.amount small { font-size: 18px; color: var(--muted); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chips .chip { font-size: 10.5px; padding: 5px 9px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.field { background: var(--sunk); border-radius: 8px; padding: 6px 8px; display: grid; gap: 1px; font-size: 11px; }
+.field .k { font-size: 8.5px; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.keypad span { background: var(--sunk); border-radius: 8px; text-align: center; padding: 7px 0; font: 500 15px/1 var(--f-body); }
+
+.denoms { display: grid; grid-template-columns: auto 1fr auto; gap: 3px 10px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.denoms span:nth-child(3n) { text-align: right; }
+.stack { height: 12px; border-radius: 4px; overflow: hidden; display: flex; }
+.stack i { display: block; height: 100%; }
+.sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+.c1 { background: var(--accent); } .c2 { background: var(--warn); } .c3 { background: var(--muted); }
+.tl { display: grid; gap: 4px; font-size: 11px; }
+.tl .row { padding-left: 12px; position: relative; }
+.tl .row::before { content: ""; position: absolute; left: 0; top: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* report */
+.report-band { overflow-x: auto; padding-bottom: 6px; }
+.pages { display: flex; gap: 24px; width: max-content; padding: 4px; }
+.page { width: 620px; min-height: 877px; background: var(--paper); color: var(--paper-ink); box-shadow: 0 1px 3px rgba(0,0,0,.15), 0 10px 30px rgba(0,0,0,.08); padding: 38px 40px 30px; font: 10.5px/1.45 var(--f-body); display: flex; flex-direction: column; gap: 14px; }
+.page h4 { font: 700 12px/1.2 var(--f-display); margin: 0; color: var(--paper-ink); display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5px solid var(--paper-ink); padding-bottom: 3px; }
+.page h4 small { font: 400 9px/1 var(--f-mono); color: var(--paper-muted); letter-spacing: .04em; }
+.rhead { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--paper-accent); padding-bottom: 10px; gap: 16px; }
+.rhead .t { font: 700 22px/1.05 var(--f-display); }
+.rhead .s { color: var(--paper-muted); font-size: 10px; }
+.rhead .brand { text-align: right; font: 500 9px/1.4 var(--f-mono); color: var(--paper-muted); }
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--paper-line); }
+.kpis div { padding: 7px 8px; border-right: 1px solid var(--paper-line); display: grid; gap: 2px; }
+.kpis div:last-child { border-right: 0; background: var(--paper-soft); }
+.kpis .k { color: var(--paper-muted); font-size: 7.5px; }
+.kpis b { font: 700 12.5px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.recon { background: var(--paper-soft); border-left: 3px solid var(--paper-good); padding: 7px 10px; font-family: var(--f-mono); font-size: 9.5px; }
+.recon b { color: var(--paper-good); }
+.page table { font-size: 10px; }
+.page th { background: transparent; color: var(--paper-muted); font-size: 7.5px; padding: 4px 6px; border-bottom: 1px solid var(--paper-ink); }
+.page td { padding: 3.5px 6px; border-bottom: 1px solid var(--paper-line); color: var(--paper-ink); }
+.page td.sub { padding-left: 18px; color: var(--paper-muted); }
+.page tr.total td { background: var(--paper-soft); font-weight: 600; border-top: 1px solid var(--paper-ink); }
+.page .over { color: var(--paper-bad); font-weight: 600; }
+.page .ok { color: var(--paper-good); }
+.pbar { height: 5px; background: var(--paper-line); width: 64px; display: inline-flex; vertical-align: middle; }
+.pbar i { display: block; height: 100%; background: var(--paper-accent); }
+.pbar i.o { background: var(--paper-bad); }
+.alloc { display: flex; height: 16px; border: 1px solid var(--paper-line); }
+.alloc i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 9px; color: var(--paper-muted); }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.legend i { width: 8px; height: 8px; display: inline-block; }
+.a1 { background: #B85C38; } .a2 { background: #0D6A55; } .a3 { background: #4E9C86; } .a4 { background: #8DB8AB; } .a5 { background: #C9D3CE; }
+.rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.rfoot { margin-top: auto; display: flex; justify-content: space-between; font: 400 8.5px/1 var(--f-mono); color: var(--paper-muted); border-top: 1px solid var(--paper-line); padding-top: 8px; }
+
+/* roadmap */
+.phases { display: grid; gap: 12px; }
+.phase { display: grid; grid-template-columns: 120px 1fr; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.phase .when { display: grid; gap: 4px; align-content: start; }
+.phase .when b { font: 700 1.5rem/1 var(--f-display); color: var(--accent); }
+.phase .what { display: grid; gap: 6px; min-width: 0; }
+.phase .done { font-size: .86rem; color: var(--muted); }
+.phase .done b { color: var(--fg); }
+@media (max-width: 560px) { .phase { grid-template-columns: 1fr; gap: 8px; } }
+
+pre.cmd { background: var(--sunk); border-radius: 10px; padding: 12px 14px; overflow-x: auto; font: 12.5px/1.6 var(--f-mono); margin: 0; }
+pre.cmd .c { color: var(--muted); }
+.steps { display: grid; gap: 14px; }
+.step { display: grid; gap: 8px; }
+.qs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+.q b { font-family: var(--f-display); }
+.q span { color: var(--muted); font-size: .88rem; }
+.q em { font-style: normal; font-size: .82rem; color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+<header class="top">
+  <span class="eyebrow">Build plan · 7 Oct 2026</span>
+  <h1>My Fin Tracker</h1>
+  <p class="lede">A personal finance app for your Android phone that replaces the monthly Excel sheet. Every total is calculated from the entries you add, so nothing needs a formula and the numbers always agree with each other. All data stays on the phone, and a single backup file moves it to a new phone.</p>
+  <div class="decisions">
+    <div class="decision"><span class="eyebrow">Platform</span><b>Android app, built with Flutter</b><span>Built and installed from your Ubuntu machine. No Play Store or cloud service needed.</span></div>
+    <div class="decision"><span class="eyebrow">Storage</span><b>SQLite file on the phone</b><span>Works offline. Backup is one <code>.mft</code> file that you can copy anywhere.</span></div>
+    <div class="decision"><span class="eyebrow">Money engine</span><b>Where it is × What it's for</b><span>Each taka is in one place (Bank, Cash, bKash) and has one purpose (Spending, Savings, a Goal).</span></div>
+    <div class="decision"><span class="eyebrow">First usable version</span><b>Phase 2: about 3–4 weeks in</b><span>Quick add, budgets, dashboard, month close and backup. The rest follows in phases.</span></div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <a href="#engine">Money engine</a><a href="#features">Features</a><a href="#screens">Screen designs</a><a href="#report">Example report</a><a href="#tech">Tech &amp; architecture</a><a href="#data">Data model</a><a href="#backup">Backup &amp; migration</a><a href="#setup">Machine setup</a><a href="#roadmap">Roadmap</a><a href="#questions">Decisions</a>
+</nav>
+
+<!-- ENGINE -->
+<section id="engine">
+  <header>
+    <span class="eyebrow">The core idea</span>
+    <h2>Every taka has a place and a purpose</h2>
+    <p class="lede">The Excel sheet is hard to keep consistent because each total is typed or built with its own formula. In the app you only record events: income, expenses and moves. Every balance is then a sum of those events, so the totals can't disagree.</p>
+  </header>
+  <div class="two">
+    <div style="display:grid; gap:12px">
+      <p>Every entry is stored as a few <b>postings</b>. Each posting is a pair (account, fund) with a plus or minus amount. That one table answers everything you asked for:</p>
+      <ul class="tight">
+        <li><b>Bank / cash balance</b> is the sum of postings by account.</li>
+        <li><b>Monthly Savings, each goal, Spending</b> is the sum of postings by fund.</li>
+        <li><b>In Cash by sector</b> is the Cash account broken down by fund.</li>
+        <li><b>Carried forward</b> is the Spending fund's balance on the first day of the month. Nothing needs to be copied by hand.</li>
+        <li><b>Consistency check:</b> the account totals always equal the fund totals. You compare the Bank figure with your bank app, and any difference shows up straight away.</li>
+      </ul>
+    </div>
+    <div class="postings">
+      <div class="posting"><span class="t">Salary credited · ৳85,000</span><div class="legs"><span class="p">+85,000  Bank · Spending</span></div></div>
+      <div class="posting"><span class="t">Move to Monthly Savings · ৳20,000</span><div class="legs"><span class="m">−20,000  Bank · Spending</span><span class="p">+20,000  Bank · Monthly Savings</span></div></div>
+      <div class="posting"><span class="t">Withdraw cash for groceries · ৳3,000</span><div class="legs"><span class="m">− 3,000  Bank · Spending</span><span class="p">+ 3,000  Cash · Spending</span></div></div>
+      <div class="posting"><span class="t">Ration expense · ৳350</span><div class="legs"><span class="m">−   350  Cash · Spending   (category: Ration)</span></div></div>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="matrix">
+      <thead><tr><th>Sample, end of Sep 2026 · spendable accounts</th><th class="r">Bank</th><th class="r">Cash drawer</th><th class="r">bKash</th><th class="r">Fund total</th></tr></thead>
+      <tbody>
+        <tr><td>Spending (carried forward to Oct)</td><td class="r">3,920</td><td class="r hl">4,200</td><td class="r">2,000</td><td class="r">10,120</td></tr>
+        <tr><td>Monthly Savings</td><td class="r">44,500</td><td class="r hl">2,500</td><td class="r">0</td><td class="r">47,000</td></tr>
+        <tr><td>Goal · New Laptop</td><td class="r">18,500</td><td class="r hl">0</td><td class="r">0</td><td class="r">18,500</td></tr>
+        <tr><td>Goal · Motorbike</td><td class="r">8,000</td><td class="r hl">2,000</td><td class="r">0</td><td class="r">10,000</td></tr>
+        <tr class="total"><td>Account total</td><td class="r">74,920</td><td class="r">8,700</td><td class="r">2,000</td><td class="r">85,620 ✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="mut" style="font-size:.86rem">The highlighted column is the "In Cash" screen: ৳8,700 in the drawer, split by sector. The same sample numbers are used in the screens and the example report below.</p>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <header>
+    <span class="eyebrow">Your list, specified</span>
+    <h2>Features and the rules behind them</h2>
+    <p class="lede">The tag on each card shows the phase it is built in. "Spended" and "Count Down" use the same mechanism (tag expenses, add them up), so they share one screen called Trackers.</p>
+  </header>
+  <div class="features">
+    <article class="feature"><div class="head"><h3>Dashboard</h3><span class="tag p1">Phase 2</span></div>
+      <p>Shows the current month: the month's opening figures, income, where the money went and what's left.</p>
+      <ul class="tight"><li>Opening: bank, cash and wallet balances on day 1, plus the amount carried forward.</li><li>Income: Salary, Bonus and other types you configure.</li><li>Left to spend = carried forward + income − set aside − spent ± borrow/repay.</li><li>"Balanced ✓" chip. Tap "Match bank" to enter your bank app's balance. Any difference becomes a labelled adjustment.</li><li>Net worth, including investments.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Monthly Expenses</h3><span class="tag p1">Phase 2</span></div>
+      <p>A category tree with an optional budget for each category, every month.</p>
+      <ul class="tight"><li>Categories with optional sub-categories, e.g. Fixed › House Rent, Gas, Electricity; Ration; Random; Mine.</li><li>Budget as a fixed amount or a % of income, copied forward each month.</li><li>Fixed bills are recurring: one tap pays all the bills due.</li><li>Colour states: on track, near limit (≥ 90%), over.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Quick add</h3><span class="tag p1">Phase 2</span></div>
+      <p>An expense in three taps: amount, category, save.</p>
+      <ul class="tight"><li>Opens on the number pad. The last-used account and fund are preselected.</li><li>Your most-used categories are shown as chips.</li><li>Optional: note, date, "major purchase", tracker tag.</li><li>Launcher shortcut and home-screen widget "+ Expense" (Phase 6).</li></ul></article>
+    <article class="feature"><div class="head"><h3>Monthly Saving</h3><span class="tag">Phase 3</span></div>
+      <p>The main savings pot. Each month's deposit, every withdrawal, and the running balance.</p>
+      <ul class="tight"><li>Suggested deposit when salary arrives, from your allocation plan.</li><li>Withdraw (spent for good) or Borrow (to be paid back with a charge).</li><li>History by month, and the amount still owed back to it.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Saving for Something</h3><span class="tag">Phase 3</span></div>
+      <p>One goal per item: a target amount, an optional target date and a deposit history.</p>
+      <ul class="tight"><li>Progress %, and the monthly amount needed = (target − saved) ÷ months left.</li><li>On-track / behind chip, with the projected finish date at your current rate.</li><li>"Buy it" spends from the goal, closes it and adds the item to Buying.</li><li>Overview: the total across all goals.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Borrowed Management</h3><span class="tag">Phase 3</span></div>
+      <p>Two kinds of loan: borrowing from your own savings, and lending to or borrowing from other people.</p>
+      <ul class="tight"><li><b>Own savings:</b> borrow from Monthly Savings or any goal. Charge = amount × rate, default 5%, changeable in Settings and for each loan. Each repayment goes back to the fund it came from.</li><li><b>People:</b> money you lent to someone, or borrowed from someone. Each person has a running balance: they owe you, or you owe them. Charge is optional (default 0%).</li><li>Part payments, a due date, a reminder when a loan is overdue or open for 60+ days.</li><li>Net worth counts what people owe you and what you owe them.</li></ul></article>
+    <article class="feature"><div class="head"><h3>In Cash</h3><span class="tag">Phase 3</span></div>
+      <p>How much is in the drawer, and which sector each part belongs to.</p>
+      <ul class="tight"><li>Breakdown by fund comes from the postings automatically.</li><li>"Count cash": a note-by-note counter (1000, 500, 200…) compared with the app's figure.</li><li>Move money between sectors, or deposit it to the bank.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Investment</h3><span class="tag">Phase 4</span></div>
+      <p>DPS, FDR, savings certificates, stocks: anything that isn't spendable cash.</p>
+      <ul class="tight"><li>Each investment is its own account: principal, start date, rate, maturity.</li><li>Instalments are transfers. Update the current value whenever you check it.</li><li>Maturity reminders. Returns are tracked separately from salary.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Buying</h3><span class="tag">Phase 4</span></div>
+      <p>A register of major purchases for the annual report.</p>
+      <ul class="tight"><li>Turn on "major purchase" on any expense, or use a goal's "Buy it".</li><li>Item, price, shop, warranty end date, optional receipt photo.</li><li>Yearly list and total. Warranty expiry reminders.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Trackers: Spended + Count Down</h3><span class="tag">Phase 4</span></div>
+      <p>Tag expenses to a long-term project or to a budget with an end date.</p>
+      <ul class="tight"><li><b>Project</b> (Spended): lifetime total, by month and by category, no limit.</li><li><b>Countdown</b>: budget − spent = left, plus days to go.</li><li>Tagging doesn't change which month or category an expense counts under.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Monthly PDF report</h3><span class="tag">Phase 5</span></div>
+      <p>Made on the phone when you close a month, or whenever you ask. You can share, save or print it.</p>
+      <ul class="tight"><li>Summary, reconciliation, income, budget vs actual, savings, goals, loans, cash, investments, purchases, trackers, full ledger.</li><li>Annual report: month-by-month totals, savings growth, purchase register.</li></ul></article>
+    <article class="feature"><div class="head"><h3>Configurable</h3><span class="tag p1">Phase 1+</span></div>
+      <p>Everything you named is a setting, not code.</p>
+      <ul class="tight"><li>Categories, sub-categories, budgets, accounts, funds, income types.</li><li>Borrow charge %, month start day (e.g. salary day), currency and number grouping (1,00,000 or 100,000).</li><li>What happens to month-end leftover: carry forward, or move to savings.</li><li>App lock (fingerprint), light/dark theme.</li></ul></article>
+  </div>
+</section>
+
+<!-- SCREENS -->
+<section id="screens">
+  <header>
+    <span class="eyebrow">Design</span>
+    <h2>Screen designs</h2>
+    <p class="lede">Shown as of 7 Oct 2026 with sample data. Nine screens. Four tabs (Home, Spend, Save, More) and a central + button for quick add. The mockups follow your light or dark setting, as the app will.</p>
+  </header>
+  <div class="phones">
+
+    <!-- 1 HOME -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">October 2026</div><div class="sub">Day 7 of 31</div></div><span class="chip good">✓ Balanced</span></div>
+      <div class="body">
+        <div class="card hero">
+          <span class="k">Left to spend</span>
+          <span class="big">৳24,420</span>
+          <span style="font-size:11px">≈ ৳1,018 a day for 24 days</span>
+          <div class="bar"><i style="width:88.4%"></i><i class="m" style="width:11.6%"></i></div>
+          <div class="row sm"><span>Budgeted ৳21,580</span><span>Unplanned ৳2,840</span></div>
+        </div>
+        <div class="card">
+          <span class="k">This month</span>
+          <div class="row sm"><span>Carried forward</span><span>10,120</span></div>
+          <div class="row sm"><span>Salary</span><span class="pos">+85,000</span></div>
+          <div class="row sm"><span>Set aside <span class="mut">savings · goals · DPS</span></span><span class="neg">−37,000</span></div>
+          <div class="row sm"><span>Spent</span><span class="neg">−32,700</span></div>
+          <div class="row sm"><span>Loan repayment</span><span class="neg">−1,000</span></div>
+          <div class="row sm sum"><span>Left to spend</span><span>24,420</span></div>
+        </div>
+        <div class="split">
+          <div class="card"><span class="k">Where it is</span>
+            <div class="row sm"><span>Bank</span><span>1,23,970</span></div>
+            <div class="row sm"><span>Cash</span><span>7,300</span></div>
+            <div class="row sm"><span>bKash</span><span>1,650</span></div>
+            <div class="row sm sum"><span>Total</span><span>1,32,920</span></div></div>
+          <div class="card"><span class="k">What it's for</span>
+            <div class="row sm"><span>Spending</span><span>24,420</span></div>
+            <div class="row sm"><span>Savings</span><span>68,000</span></div>
+            <div class="row sm"><span>Goals</span><span>40,500</span></div>
+            <div class="row sm sum"><span>Total</span><span>1,32,920</span></div></div>
+        </div>
+        <div class="row sm mut"><span>Net worth <span class="mut">incl. investments &amp; loans</span></span><span style="color:var(--fg); font-weight:600">৳4,28,770</span></div>
+      </div>
+      <div class="tabbar"><span class="on"><i class="ico"></i>Home</span><span><i class="ico"></i>Spend</span><span class="fab">+</span><span><i class="ico"></i>Save</span><span><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>Home</b>The headline number is what you can still spend. Both totals at the bottom must match, and the chip at the top says whether they do.</figcaption></figure>
+
+    <!-- 2 QUICK ADD -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">October 2026</div><div class="sub">Day 7 of 31</div></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="seg"><span class="on">Expense</span><span>Income</span><span>Move</span></div>
+        <div class="amount"><small>৳</small> 350</div>
+        <div class="chips"><span class="chip acc">✓ Ration</span><span class="chip out">Random</span><span class="chip out">Mine</span><span class="chip out">Electricity</span><span class="chip out">Gas</span><span class="chip out">All…</span></div>
+        <div class="fields">
+          <div class="field"><span class="k">Paid from</span>Cash · Spending ▾</div>
+          <div class="field"><span class="k">Date</span>Today, 7 Oct ▾</div>
+          <div class="field" style="grid-column: span 2"><span class="k">Note</span>Vegetables, Karwan Bazar</div>
+        </div>
+        <div class="chips"><span class="chip out">☐ Major purchase</span><span class="chip out">Tracker: none ▾</span></div>
+        <div class="keypad"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>00</span><span>0</span><span>⌫</span></div>
+        <span class="btn">Save ৳350 to Ration</span>
+      </div>
+    </div></div><figcaption><b>Quick add</b>Opens on the number pad from the + button, a launcher shortcut or the widget. "Paid from" remembers your last choice.</figcaption></figure>
+
+    <!-- 3 EXPENSES -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">Expenses</div><div class="sub">October 2026</div></div><span class="chip out">Budgets ✎</span></div>
+      <div class="body">
+        <div class="card">
+          <div class="row"><span class="k">Spent of budget</span><span class="mut" style="font-size:11px">60%</span></div>
+          <div class="row"><span class="big" style="font-size:22px">৳32,700</span><span class="mut">of ৳54,280</span></div>
+          <div class="bar"><i style="width:60.2%"></i></div>
+        </div>
+        <div class="card" style="gap:0">
+          <div class="cat">
+            <div class="row"><b>Fixed ▾</b><span>27,280 <span class="mut">/ 31,280</span></span></div>
+            <div class="bar"><i style="width:87.2%"></i></div>
+            <div class="subs">
+              <div class="row sm"><span>House Rent <span class="chip good">paid</span></span><span>25,000</span></div>
+              <div class="row sm"><span>Internet <span class="chip good">paid</span></span><span>1,200</span></div>
+              <div class="row sm"><span>Gas <span class="chip good">paid</span></span><span>1,080</span></div>
+              <div class="row sm"><span>Electricity <span class="chip warn">due 15 Oct</span></span><span class="mut">2,500</span></div>
+              <div class="row sm"><span>Water &amp; Service <span class="chip warn">due 10 Oct</span></span><span class="mut">1,500</span></div>
+            </div>
+          </div>
+          <div class="cat"><div class="row"><b>Ration</b><span>4,350 <span class="mut">/ 14,000</span></span></div><div class="bar"><i style="width:31.1%"></i></div></div>
+          <div class="cat"><div class="row"><b>Random</b><span>620 <span class="mut">/ 5,000</span></span></div><div class="bar"><i style="width:12.4%"></i></div></div>
+          <div class="cat"><div class="row"><b>Mine</b><span>450 <span class="mut">/ 4,000</span></span></div><div class="bar"><i style="width:11.3%"></i></div></div>
+        </div>
+        <span class="btn ghost">Pay 2 remaining fixed bills · ৳4,000</span>
+        <div class="card"><span class="k">Recent</span>
+          <div class="list">
+            <div class="row sm"><span>Vegetables <span class="mut">· Ration · Cash</span></span><span>−350</span></div>
+            <div class="row sm"><span>Rickshaw <span class="mut">· Random · Cash</span></span><span>−120</span></div>
+          </div></div>
+      </div>
+      <div class="tabbar"><span><i class="ico"></i>Home</span><span class="on"><i class="ico"></i>Spend</span><span class="fab">+</span><span><i class="ico"></i>Save</span><span><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>Spend</b>Budget against actual for each category. Sub-categories expand. Fixed bills show paid or due.</figcaption></figure>
+
+    <!-- 4 SAVINGS & GOALS -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">Savings</div><div class="sub">৳1,08,500 across all pots</div></div><span class="chip out">+ Goal</span></div>
+      <div class="body">
+        <div class="card">
+          <span class="k">Monthly Savings</span>
+          <span class="big" style="font-size:24px">৳68,000</span>
+          <div class="row sm"><span class="pos">+20,000 this month</span><span class="chip warn">৳2,250 owed back</span></div>
+          <div class="btns"><span class="btn ghost">Deposit</span><span class="btn ghost">Withdraw</span><span class="btn ghost">Borrow</span></div>
+        </div>
+        <div class="card">
+          <div class="row"><b>New Laptop</b><span class="chip warn">Behind</span></div>
+          <div class="row sm"><span>26,500 <span class="mut">of 95,000</span></span><span>27.9%</span></div>
+          <div class="bar"><i class="w" style="width:27.9%"></i></div>
+          <span class="mut" style="font-size:10.5px">Target Mar 2027 needs ৳13,700/mo. At ৳8,000/mo you'll finish in Jul 2027.</span>
+        </div>
+        <div class="card">
+          <div class="row"><b>Motorbike</b><span class="chip good">On track</span></div>
+          <div class="row sm"><span>14,000 <span class="mut">of 1,50,000</span></span><span>9.3%</span></div>
+          <div class="bar"><i class="g" style="width:9.3%"></i></div>
+          <span class="mut" style="font-size:10.5px">Target Dec 2029 needs ৳3,579/mo. You save ৳4,000/mo.</span>
+        </div>
+        <div class="card"><span class="k">Achieved</span>
+          <div class="row sm"><span>Refrigerator ✓ <span class="mut">bought Jun 2026</span></span><span>62,500</span></div></div>
+      </div>
+      <div class="tabbar"><span><i class="ico"></i>Home</span><span><i class="ico"></i>Spend</span><span class="fab">+</span><span class="on"><i class="ico"></i>Save</span><span><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>Save</b>Monthly Savings at the top, then each goal with its progress and the monthly amount it needs.</figcaption></figure>
+
+    <!-- 5 BORROWED -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">Loans</div><div class="sub">৳2,250 owed to your savings</div></div><span class="chip out">+ Borrow</span></div>
+      <div class="body">
+        <div class="seg" style="grid-template-columns:1fr 1fr"><span class="on">Own savings</span><span>People</span></div>
+        <div class="card">
+          <div class="row"><b>From Monthly Savings</b><span class="chip warn">Open · 23 days</span></div>
+          <span class="mut" style="font-size:10.5px">14 Sep 2026 · "Over budget: ceiling fan + medicine"</span>
+          <div class="row sm"><span>Borrowed</span><span>5,000</span></div>
+          <div class="row sm"><span>Charge (5%)</span><span>+250</span></div>
+          <div class="row sm sum"><span>Total due</span><span>5,250</span></div>
+          <div class="row sm"><span>Repaid</span><span class="pos">3,000</span></div>
+          <div class="bar"><i class="g" style="width:57.1%"></i></div>
+          <div class="row"><b>Remaining</b><b>৳2,250</b></div>
+          <div class="tl">
+            <div class="row"><span>14 Sep · Borrowed</span><span>5,000</span></div>
+            <div class="row"><span>28 Sep · Repaid</span><span>2,000</span></div>
+            <div class="row"><span>5 Oct · Repaid</span><span>1,000</span></div>
+          </div>
+          <span class="btn">Repay</span>
+        </div>
+        <div class="card" style="border-style:dashed">
+          <span class="k">New borrow (preview)</span>
+          <div class="row sm"><span>From</span><span>Goal · New Laptop ▾</span></div>
+          <div class="row sm"><span>Amount</span><span>3,000</span></div>
+          <div class="row sm"><span>Charge 5% <span class="mut">(edit)</span></span><span>150</span></div>
+          <div class="row sm sum"><span>You will owe</span><span>3,150</span></div>
+        </div>
+      </div>
+      <div class="tabbar"><span><i class="ico"></i>Home</span><span><i class="ico"></i>Spend</span><span class="fab">+</span><span class="on"><i class="ico"></i>Save</span><span><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>Loans · own savings</b>The 5% charge is added when you borrow. Each repayment goes back to the pot the money came from.</figcaption></figure>
+
+    <!-- 5b PEOPLE -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">Loans</div><div class="sub">With people · 2 open</div></div><span class="chip out">+ New</span></div>
+      <div class="body">
+        <div class="seg" style="grid-template-columns:1fr 1fr"><span>Own savings</span><span class="on">People</span></div>
+        <div class="split">
+          <div class="card"><span class="k">They owe you</span><span class="big pos" style="font-size:20px">৳6,000</span></div>
+          <div class="card"><span class="k">You owe</span><span class="big neg" style="font-size:20px">৳10,000</span></div>
+        </div>
+        <div class="card">
+          <div class="row"><b>Karim</b><span class="chip good">Lent</span></div>
+          <span class="mut" style="font-size:10.5px">2 Aug 2026 · from Monthly Savings · due 30 Nov</span>
+          <div class="row sm"><span>Lent</span><span>10,000</span></div>
+          <div class="row sm"><span>Returned <span class="mut">· 30 Aug</span></span><span class="pos">4,000</span></div>
+          <div class="bar"><i class="g" style="width:40%"></i></div>
+          <div class="row"><b>Owes you</b><b class="pos">৳6,000</b></div>
+          <span class="btn ghost">Record money received</span>
+        </div>
+        <div class="card">
+          <div class="row"><b>Brother</b><span class="chip bad">Borrowed</span></div>
+          <span class="mut" style="font-size:10.5px">10 Jul 2026 · into Spending · no charge</span>
+          <div class="row sm"><span>Borrowed</span><span>15,000</span></div>
+          <div class="row sm"><span>Paid back <span class="mut">· 31 Jul</span></span><span class="pos">5,000</span></div>
+          <div class="bar"><i class="w" style="width:33.3%"></i></div>
+          <div class="row"><b>You owe</b><b class="neg">৳10,000</b></div>
+          <span class="btn ghost">Pay back</span>
+        </div>
+      </div>
+      <div class="tabbar"><span><i class="ico"></i>Home</span><span><i class="ico"></i>Spend</span><span class="fab">+</span><span class="on"><i class="ico"></i>Save</span><span><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>Loans · people</b>Money you lent to or borrowed from someone, with part payments. Money you lend comes back to the pot it left from.</figcaption></figure>
+
+    <!-- 6 CASH -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">Cash in drawer</div><div class="sub">Last counted 5 Oct</div></div><span class="chip good">✓ Matched</span></div>
+      <div class="body">
+        <div class="card">
+          <span class="k">In the drawer</span>
+          <span class="big">৳7,300</span>
+          <div class="stack"><i class="c1" style="width:38.4%"></i><i class="c2" style="width:34.2%"></i><i class="c3" style="width:27.4%"></i></div>
+          <div class="row sm"><span><i class="sw c1"></i>Spending</span><span>2,800</span></div>
+          <div class="row sm"><span><i class="sw c2"></i>Emergency <span class="mut">(Monthly Savings)</span></span><span>2,500</span></div>
+          <div class="row sm"><span><i class="sw c3"></i>Motorbike goal</span><span>2,000</span></div>
+        </div>
+        <div class="card">
+          <span class="k">Count cash · 5 Oct</span>
+          <div class="denoms">
+            <span>৳1000</span><span class="mut">× 5</span><span>5,000</span>
+            <span>৳500</span><span class="mut">× 3</span><span>1,500</span>
+            <span>৳100</span><span class="mut">× 6</span><span>600</span>
+            <span>৳50</span><span class="mut">× 2</span><span>100</span>
+            <span>৳20</span><span class="mut">× 5</span><span>100</span>
+          </div>
+          <div class="row sm sum"><span>Counted</span><span>7,300</span></div>
+          <div class="row sm"><span class="mut">App says</span><span>7,300 <span class="pos">· diff 0</span></span></div>
+        </div>
+        <div class="btns" style="grid-template-columns:1fr 1fr"><span class="btn">Count now</span><span class="btn ghost">Move sector</span></div>
+        <span class="btn ghost">Deposit to bank</span>
+      </div>
+      <div class="tabbar"><span><i class="ico"></i>Home</span><span><i class="ico"></i>Spend</span><span class="fab">+</span><span><i class="ico"></i>Save</span><span class="on"><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>In Cash</b>Shows which sector each part of the drawer cash belongs to. Count the notes to check the drawer matches the app.</figcaption></figure>
+
+    <!-- 7 TRACKERS -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">Trackers</div><div class="sub">Projects and countdown budgets</div></div><span class="chip out">+ New</span></div>
+      <div class="body">
+        <span class="k" style="padding-left:2px">Countdown</span>
+        <div class="card">
+          <div class="row"><b>Sylhet Trip</b><span class="chip acc">72 days to go</span></div>
+          <span class="mut" style="font-size:10.5px">18–21 Dec 2026 · budget ৳25,000</span>
+          <div class="row"><span class="big" style="font-size:22px">৳21,000</span><span class="mut">left</span></div>
+          <div class="bar"><i style="width:16%"></i></div>
+          <div class="row sm"><span>Bus tickets</span><span>2,400</span></div>
+          <div class="row sm"><span>Hotel advance</span><span>1,600</span></div>
+          <div class="row sm sum"><span>Spent</span><span>4,000</span></div>
+        </div>
+        <span class="k" style="padding-left:2px">Projects</span>
+        <div class="card">
+          <div class="row"><b>Home Office Setup</b><span class="chip out">since Mar 2026</span></div>
+          <div class="row"><span class="big" style="font-size:22px">৳38,750</span><span class="mut">spent so far</span></div>
+          <div class="stack"><i class="c1" style="width:56.8%"></i><i class="c2" style="width:32.3%"></i><i class="c3" style="width:10.9%"></i></div>
+          <div class="row sm"><span><i class="sw c1"></i>Furniture</span><span>22,000</span></div>
+          <div class="row sm"><span><i class="sw c2"></i>Electronics</span><span>12,500</span></div>
+          <div class="row sm"><span><i class="sw c3"></i>Small items</span><span>4,250</span></div>
+          <div class="row sm mut"><span>Last added</span><span>Desk lamp · 1,250 · 18 Sep</span></div>
+        </div>
+      </div>
+      <div class="tabbar"><span><i class="ico"></i>Home</span><span><i class="ico"></i>Spend</span><span class="fab">+</span><span><i class="ico"></i>Save</span><span class="on"><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>Trackers</b>A countdown shows what's left of a budget. A project shows the total spent so far.</figcaption></figure>
+
+    <!-- 8 SETTINGS -->
+    <figure class="phone"><div class="device"><div class="screen">
+      <div class="sb"><span>9:41</span><span>4G ▮▮▮</span></div>
+      <div class="ab"><div><div class="ttl">Settings</div><div class="sub">Your data lives on this phone</div></div></div>
+      <div class="body">
+        <div class="card">
+          <div class="row"><span class="k">Backup</span><span class="chip good">3 days ago</span></div>
+          <span style="font-size:11px">Last: Sun 4 Oct, 21:00 · 1.2 MB<br><span class="mut">Auto weekly to Download/MyFinTracker · keeps 8</span></span>
+          <div class="btns"><span class="btn">Back up</span><span class="btn ghost">Restore</span><span class="btn ghost">CSV</span></div>
+        </div>
+        <div class="card" style="gap:0">
+          <div class="list">
+            <div class="row sm"><span>Categories &amp; budgets</span><span class="mut">14 ›</span></div>
+            <div class="row sm"><span>Accounts</span><span class="mut">Bank, Cash, bKash ›</span></div>
+            <div class="row sm"><span>Savings pots &amp; goals</span><span class="mut">3 ›</span></div>
+            <div class="row sm"><span>Income types</span><span class="mut">Salary, Bonus ›</span></div>
+            <div class="row sm"><span>Allocation plan</span><span class="mut">on salary ›</span></div>
+            <div class="row sm"><span>Borrow charge</span><span class="mut">5% ›</span></div>
+            <div class="row sm"><span>Month starts on</span><span class="mut">1st ›</span></div>
+            <div class="row sm"><span>Leftover at month end</span><span class="mut">Carry forward ›</span></div>
+            <div class="row sm"><span>Currency</span><span class="mut">৳ · 1,00,000 ›</span></div>
+            <div class="row sm"><span>App lock</span><span class="mut">Fingerprint ›</span></div>
+            <div class="row sm"><span>Theme</span><span class="mut">System ›</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="tabbar"><span><i class="ico"></i>Home</span><span><i class="ico"></i>Spend</span><span class="fab">+</span><span><i class="ico"></i>Save</span><span class="on"><i class="ico"></i>More</span></div>
+    </div></div><figcaption><b>Settings &amp; backup</b>Backup is at the top. Every rule from your notes is a setting here.</figcaption></figure>
+  </div>
+</section>
+
+<!-- REPORT -->
+<section id="report">
+  <header>
+    <span class="eyebrow">Example output</span>
+    <h2>Monthly report · September 2026</h2>
+    <p class="lede">Made on the phone as an A4 PDF when you close the month. Pages 1–2 are shown here. Page 3 is the full ledger of every entry. All figures are sample data and tie to the screens above.</p>
+  </header>
+  <div class="report-band">
+    <div class="pages">
+      <!-- PAGE 1 -->
+      <div class="page">
+        <div class="rhead">
+          <div><div class="t">Monthly Report · September 2026</div><div class="s">Period 1–30 Sep 2026 · Generated 1 Oct 2026, 08:15</div></div>
+          <div class="brand">MY FIN TRACKER<br>Amounts in BDT (৳)</div>
+        </div>
+        <div class="kpis">
+          <div><span class="k">Opening</span><b>50,000</b></div>
+          <div><span class="k">Income</span><b>95,000</b></div>
+          <div><span class="k">Spent</span><b>54,380</b></div>
+          <div><span class="k">Invested</span><b>5,000</b></div>
+          <div><span class="k">Closing</span><b>85,620</b></div>
+          <div><span class="k">Net worth</span><b>3,76,240</b></div>
+        </div>
+        <div class="recon">Opening 50,000 + Income 95,000 − Spent 54,380 − Invested 5,000 = Closing 85,620 &nbsp;<b>✓ BALANCED</b> · Bank matched to statement on 30 Sep (74,920)</div>
+
+        <div class="rgrid">
+          <div style="display:grid; gap:6px">
+            <h4>Income <small>2 entries</small></h4>
+            <table><tbody>
+              <tr><td>Salary</td><td class="r">85,000</td></tr>
+              <tr><td>Bonus (performance)</td><td class="r">10,000</td></tr>
+              <tr class="total"><td>Total</td><td class="r">95,000</td></tr>
+            </tbody></table>
+          </div>
+          <div style="display:grid; gap:6px">
+            <h4>Opening balances <small>1 Sep</small></h4>
+            <table><tbody>
+              <tr><td>Bank</td><td class="r">42,300</td></tr>
+              <tr><td>Cash drawer</td><td class="r">6,200</td></tr>
+              <tr><td>bKash</td><td class="r">1,500</td></tr>
+              <tr class="total"><td>Total · incl. carried fwd 3,500</td><td class="r">50,000</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+
+        <div style="display:grid; gap:6px">
+          <h4>Where the income went <small>% of ৳95,000</small></h4>
+          <div class="alloc"><i class="a1" style="width:57.2%"></i><i class="a2" style="width:21.1%"></i><i class="a3" style="width:12.6%"></i><i class="a4" style="width:5.3%"></i><i class="a5" style="width:3.8%"></i></div>
+          <div class="legend"><span><i class="a1"></i>Expenses 54,380 · 57.2%</span><span><i class="a2"></i>Monthly Savings 20,000 · 21.1%</span><span><i class="a3"></i>Goals 12,000 · 12.6%</span><span><i class="a4"></i>DPS 5,000 · 5.3%</span><span><i class="a5"></i>Unspent 3,620 · 3.8%</span></div>
+        </div>
+
+        <div style="display:grid; gap:6px">
+          <h4>Expenses vs budget <small>38 entries</small></h4>
+          <table>
+            <thead><tr><th>Category</th><th class="r">Budget</th><th class="r">Actual</th><th class="r">Diff</th><th>Used</th></tr></thead>
+            <tbody>
+              <tr><td><b>Fixed</b></td><td class="r">31,280</td><td class="r">30,960</td><td class="r ok">−320</td><td><span class="pbar"><i style="width:99%"></i></span> 99%</td></tr>
+              <tr><td class="sub">House Rent</td><td class="r">25,000</td><td class="r">25,000</td><td class="r">0</td><td></td></tr>
+              <tr><td class="sub">Electricity</td><td class="r">2,500</td><td class="r">2,180</td><td class="r ok">−320</td><td></td></tr>
+              <tr><td class="sub">Gas</td><td class="r">1,080</td><td class="r">1,080</td><td class="r">0</td><td></td></tr>
+              <tr><td class="sub">Internet</td><td class="r">1,200</td><td class="r">1,200</td><td class="r">0</td><td></td></tr>
+              <tr><td class="sub">Water &amp; Service</td><td class="r">1,500</td><td class="r">1,500</td><td class="r">0</td><td></td></tr>
+              <tr><td><b>Ration</b></td><td class="r">14,000</td><td class="r">13,420</td><td class="r ok">−580</td><td><span class="pbar"><i style="width:95.9%"></i></span> 96%</td></tr>
+              <tr><td><b>Random</b></td><td class="r">5,000</td><td class="r over">6,850</td><td class="r over">+1,850</td><td><span class="pbar"><i class="o" style="width:100%"></i></span> <span class="over">137%</span></td></tr>
+              <tr><td><b>Mine</b></td><td class="r">4,000</td><td class="r">3,150</td><td class="r ok">−850</td><td><span class="pbar"><i style="width:78.8%"></i></span> 79%</td></tr>
+              <tr class="total"><td>Total</td><td class="r">54,280</td><td class="r">54,380</td><td class="r over">+100</td><td>100.2%</td></tr>
+            </tbody>
+          </table>
+          <span style="color:var(--paper-muted); font-size:9px">Random over budget: Medicine 2,600 · Ceiling fan 3,400 · Other 850. Covered by borrowing ৳5,000 from Monthly Savings (see page 2).</span>
+        </div>
+
+        <div class="rfoot"><span>Monthly Report · Sep 2026</span><span>Page 1 of 3</span></div>
+      </div>
+
+      <!-- PAGE 2 -->
+      <div class="page">
+        <div class="rhead" style="border-bottom-width:1.5px">
+          <div><div class="t" style="font-size:15px">Savings, loans &amp; assets</div><div class="s">September 2026</div></div>
+          <div class="brand">MY FIN TRACKER</div>
+        </div>
+
+        <div style="display:grid; gap:6px">
+          <h4>Monthly Savings</h4>
+          <table><tbody>
+            <tr><td>Opening balance</td><td class="r">30,000</td></tr>
+            <tr><td>Deposit from salary · 1 Sep</td><td class="r ok">+20,000</td></tr>
+            <tr><td>Borrowed to Spending · 14 Sep</td><td class="r over">−5,000</td></tr>
+            <tr><td>Repayment · 28 Sep</td><td class="r ok">+2,000</td></tr>
+            <tr class="total"><td>Closing balance · plus 3,250 still owed back</td><td class="r">47,000</td></tr>
+          </tbody></table>
+        </div>
+
+        <div style="display:grid; gap:6px">
+          <h4>Saving for something <small>2 active goals</small></h4>
+          <table>
+            <thead><tr><th>Goal</th><th class="r">Opening</th><th class="r">Added</th><th class="r">Closing</th><th class="r">Target</th><th>Progress</th></tr></thead>
+            <tbody>
+              <tr><td>New Laptop · by Mar 2027</td><td class="r">10,500</td><td class="r">8,000</td><td class="r">18,500</td><td class="r">95,000</td><td><span class="pbar"><i style="width:19.5%"></i></span> 19.5%</td></tr>
+              <tr><td>Motorbike · by Dec 2029</td><td class="r">6,000</td><td class="r">4,000</td><td class="r">10,000</td><td class="r">1,50,000</td><td><span class="pbar"><i style="width:6.7%"></i></span> 6.7%</td></tr>
+              <tr class="total"><td>Total</td><td class="r">16,500</td><td class="r">12,000</td><td class="r">28,500</td><td class="r">2,45,000</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:grid; gap:6px">
+          <h4>Loans <small>own savings charge 5% · people 0%</small></h4>
+          <table>
+            <thead><tr><th>Loan</th><th>Date</th><th class="r">Amount</th><th class="r">Charge</th><th class="r">Due</th><th class="r">Paid</th><th class="r">Left</th></tr></thead>
+            <tbody>
+              <tr><td>Borrowed from Monthly Savings</td><td>14 Sep</td><td class="r">5,000</td><td class="r">250</td><td class="r">5,250</td><td class="r">2,000</td><td class="r over">3,250</td></tr>
+              <tr><td>Lent to Karim · owes you</td><td>2 Aug</td><td class="r">10,000</td><td class="r">0</td><td class="r">10,000</td><td class="r">4,000</td><td class="r ok">6,000</td></tr>
+              <tr><td>Borrowed from Brother · you owe</td><td>10 Jul</td><td class="r">15,000</td><td class="r">0</td><td class="r">15,000</td><td class="r">5,000</td><td class="r over">10,000</td></tr>
+            </tbody>
+          </table>
+          <span style="color:var(--paper-muted); font-size:9px">No payments on the people loans this month. Net worth counts +6,000 owed to you and −10,000 you owe.</span>
+        </div>
+
+        <div class="rgrid">
+          <div style="display:grid; gap:6px">
+            <h4>Closing balances <small>30 Sep</small></h4>
+            <table><tbody>
+              <tr><td>Bank</td><td class="r">74,920</td></tr>
+              <tr><td>Cash drawer</td><td class="r">8,700</td></tr>
+              <tr><td>bKash</td><td class="r">2,000</td></tr>
+              <tr class="total"><td>Total</td><td class="r">85,620</td></tr>
+            </tbody></table>
+          </div>
+          <div style="display:grid; gap:6px">
+            <h4>Cash in drawer <small>by sector</small></h4>
+            <table><tbody>
+              <tr><td>Spending</td><td class="r">4,200</td></tr>
+              <tr><td>Emergency (Monthly Savings)</td><td class="r">2,500</td></tr>
+              <tr><td>Motorbike goal</td><td class="r">2,000</td></tr>
+              <tr class="total"><td>Total</td><td class="r">8,700</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+
+        <div style="display:grid; gap:6px">
+          <h4>Investments</h4>
+          <table>
+            <thead><tr><th>Name</th><th>Detail</th><th class="r">Principal</th><th class="r">Value</th></tr></thead>
+            <tbody>
+              <tr><td>DPS · Bank</td><td>৳5,000/mo · 18 of 60 paid</td><td class="r">90,000</td><td class="r">94,620</td></tr>
+              <tr><td>Savings certificate</td><td>matures Mar 2029</td><td class="r">2,00,000</td><td class="r">2,00,000</td></tr>
+              <tr class="total"><td colspan="2">Total</td><td class="r">2,90,000</td><td class="r">2,94,620</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="rgrid">
+          <div style="display:grid; gap:6px">
+            <h4>Major purchases</h4>
+            <table><tbody>
+              <tr><td>12 Sep · Ceiling fan</td><td class="r">3,400</td></tr>
+              <tr><td colspan="2" style="color:var(--paper-muted)">Category Random · warranty to Sep 2028</td></tr>
+            </tbody></table>
+          </div>
+          <div style="display:grid; gap:6px">
+            <h4>Trackers</h4>
+            <table><tbody>
+              <tr><td>Home Office Setup</td><td class="r">+1,250 · 38,750</td></tr>
+              <tr><td>Sylhet Trip (countdown)</td><td class="r">21,000 left · 79 d</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+
+        <div class="recon" style="border-left-color:var(--paper-accent)">Carried forward to October: Spending 3,500 + 95,000 − 37,000 set aside − 54,380 spent + 5,000 borrowed − 2,000 repaid = <b style="color:var(--paper-accent)">10,120</b></div>
+
+        <div class="rfoot"><span>Monthly Report · Sep 2026</span><span>Page 2 of 3 · ledger follows</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="mut" style="font-size:.86rem">The annual report uses the same layout: income and expenses for each of the 12 months, savings and goal growth, net worth at each month end, the purchase register and the trackers.</p>
+</section>
+
+<!-- TECH -->
+<section id="tech">
+  <header>
+    <span class="eyebrow">How it's built</span>
+    <h2>Tech stack and architecture</h2>
+  </header>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Part</th><th>Choice</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>App framework</td><td><b>Flutter</b> (Dart)</td><td>Builds an Android APK on your Ubuntu machine with no cloud build service. It also runs as a Linux desktop window, which makes trying out changes fast.</td></tr>
+        <tr><td>Database</td><td><b>SQLite via Drift</b></td><td>The data is one file on the phone. Drift gives typed queries and safe schema upgrades, and its live queries update the screens as soon as you add an entry.</td></tr>
+        <tr><td>State &amp; navigation</td><td>Riverpod, go_router</td><td>Standard, well-tested Flutter packages.</td></tr>
+        <tr><td>PDF</td><td><code>pdf</code> + <code>printing</code></td><td>Builds the PDF on the phone, then opens Android's share, save or print sheet.</td></tr>
+        <tr><td>Charts</td><td>fl_chart</td><td>Budget bars, savings growth, net worth over time.</td></tr>
+        <tr><td>Files &amp; backup</td><td>file_picker, share_plus, archive</td><td>Export and import the backup file. Android asks you where to save it.</td></tr>
+        <tr><td>Security</td><td>local_auth, AES-GCM</td><td>Fingerprint app lock, and an optional password on backup files.</td></tr>
+        <tr><td>Money</td><td>Whole poisha (integers)</td><td>Amounts are never stored as decimals, so there are no rounding errors. Display grouping 1,00,000 or 100,000.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="two">
+    <div style="display:grid; gap:10px">
+      <h3>Project layout</h3>
+<pre class="cmd">lib/
+  core/        money, dates &amp; periods, formatting, theme
+  data/        drift tables, DAOs, migrations, backup
+  ledger/      posting rules + balance queries (the engine)
+  features/
+    dashboard/  quick_add/  expenses/  savings/
+    goals/  borrow/  cash/  investments/
+    purchases/  trackers/  reports/  settings/
+test/          engine tests: every formula on this page</pre>
+    </div>
+    <div style="display:grid; gap:10px">
+      <h3>Why not something else</h3>
+      <ul class="tight">
+        <li><b>React Native / Expo:</b> also workable, but building an APK without Expo's cloud still needs the same Android SDK setup, and on-device PDF is weaker.</li>
+        <li><b>Web app (PWA):</b> the browser can clear its storage, which is not acceptable for financial records.</li>
+        <li><b>iPhone:</b> not needed. The app is Android only, as you confirmed.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- DATA -->
+<section id="data">
+  <header>
+    <span class="eyebrow">Under the hood</span>
+    <h2>Data model and formulas</h2>
+    <p class="lede">Twelve tables. No balance is stored. Every balance is calculated from the postings, which is why the numbers can't drift apart.</p>
+  </header>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Table</th><th>Holds</th><th>Key fields</th></tr></thead>
+      <tbody>
+        <tr><td><code>accounts</code></td><td>Where money is</td><td>name, type (bank / cash / wallet / investment / person), archived. A person account above zero means they owe you; below zero means you owe them.</td></tr>
+        <tr><td><code>funds</code></td><td>What money is for</td><td>name, kind (spending / savings / goal / investment), target, target date, achieved</td></tr>
+        <tr><td><code>categories</code></td><td>Expense &amp; income tree</td><td>parent (optional), name, kind, is_fixed, due day, icon</td></tr>
+        <tr><td><code>entries</code></td><td>One user action</td><td>date, type (income / expense / move / borrow / repay / adjust), category, note, tracker, loan</td></tr>
+        <tr><td><code>postings</code></td><td>Its effects</td><td>entry, account, fund, amount (signed, poisha)</td></tr>
+        <tr><td><code>periods</code></td><td>Months</td><td>start, end, closed at, bank figure you confirmed</td></tr>
+        <tr><td><code>budgets</code></td><td>Plan per category</td><td>period, category, amount or % of income</td></tr>
+        <tr><td><code>loans</code></td><td>Borrowing &amp; lending</td><td>kind (own savings / lent to person / borrowed from person), person, fund, principal, charge rate, charge, date, due date, status</td></tr>
+        <tr><td><code>investments</code></td><td>Asset details</td><td>account, kind, rate, maturity, instalment, valuations</td></tr>
+        <tr><td><code>purchases</code></td><td>Buying register</td><td>entry, item, shop, warranty until, photo</td></tr>
+        <tr><td><code>trackers</code></td><td>Projects &amp; countdowns</td><td>name, kind, budget (optional), start, end</td></tr>
+        <tr><td><code>settings</code>, <code>recurring</code></td><td>Configuration</td><td>key/value; recurring bill templates</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Figure</th><th>Formula</th></tr></thead>
+      <tbody>
+        <tr><td>Account / fund balance</td><td>Σ postings for that account / fund up to the date</td></tr>
+        <tr><td>Left to spend</td><td>Spending fund balance in bank, cash and wallets</td></tr>
+        <tr><td>Carried forward</td><td>Spending fund balance at the start of the period</td></tr>
+        <tr><td>Budget left</td><td>budget − Σ expenses in the category this period</td></tr>
+        <tr><td>Loan due / left</td><td>principal × (1 + rate) / due − Σ repayments</td></tr>
+        <tr><td>Goal needs per month</td><td>(target − saved) ÷ months to target date</td></tr>
+        <tr><td>Countdown left</td><td>budget − Σ tagged expenses; days = end − today</td></tr>
+        <tr><td>Net worth</td><td>Σ all accounts: spendable + investment values + owed to you − you owe</td></tr>
+        <tr><td>Balanced ✓</td><td>Σ accounts = Σ funds (built in) and the bank figure = the balance you confirmed</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- BACKUP -->
+<section id="backup">
+  <header>
+    <span class="eyebrow">Your data, your device</span>
+    <h2>Backup and moving to a new phone</h2>
+  </header>
+  <div class="two">
+    <ul class="tight">
+      <li><b>Backup file</b> <code>myfin-2026-10-04.mft</code> is a zip containing the data as JSON, plus a manifest with the app version, schema version, record counts and a checksum.</li>
+      <li><b>Optional password</b> encrypts the file with AES-GCM. Without the password, nobody can read it, including you.</li>
+      <li><b>Auto backup</b> weekly (or daily) to a folder you pick on the phone. Keeps the last 8 copies.</li>
+      <li><b>No service used.</b> You decide where the file goes: USB cable, Bluetooth, Nearby Share, or your own cloud drive if you choose.</li>
+      <li><b>CSV export</b> of all entries, so you can open them in Excel at any time.</li>
+    </ul>
+    <div class="note"><b>Moving to a new phone:</b> install the APK → open the app → "Restore from file" → pick the <code>.mft</code> → enter the password if you set one. The app checks the checksum, upgrades older backups to the current schema, and shows record counts before replacing anything.</div>
+  </div>
+</section>
+
+<!-- SETUP -->
+<section id="setup">
+  <header>
+    <span class="eyebrow">Phase 0</span>
+    <h2>Setting up your machine from zero</h2>
+    <p class="lede">I checked your machine: Ubuntu 24.04, Java 21, git, curl and VS Code are installed. Flutter, the Android SDK and adb are missing. I will run these steps for you. You only need to approve the <code>sudo</code> steps and plug in your phone. About 10 GB of disk; you have 98 GB free.</p>
+  </header>
+  <div class="steps">
+    <div class="step"><h3>1. System packages (for Flutter's Linux desktop build and Android tools)</h3>
+<pre class="cmd">sudo apt update
+sudo apt install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev</pre></div>
+    <div class="step"><h3>2. Flutter SDK</h3>
+<pre class="cmd">git clone https://github.com/flutter/flutter.git -b stable ~/dev/flutter
+echo 'export PATH="$HOME/dev/flutter/bin:$PATH"' >> ~/.bashrc
+flutter --version</pre></div>
+    <div class="step"><h3>3. Android SDK (command-line tools only, no Android Studio)</h3>
+<pre class="cmd"><span class="c"># download commandlinetools-linux from developer.android.com into ~/Android/Sdk/cmdline-tools/latest</span>
+sdkmanager "platform-tools" "platforms;android-&lt;latest&gt;" "build-tools;&lt;latest&gt;"
+flutter config --android-sdk ~/Android/Sdk
+flutter doctor --android-licenses
+flutter doctor</pre></div>
+    <div class="step"><h3>4. Your phone and VS Code</h3>
+<pre class="cmd"><span class="c"># Phone: Settings › About › tap "Build number" 7× › Developer options › USB debugging (or Wireless debugging)</span>
+adb devices                       <span class="c"># phone should be listed</span>
+code --install-extension Dart-Code.flutter
+flutter create --org com.myfin --platforms android,linux my_fin_tracker
+flutter run                       <span class="c"># hot-reloads on your phone as we build</span></pre></div>
+  </div>
+  <div class="note"><b>Use your real phone rather than the Android emulator.</b> Your machine had 25 of 30 GB RAM in use when I checked, and the emulator needs several more. Testing on the phone also shows exactly what you'll get. To install a finished version: <code>flutter build apk --release</code>, then copy the APK to the phone or run <code>adb install</code>.</div>
+</section>
+
+<!-- ROADMAP -->
+<section id="roadmap">
+  <header>
+    <span class="eyebrow">Order of work</span>
+    <h2>Roadmap</h2>
+    <p class="lede">Each phase ends with an APK on your phone that you can use. Backup is in Phase 2 because your real data starts going in then. Durations assume a few focused sessions a week.</p>
+  </header>
+  <div class="phases">
+    <div class="phase"><div class="when"><b>0</b><span class="eyebrow">½ day</span></div><div class="what"><h3>Setup</h3><p class="done">Tools installed, empty app running on your phone with hot reload. <b>Done when:</b> "Hello" shows on the phone.</p></div></div>
+    <div class="phase"><div class="when"><b>1</b><span class="eyebrow">~1 week</span></div><div class="what"><h3>Foundation: the money engine</h3><p class="done">Database, accounts, funds, categories, entries → postings, periods, settings, number formatting, app shell with tabs. Unit tests for every formula. <b>Done when:</b> the September sample month above can be entered in tests and reproduces every figure in the report.</p></div></div>
+    <div class="phase"><div class="when"><b>2</b><span class="eyebrow">~1–2 weeks</span></div><div class="what"><h3>Daily use (first real version)</h3><p class="done">Quick add, Expenses with budgets and recurring fixed bills, Dashboard with Match bank, salary allocation plan, month close with carry forward, <b>backup and restore</b>. You start fresh from the 1st of a month (no Excel import). <b>Done when:</b> you stop updating the Excel sheet.</p></div></div>
+    <div class="phase"><div class="when"><b>3</b><span class="eyebrow">~1 week</span></div><div class="what"><h3>Savings</h3><p class="done">Monthly Savings, goals with on-track maths, loans from your own savings (with the charge) and with people (lent and borrowed), In Cash screen and cash count.</p></div></div>
+    <div class="phase"><div class="when"><b>4</b><span class="eyebrow">~1 week</span></div><div class="what"><h3>Long-term money</h3><p class="done">Investments with valuations and maturity, Buying register, Trackers (projects and countdowns).</p></div></div>
+    <div class="phase"><div class="when"><b>5</b><span class="eyebrow">~1 week</span></div><div class="what"><h3>Reports</h3><p class="done">Monthly PDF exactly as above, annual PDF, CSV export, charts on the dashboard.</p></div></div>
+    <div class="phase"><div class="when"><b>6</b><span class="eyebrow">ongoing</span></div><div class="what"><h3>Polish</h3><p class="done">Home-screen widget and launcher shortcut for quick add, reminders (bills due, loan open, backup overdue), fingerprint lock, auto backup, search, Bangla labels if you want them.</p></div></div>
+  </div>
+</section>
+
+<!-- DECISIONS -->
+<section id="questions">
+  <header>
+    <span class="eyebrow">Confirmed 7 Oct 2026</span>
+    <h2>Your decisions</h2>
+    <p class="lede">These are now fixed in the plan.</p>
+  </header>
+  <div class="qs">
+    <div class="q"><b>Platform</b><span>Android only.</span><em>✓ Confirmed</em></div>
+    <div class="q"><b>Currency and number style</b><span>৳ BDT with lakh grouping, e.g. ৳1,00,000.</span><em>✓ Confirmed</em></div>
+    <div class="q"><b>Month start</b><span>Calendar month, starting on the 1st.</span><em>✓ Confirmed</em></div>
+    <div class="q"><b>Loans</b><span>Both: borrow from your own savings (5% charge), and lend to or borrow from other people.</span><em>✓ Confirmed</em></div>
+    <div class="q"><b>Excel history</b><span>No import. You start fresh with the opening balances of the first month.</span><em>✓ Confirmed</em></div>
+    <div class="q"><b>Accounts</b><span>Starts with 1 bank, cash drawer and bKash. You can add more in Settings.</span><em>Default, change any time</em></div>
+  </div>
+</section>
+
+</div>
+
+</body>
+</html>
