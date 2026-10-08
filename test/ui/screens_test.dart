@@ -57,6 +57,7 @@ void main() {
         expect(find.text('৳1,23,970'), findsOneWidget);
         expect(find.text('৳1,32,920'), findsNWidgets(2));
         expect(find.text('✓ Balanced'), findsOneWidget);
+        expect(find.text('September 2026 is over'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('৳4,28,770'), 300);
         expect(find.text('৳4,28,770'), findsOneWidget);
       });
@@ -67,6 +68,8 @@ void main() {
         expect(find.text('of ৳54,280'), findsOneWidget);
         expect(find.text('Fixed'), findsOneWidget);
         expect(find.text('due 15 Oct'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('Pay 2 remaining fixed bills · ৳4,000'), 300);
+        expect(find.text('Pay 2 remaining fixed bills · ৳4,000'), findsOneWidget);
       });
 
       testWidgets('Save shows goals and loans', (tester) async {
@@ -79,9 +82,14 @@ void main() {
         expect(find.text('Karim'), findsOneWidget);
       });
 
-      testWidgets('More lists accounts', (tester) async {
+      testWidgets('More lists setup and backup', (tester) async {
         await pump(tester, const MoreScreen(), sample, brightness: brightness);
-        expect(find.textContaining('Bank', findRichText: true), findsWidgets);
+        expect(find.text('Backup & restore'), findsOneWidget);
+        expect(find.text('No backup yet'), findsOneWidget);
+        expect(find.text('Starting balances'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('5% of the amount'), 300);
+        expect(find.text('5% of the amount'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('Load example'), 300);
         expect(find.text('Load example'), findsOneWidget);
       });
     });
@@ -89,6 +97,7 @@ void main() {
 
   testWidgets('Home before any entries', (tester) async {
     await pump(tester, const HomeScreen(), empty);
-    expect(find.text('No entries yet'), findsOneWidget);
+    expect(find.text('Welcome'), findsOneWidget);
+    expect(find.text('Enter starting balances'), findsOneWidget);
   });
 }

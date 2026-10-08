@@ -8,7 +8,10 @@ import '../../core/money.dart';
 import '../../core/period.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
+import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../setup/starting_balances_screen.dart';
+import 'month_tasks.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -28,8 +31,10 @@ class HomeScreen extends ConsumerWidget {
       if (ledger.isEmpty) return PageList(children: [header, const _EmptyHome()]);
 
       final s = ledger.summary(period);
+      final toClose = ledger.monthToClose(today);
       return PageList(children: [
         header,
+        if (toClose != null) _CloseMonthBanner(period: toClose),
         _LeftToSpend(summary: s, today: today),
         _ThisMonth(ledger: ledger, summary: s),
         _WhereAndWhat(ledger: ledger),
@@ -101,7 +106,8 @@ class _ThisMonth extends StatelessWidget {
       AmountRow('Spent', -s.spendingExpenses, signed: true),
       if (s.loanNet != 0)
         AmountRow(s.loanNet > 0 ? 'Borrowed' : 'Loan repayment', s.loanNet, signed: true),
-      if (s.otherNet != 0) AmountRow('Adjustments', s.otherNet, signed: true),
+      if (s.startingNet != 0) AmountRow('Starting balance', s.startingNet, signed: true),
+      if (s.adjustNet != 0) AmountRow('Adjustments', s.adjustNet, signed: true),
       AmountRow('Left to spend', s.leftToSpend, total: true),
     ]);
   }
@@ -130,6 +136,15 @@ class _WhereAndWhat extends StatelessWidget {
           const Label('Where it is'),
           for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
           AmountRow('Total', total, total: true),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+              onPressed: () => showMatchBalance(context),
+              icon: const Icon(Icons.fact_check_outlined, size: 18),
+              label: const Text('Match with bank or cash'),
+            ),
+          ),
         ]),
         SectionCard(children: [
           const Label("What it's for"),
@@ -144,24 +159,49 @@ class _WhereAndWhat extends StatelessWidget {
   }
 }
 
+class _CloseMonthBanner extends StatelessWidget {
+  const _CloseMonthBanner({required this.period});
+
+  final Period period;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = StatusColors.of(context);
+    return SectionCard(color: status.warnSoft, children: [
+      Text('${period.label} is over', style: TextStyle(fontWeight: FontWeight.w700, color: status.warn)),
+      Text('Check the bank balance and decide what happens to the leftover.',
+          style: TextStyle(color: status.warn)),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: FilledButton.tonal(
+          onPressed: () => showCloseMonth(context, period),
+          child: Text('Close ${period.label}'),
+        ),
+      ),
+    ]);
+  }
+}
+
 class _EmptyHome extends StatelessWidget {
   const _EmptyHome();
 
   @override
   Widget build(BuildContext context) => SectionCard(children: [
-        Text('No entries yet', style: Theme.of(context).textTheme.titleMedium),
+        Text('Welcome', style: Theme.of(context).textTheme.titleMedium),
         Text(
-          'Your balances, this month\'s spending and your savings will show here. '
-          'Quick add for entering expenses arrives in the next build. '
-          'To look around now, load the example months from More.',
+          'Start by entering what you have today: your bank, cash and bKash balances, and '
+          'how much of it is savings. Then add expenses with the + button.',
           style: TextStyle(color: StatusColors.of(context).muted),
         ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton.tonal(
-            onPressed: () => context.go('/more'),
-            child: const Text('Go to More'),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          FilledButton(
+            onPressed: () => openScreen(context, const StartingBalancesScreen()),
+            child: const Text('Enter starting balances'),
           ),
-        ),
+          OutlinedButton(
+            onPressed: () => context.go('/more'),
+            child: const Text('Try the example first'),
+          ),
+        ]),
       ]);
 }

@@ -65,3 +65,9 @@ Poisha? parseTaka(String input) {
   final value = whole * poishaPerTaka + fraction;
   return match.group(1) == '-' ? -value : value;
 }
+
+/// Basis points as a percentage: 500 → "5%", 250 → "2.5%".
+String formatPercentBp(int bp) {
+  final text = (bp / 100).toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+  return '$text%';
+}

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../core/money.dart';
 import '../core/period.dart';
+import '../ledger/allocation.dart';
 import '../ledger/enums.dart';
 import 'database.dart';
 
@@ -376,4 +377,98 @@ class LedgerRepository {
 
   Future<void> deleteEntry(int entryId) =>
       (db.delete(db.entries)..where((e) => e.id.equals(entryId))).go();
+
+  /// Edits an entry by replacing it in one transaction: the old version is
+  /// removed only if the new one is written.
+  Future<int> replaceEntry(int oldEntryId, Future<int> Function() writeNew) =>
+      db.transaction(() async {
+        await deleteEntry(oldEntryId);
+        return writeNew();
+      });
+
+  // ------------------------------------------------------- monthly tasks
+
+  /// Sets money aside as the plan says, taking it from where the salary
+  /// arrived.
+  Future<void> applyAllocation(AllocationPlan plan, DateTime date, Pot from) =>
+      db.transaction(() async {
+        for (final item in plan.items) {
+          await move(date, item.amount,
+              from: from,
+              to: (account: item.accountId ?? from.account, fund: item.fundId),
+              note: 'Salary plan');
+        }
+      });
+
+  /// Pays several fixed bills at once.
+  Future<void> payBills(List<({int categoryId, Poisha amount})> bills, DateTime date, Pot from) =>
+      db.transaction(() async {
+        for (final bill in bills) {
+          await expense(date, bill.amount, categoryId: bill.categoryId, from: from);
+        }
+      });
+
+  /// Records the difference between the app's balance and the real one
+  /// (your bank app, or the counted cash) as an adjustment.
+  Future<int?> matchBalance({
+    required DateTime date,
+    required Pot pot,
+    required Poisha appBalance,
+    required Poisha realBalance,
+    String? note,
+  }) async {
+    final delta = realBalance - appBalance;
+    if (delta == 0) return null;
+    return adjust(date, pot, delta,
+        note: note ?? 'Matched to real balance (${formatTaka(delta, showPlus: true)})');
+  }
+
+  /// Closes a month. With [sweepTo], the Spending money left in each
+  /// account moves to that fund on the month's last day; otherwise it is
+  /// carried forward as it is.
+  Future<void> closeMonth(
+    Period period, {
+    int? spendingFund,
+    int? sweepTo,
+    List<({int account, Poisha amount})> leftovers = const [],
+    Poisha? confirmedBank,
+  }) =>
+      db.transaction(() async {
+        final lastDay = period.end.subtract(const Duration(days: 1));
+        if (sweepTo != null && spendingFund != null) {
+          for (final l in leftovers) {
+            if (l.amount > 0) {
+              await move(lastDay, l.amount,
+                  from: (account: l.account, fund: spendingFund),
+                  to: (account: l.account, fund: sweepTo),
+                  note: 'Leftover from ${period.label}');
+            }
+          }
+        }
+        await db.into(db.monthCloses).insertOnConflictUpdate(MonthClosesCompanion.insert(
+              year: period.year,
+              month: period.month,
+              closedAt: DateTime.now(),
+              confirmedBank: Value(confirmedBank),
+            ));
+      });
+
+  Future<void> reopenMonth(Period period) => (db.delete(db.monthCloses)
+        ..where((c) => c.year.equals(period.year) & c.month.equals(period.month)))
+      .go();
+
+  /// Starting balances for the day you begin. They are dated the day
+  /// before, so they show as the opening position of [startDate].
+  Future<void> setStartingBalances(DateTime startDate, List<(Pot, Poisha)> balances) =>
+      db.transaction(() async {
+        final date = dateOnly(startDate).subtract(const Duration(days: 1));
+        for (final (pot, amount) in balances) {
+          if (amount != 0) await openingBalance(date, pot, amount);
+        }
+      });
+
+  // ------------------------------------------------------------ settings
+
+  Future<void> setSetting(String key, String value) =>
+      db.into(db.settings).insertOnConflictUpdate(SettingsCompanion.insert(key: key, value: value));
 }

@@ -40,6 +40,14 @@ void main() {
     });
   });
 
+  test('formatPercentBp', () {
+    expect(formatPercentBp(500), '5%');
+    expect(formatPercentBp(250), '2.5%');
+    expect(formatPercentBp(1225), '12.25%');
+    expect(formatPercentBp(0), '0%');
+    expect(formatPercentBp(1000), '10%');
+  });
+
   group('Period', () {
     test('month boundaries', () {
       const sep = Period(2026, 9);

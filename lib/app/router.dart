@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../app/theme.dart';
 import '../features/home/home_screen.dart';
+import '../features/quick_add/quick_add_sheet.dart';
 import '../features/more/more_screen.dart';
 import '../features/save/save_screen.dart';
 import '../features/spend/spend_screen.dart';
@@ -72,9 +73,7 @@ class AppShell extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add expense',
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quick add arrives in the next build (Phase 2)')),
-        ),
+        onPressed: () => showQuickAdd(context),
         child: const Icon(Icons.add, size: 30),
       ),
       bottomNavigationBar: BottomAppBar(

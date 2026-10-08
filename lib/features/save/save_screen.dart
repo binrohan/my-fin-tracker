@@ -148,7 +148,7 @@ class _LoanCard extends StatelessWidget {
       LoanKind.lent => (person!, 'Lent', ChipTone.good, 'Owes you'),
       LoanKind.borrowed => (person!, 'Borrowed', ChipTone.bad, 'You owe'),
     };
-    final rate = loan.chargeRateBp == 0 ? 'no charge' : 'charge ${loan.chargeRateBp / 100}%';
+    final rate = loan.chargeRateBp == 0 ? 'no charge' : 'charge ${formatPercentBp(loan.chargeRateBp)}';
 
     return SectionCard(children: [
       Row(children: [

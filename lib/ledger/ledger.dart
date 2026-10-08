@@ -42,6 +42,8 @@ class Ledger {
     required this.budgets,
     required this.entries,
     required this.lines,
+    this.settings = const {},
+    this.monthCloses = const [],
   })  : accounts = {for (final a in accounts) a.id: a},
         funds = {for (final f in funds) f.id: f},
         categories = {for (final c in categories) c.id: c};
@@ -53,6 +55,8 @@ class Ledger {
   final List<Budget> budgets;
   final List<Entry> entries;
   final List<PostingLine> lines;
+  final Map<String, String> settings;
+  final List<MonthClose> monthCloses;
 
   static Future<Ledger> load(AppDatabase db) async {
     final rows = await (db.select(db.postings).join([
@@ -73,6 +77,8 @@ class Ledger {
       entries: await (db.select(db.entries)
             ..orderBy([(e) => OrderingTerm.desc(e.date), (e) => OrderingTerm.desc(e.id)]))
           .get(),
+      settings: {for (final s in await db.select(db.settings).get()) s.key: s.value},
+      monthCloses: await db.select(db.monthCloses).get(),
       lines: [
         for (final row in rows)
           () {
@@ -193,7 +199,8 @@ class Ledger {
         EntryType.lend,
         EntryType.collect,
       }),
-      otherNet: spendingFlow({EntryType.opening, EntryType.adjust, EntryType.charge}),
+      startingNet: spendingFlow({EntryType.opening}),
+      adjustNet: spendingFlow({EntryType.adjust, EntryType.charge}),
       invested: _sum(inPeriod.where((l) =>
           l.type == EntryType.move &&
           accounts[l.accountId]!.type == AccountType.investment)),
@@ -212,10 +219,7 @@ class Ledger {
         actual.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
       }
     }
-    final budget = {
-      for (final b in budgets)
-        if (b.year == p.year && b.month == p.month) b.categoryId: b.amount,
-    };
+    final budget = budgetsFor(p);
 
     CategoryLine build(CategoryRow c) {
       final children = [
@@ -235,6 +239,87 @@ class Ledger {
         if (c.parentId == null && c.kind == kind) build(c),
     ]..removeWhere((l) => l.category.archived && l.actual == 0);
   }
+
+  /// The budget of each category in a month. A budget set in one month
+  /// stays in force for later months until it is changed.
+  Map<int, Poisha> budgetsFor(Period p) {
+    final key = p.year * 12 + p.month;
+    final sorted = [...budgets]
+      ..sort((a, b) => (a.year * 12 + a.month).compareTo(b.year * 12 + b.month));
+    return {
+      for (final b in sorted)
+        if (b.year * 12 + b.month <= key) b.categoryId: b.amount,
+    };
+  }
+
+  /// Categories you can put an entry on: those without sub-categories.
+  List<CategoryRow> leafCategories(CategoryKind kind) => [
+        for (final c in categories.values)
+          if (c.kind == kind &&
+              !c.archived &&
+              !categories.values.any((x) => x.parentId == c.id && !x.archived))
+            c,
+      ];
+
+  /// Leaf categories ordered by how often you used them in the 90 days
+  /// before [today], then in their usual order.
+  List<CategoryRow> frequentCategories(CategoryKind kind, DateTime today) {
+    final type = kind == CategoryKind.expense ? EntryType.expense : EntryType.income;
+    final since = today.subtract(const Duration(days: 90));
+    final uses = <int, int>{};
+    for (final e in entries) {
+      if (e.type == type && e.categoryId != null && !e.date.isBefore(since)) {
+        uses.update(e.categoryId!, (n) => n + 1, ifAbsent: () => 1);
+      }
+    }
+    final leaves = leafCategories(kind);
+    final order = {for (final (i, c) in leaves.indexed) c.id: i};
+    return leaves
+      ..sort((a, b) {
+        final byUse = (uses[b.id] ?? 0).compareTo(uses[a.id] ?? 0);
+        return byUse != 0 ? byUse : order[a.id]!.compareTo(order[b.id]!);
+      });
+  }
+
+  /// Fixed bills with a budget that are not fully paid this month, with
+  /// the amount still to pay.
+  List<CategoryLine> unpaidFixedBills(Period p) {
+    final result = <CategoryLine>[];
+    void walk(CategoryLine line) {
+      if (line.children.isEmpty) {
+        if (line.category.isFixed && line.budget > 0 && line.actual < line.budget) {
+          result.add(line);
+        }
+      } else {
+        line.children.forEach(walk);
+      }
+    }
+
+    categoryLines(p, CategoryKind.expense).forEach(walk);
+    return result;
+  }
+
+  /// The postings of one entry.
+  List<PostingLine> postingsOf(int entryId) =>
+      lines.where((l) => l.entryId == entryId).toList();
+
+  // --------------------------------------------------------- month close
+
+  bool isClosed(Period p) => monthCloses.any((c) => c.year == p.year && c.month == p.month);
+
+  /// The earliest finished month with entries that you haven't closed yet.
+  /// Starting balances alone don't make a month you need to close.
+  Period? monthToClose(DateTime today) {
+    final dates = entries.where((e) => e.type != EntryType.opening).map((e) => e.date);
+    if (dates.isEmpty) return null;
+    final first = Period.of(dates.reduce((a, b) => a.isBefore(b) ? a : b));
+    for (var p = first; p.compareTo(Period.of(today)) < 0; p = p.next) {
+      if (!isClosed(p)) return p;
+    }
+    return null;
+  }
+
+  String setting(String key, String fallback) => settings[key] ?? fallback;
 
   // -------------------------------------------------------------- loans
 
@@ -297,7 +382,8 @@ class PeriodSummary {
     required this.spendingExpenses,
     required this.setAside,
     required this.loanNet,
-    required this.otherNet,
+    required this.startingNet,
+    required this.adjustNet,
     required this.invested,
     required this.budget,
     required this.budgetLeft,
@@ -330,8 +416,11 @@ class PeriodSummary {
   /// Borrowed into Spending minus repaid from it (own savings and people).
   final Poisha loanNet;
 
-  /// Opening balances, adjustments and loan charges in Spending.
-  final Poisha otherNet;
+  /// Starting balances entered this month (the month you began).
+  final Poisha startingNet;
+
+  /// Corrections after matching a balance, and loan charges.
+  final Poisha adjustNet;
 
   /// Net amount put into investment accounts.
   final Poisha invested;
@@ -346,7 +435,13 @@ class PeriodSummary {
 
   /// True when the month's parts add up to the Spending fund balance.
   bool get checks =>
-      carriedForward + spendingIncome - spendingExpenses - setAside + loanNet + otherNet ==
+      carriedForward +
+          spendingIncome -
+          spendingExpenses -
+          setAside +
+          loanNet +
+          startingNet +
+          adjustNet ==
       leftToSpend;
 
   /// How much a day you can spend for the rest of the month, counting

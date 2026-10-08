@@ -161,6 +161,12 @@ class AppDatabase extends _$AppDatabase {
   /// Deletes every row and puts back the default accounts, funds and
   /// categories.
   Future<void> resetAllData() => transaction(() async {
+        await deleteEverything();
+        await insertDefaultData(this);
+      });
+
+  /// Deletes every row, leaving empty tables. Used by reset and restore.
+  Future<void> deleteEverything() => transaction(() async {
         // Children before parents so foreign keys stay valid.
         for (final TableInfo table in [
           postings,
@@ -176,6 +182,5 @@ class AppDatabase extends _$AppDatabase {
         await delete(categories).go();
         await delete(funds).go();
         await delete(accounts).go();
-        await insertDefaultData(this);
       });
 }

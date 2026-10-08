@@ -8,7 +8,11 @@ import '../../core/money.dart';
 import '../../core/period.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
+import '../../data/ledger_repository.dart';
+import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../entries/entries_screen.dart';
+import '../setup/budgets_screen.dart';
 
 class SpendScreen extends ConsumerWidget {
   const SpendScreen({super.key});
@@ -24,8 +28,18 @@ class SpendScreen extends ConsumerWidget {
           .take(10);
       final status = StatusColors.of(context);
 
+      final bills = ledger.unpaidFixedBills(period);
+      final billsTotal = bills.fold<Poisha>(0, (t, b) => t + b.remaining);
       return PageList(children: [
-        ScreenHeader('Expenses', subtitle: period.label),
+        ScreenHeader(
+          'Expenses',
+          subtitle: period.label,
+          trailing: OutlinedButton.icon(
+            onPressed: () => openScreen(context, const BudgetsScreen()),
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Budgets'),
+          ),
+        ),
         SectionCard(children: [
           Row(children: [
             const Expanded(child: Label('Spent of budget')),
@@ -52,17 +66,36 @@ class SpendScreen extends ConsumerWidget {
             _CategoryTile(line: line, period: period),
           ],
         ]),
+        if (bills.isNotEmpty)
+          FilledButton.tonal(
+            onPressed: () => _payBills(context, ref, ledger, bills),
+            child: Text('Pay ${bills.length} remaining fixed '
+                '${bills.length == 1 ? 'bill' : 'bills'} · ${formatTaka(billsTotal)}'),
+          ),
         if (recent.isNotEmpty)
           SectionCard(children: [
-            const Label('Recent'),
+            Row(children: [
+              const Expanded(child: Label('Recent')),
+              TextButton(
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                onPressed: () => openScreen(context, EntriesScreen(initial: period)),
+                child: const Text('See all'),
+              ),
+            ]),
             for (final e in recent)
-              AmountRow(
-                e.note.isEmpty ? ledger.categories[e.categoryId]?.name ?? 'Expense' : e.note,
-                -e.amount,
-                detail: [
-                  if (e.note.isNotEmpty) ledger.categories[e.categoryId]?.name,
-                  DateFormat.MMMd().format(e.date),
-                ].whereType<String>().join(' · '),
+              InkWell(
+                onTap: () => showEntryDetails(context, e),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: AmountRow(
+                    entryTitle(ledger, e),
+                    -e.amount,
+                    detail: [
+                      if (e.note.isNotEmpty) ledger.categories[e.categoryId]?.name,
+                      DateFormat.MMMd().format(e.date),
+                    ].whereType<String>().join(' · '),
+                  ),
+                ),
               ),
           ]),
       ]);
@@ -150,4 +183,37 @@ class _SubCategoryRow extends StatelessWidget {
       ]),
     );
   }
+}
+
+Future<void> _payBills(
+    BuildContext context, WidgetRef ref, Ledger ledger, List<CategoryLine> bills) async {
+  final bank = defaultAccount(ledger, AccountType.bank);
+  Pot from = (account: bank.id, fund: ledger.spendingFund.id);
+  final total = bills.fold<Poisha>(0, (t, b) => t + b.remaining);
+  final ok = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => SheetBody(title: 'Pay fixed bills', children: [
+        for (final b in bills) AmountRow(b.category.name, b.remaining),
+        AmountRow('Total', total, total: true),
+        PickerField(
+          label: 'Paid from',
+          value: potLabel(ledger, from),
+          onTap: () async {
+            final picked = await pickPot(context, ledger, title: 'Paid from', initial: from);
+            if (picked != null) setState(() => from = picked);
+          },
+        ),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: Text('Pay ${formatTaka(total)} today')),
+      ]),
+    ),
+  );
+  if (ok != true) return;
+  await ref.read(repositoryProvider).payBills(
+      [for (final b in bills) (categoryId: b.category.id, amount: b.remaining)],
+      ref.read(todayProvider),
+      from);
+  if (context.mounted) showSnack(context, '${bills.length} bills paid');
 }

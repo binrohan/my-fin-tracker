@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/period.dart';
 import '../data/database.dart';
 import '../data/ledger_repository.dart';
+import '../data/setup_repository.dart';
 import '../ledger/ledger.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -20,3 +21,6 @@ final ledgerProvider =
     StreamProvider<Ledger>((ref) => Ledger.watch(ref.watch(databaseProvider)));
 
 final todayProvider = Provider<DateTime>((ref) => dateOnly(DateTime.now()));
+
+final setupRepositoryProvider =
+    Provider<SetupRepository>((ref) => SetupRepository(ref.watch(databaseProvider)));
