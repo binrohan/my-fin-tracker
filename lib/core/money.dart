@@ -12,11 +12,7 @@ const String _minus = '−'; // U+2212, lines up with digits better than '-'
 
 /// Formats with South Asian (lakh) grouping: 3,76,240 and 1,23,45,678.
 /// Poisha are shown only when the amount is not a whole taka.
-String formatTaka(
-  Poisha amount, {
-  bool symbol = true,
-  bool showPlus = false,
-}) {
+String formatTaka(Poisha amount, {bool symbol = true, bool showPlus = false}) {
   final abs = amount.abs();
   final whole = abs ~/ poishaPerTaka;
   final fraction = abs % poishaPerTaka;

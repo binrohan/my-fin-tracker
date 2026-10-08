@@ -74,23 +74,23 @@ class AmountField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextField(
-        controller: controller,
-        autofocus: autofocus,
-        keyboardType: TextInputType.numberWithOptions(decimal: true, signed: allowNegative),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(allowNegative ? r'[0-9.,\-]' : r'[0-9.,]')),
-        ],
-        textAlign: TextAlign.end,
-        style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint ?? '0',
-          prefixText: '$takaSymbol ',
-          isDense: true,
-          border: const OutlineInputBorder(),
-        ),
-        onChanged: onChanged,
-      );
+    controller: controller,
+    autofocus: autofocus,
+    keyboardType: TextInputType.numberWithOptions(decimal: true, signed: allowNegative),
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(RegExp(allowNegative ? r'[0-9.,\-]' : r'[0-9.,]')),
+    ],
+    textAlign: TextAlign.end,
+    style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint ?? '0',
+      prefixText: '$takaSymbol ',
+      isDense: true,
+      border: const OutlineInputBorder(),
+    ),
+    onChanged: onChanged,
+  );
 }
 
 /// Text for an amount field: "1,23,970" or "" for zero.
@@ -106,25 +106,30 @@ class PickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: StatusColors.of(context).sunk,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-            child: Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    color: StatusColors.of(context).sunk,
+    borderRadius: BorderRadius.circular(10),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Label(label),
                   Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ]),
+                ],
               ),
-              const Icon(Icons.arrow_drop_down),
-            ]),
-          ),
+            ),
+            const Icon(Icons.arrow_drop_down),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Lets you choose an account and a fund ("Cash · Spending").
@@ -136,13 +141,18 @@ Future<Pot?> pickPot(
   bool includeInvestments = false,
 }) {
   final accounts = ledger.accounts.values
-      .where((a) => !a.archived && (a.type.isLiquid || (includeInvestments && a.type == AccountType.investment)))
+      .where(
+        (a) =>
+            !a.archived &&
+            (a.type.isLiquid || (includeInvestments && a.type == AccountType.investment)),
+      )
       .toList();
   final funds = ledger.funds.values.where((f) => !f.archived).toList();
   var account = initial.account;
   var fund = initial.fund;
 
   return showModalBottomSheet<Pot>(
+    useRootNavigator: true,
     context: context,
     showDragHandle: true,
     builder: (context) => StatefulBuilder(
@@ -156,23 +166,31 @@ Future<Pot?> pickPot(
             children: [
               Text(title, style: Theme.of(context).textTheme.titleLarge),
               const Label('Where the money is'),
-              Wrap(spacing: 8, runSpacing: 4, children: [
-                for (final a in accounts)
-                  ChoiceChip(
-                    label: Text(a.name),
-                    selected: account == a.id,
-                    onSelected: (_) => setState(() => account = a.id),
-                  ),
-              ]),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final a in accounts)
+                    ChoiceChip(
+                      label: Text(a.name),
+                      selected: account == a.id,
+                      onSelected: (_) => setState(() => account = a.id),
+                    ),
+                ],
+              ),
               const Label('What it is for'),
-              Wrap(spacing: 8, runSpacing: 4, children: [
-                for (final f in funds)
-                  ChoiceChip(
-                    label: Text(f.name),
-                    selected: fund == f.id,
-                    onSelected: (_) => setState(() => fund = f.id),
-                  ),
-              ]),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final f in funds)
+                    ChoiceChip(
+                      label: Text(f.name),
+                      selected: fund == f.id,
+                      onSelected: (_) => setState(() => fund = f.id),
+                    ),
+                ],
+              ),
               Text(
                 'In this pot now: ${formatTaka(ledger.cell(account, fund))}',
                 style: TextStyle(color: StatusColors.of(context).muted),
@@ -193,6 +211,7 @@ Future<Pot?> pickPot(
 Future<CategoryRow?> pickCategory(BuildContext context, Ledger ledger, CategoryKind kind) {
   final leaves = ledger.leafCategories(kind);
   return showModalBottomSheet<CategoryRow>(
+    useRootNavigator: true,
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
@@ -224,22 +243,22 @@ class SheetBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 12,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleLarge),
-                ...children,
-              ],
-            ),
-          ),
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            ...children,
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Pot ids parsed from a setting like "3:1"; null if missing or stale.
@@ -264,5 +283,7 @@ Account defaultAccount(Ledger ledger, AccountType type) {
 }
 
 /// Opens a full screen above the tabs.
-Future<void> openScreen(BuildContext context, Widget screen) => Navigator.of(context, rootNavigator: true)
-    .push(MaterialPageRoute<void>(builder: (_) => screen));
+Future<void> openScreen(BuildContext context, Widget screen) => Navigator.of(
+  context,
+  rootNavigator: true,
+).push(MaterialPageRoute<void>(builder: (_) => screen));

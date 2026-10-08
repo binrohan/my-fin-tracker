@@ -16,12 +16,13 @@ enum QuickAddMode { expense, income, move }
 /// Opens quick add. Pass [editing] to change an existing income, expense
 /// or move.
 Future<void> showQuickAdd(BuildContext context, {Entry? editing}) => showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (_) => QuickAddSheet(editing: editing),
-    );
+  useRootNavigator: true,
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  useSafeArea: true,
+  builder: (_) => QuickAddSheet(editing: editing),
+);
 
 bool canEditInQuickAdd(Entry e) =>
     e.type == EntryType.expense || e.type == EntryType.income || e.type == EntryType.move;
@@ -67,9 +68,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
     final e = widget.editing;
     if (e == null) {
-      _from = potFromSetting(ledger, ledger.settings[_lastExpensePot]) ??
+      _from =
+          potFromSetting(ledger, ledger.settings[_lastExpensePot]) ??
           (account: cash, fund: spending);
-      _to = potFromSetting(ledger, ledger.settings[_lastIncomePot]) ??
+      _to =
+          potFromSetting(ledger, ledger.settings[_lastIncomePot]) ??
           (account: bank, fund: spending);
       return;
     }
@@ -125,9 +128,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       _mode == QuickAddMode.income ? CategoryKind.income : CategoryKind.expense;
 
   bool get _canSave =>
-      !_saving &&
-      _amount > 0 &&
-      (_mode == QuickAddMode.move ? _from != _to : _categoryId != null);
+      !_saving && _amount > 0 && (_mode == QuickAddMode.move ? _from != _to : _categoryId != null);
 
   Future<void> _save(Ledger ledger) async {
     setState(() => _saving = true);
@@ -138,12 +139,22 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     final note = _note.text.trim();
 
     Future<int> write() => switch (_mode) {
-          QuickAddMode.expense =>
-            repo.expense(_date, amount, categoryId: _categoryId!, from: _from, note: note),
-          QuickAddMode.income =>
-            repo.income(_date, amount, categoryId: _categoryId!, to: _to, note: note),
-          QuickAddMode.move => repo.move(_date, amount, from: _from, to: _to, note: note),
-        };
+      QuickAddMode.expense => repo.expense(
+        _date,
+        amount,
+        categoryId: _categoryId!,
+        from: _from,
+        note: note,
+      ),
+      QuickAddMode.income => repo.income(
+        _date,
+        amount,
+        categoryId: _categoryId!,
+        to: _to,
+        note: note,
+      ),
+      QuickAddMode.move => repo.move(_date, amount, from: _from, to: _to, note: note),
+    };
 
     final editing = widget.editing;
     if (editing != null) {
@@ -157,27 +168,31 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     navigator.pop();
     final what = switch (_mode) {
       QuickAddMode.move => 'Moved ${formatTaka(amount)}',
-      _ => '${editing == null ? 'Saved' : 'Updated'} ${formatTaka(amount)} · '
-          '${ledger.categories[_categoryId]?.name}',
+      _ =>
+        '${editing == null ? 'Saved' : 'Updated'} ${formatTaka(amount)} · '
+            '${ledger.categories[_categoryId]?.name}',
     };
 
     final plan = AllocationPlan.parse(ledger.settings[AllocationPlan.settingKey]);
-    final offerPlan = editing == null &&
+    final offerPlan =
+        editing == null &&
         _mode == QuickAddMode.income &&
         !plan.isEmpty &&
         plan.categoryId == _categoryId;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(what),
-        duration: Duration(seconds: offerPlan ? 10 : 3),
-        action: offerPlan
-            ? SnackBarAction(
-                label: 'Set aside ${formatTaka(plan.total)}',
-                onPressed: () => repo.applyAllocation(plan, _date, _to),
-              )
-            : null,
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(what),
+          duration: Duration(seconds: offerPlan ? 10 : 3),
+          action: offerPlan
+              ? SnackBarAction(
+                  label: 'Set aside ${formatTaka(plan.total)}',
+                  onPressed: () => repo.applyAllocation(plan, _date, _to),
+                )
+              : null,
+        ),
+      );
   }
 
   @override
@@ -196,14 +211,19 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     }
 
     Widget potField(String label, Pot pot, ValueChanged<Pot> onPicked) => PickerField(
-          label: label,
-          value: potLabel(ledger, pot),
-          onTap: () async {
-            final picked = await pickPot(context, ledger,
-                title: label, initial: pot, includeInvestments: _mode == QuickAddMode.move);
-            if (picked != null) setState(() => onPicked(picked));
-          },
+      label: label,
+      value: potLabel(ledger, pot),
+      onTap: () async {
+        final picked = await pickPot(
+          context,
+          ledger,
+          title: label,
+          initial: pot,
+          includeInvestments: _mode == QuickAddMode.move,
         );
+        if (picked != null) setState(() => onPicked(picked));
+      },
+    );
 
     final dateField = PickerField(
       label: 'Date',
@@ -222,8 +242,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     final saveLabel = switch (_mode) {
       QuickAddMode.move => 'Move ${formatTaka(_amount)}',
       _ when _categoryId == null => 'Choose a category',
-      QuickAddMode.expense => 'Save ${formatTaka(_amount)} to ${ledger.categories[_categoryId]!.name}',
-      QuickAddMode.income => 'Save ${formatTaka(_amount)} as ${ledger.categories[_categoryId]!.name}',
+      QuickAddMode.expense =>
+        'Save ${formatTaka(_amount)} to ${ledger.categories[_categoryId]!.name}',
+      QuickAddMode.income =>
+        'Save ${formatTaka(_amount)} as ${ledger.categories[_categoryId]!.name}',
     };
 
     return Padding(
@@ -245,46 +267,60 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               onSelectionChanged: widget.editing != null
                   ? null
                   : (s) => setState(() {
-                        _mode = s.single;
-                        _categoryId = null;
-                      }),
+                      _mode = s.single;
+                      _categoryId = null;
+                    }),
             ),
             Text.rich(
-              TextSpan(children: [
-                TextSpan(
-                    text: '$takaSymbol ', style: TextStyle(color: status.muted, fontSize: 22)),
-                TextSpan(text: _display),
-              ]),
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$takaSymbol ',
+                    style: TextStyle(color: status.muted, fontSize: 22),
+                  ),
+                  TextSpan(text: _display),
+                ],
+              ),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 40, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()]),
+                fontSize: 40,
+                fontWeight: FontWeight.w800,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
             ),
             if (_mode != QuickAddMode.move)
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final c in chips)
-                  ChoiceChip(
-                    label: Text(c.name),
-                    selected: c.id == _categoryId,
-                    onSelected: (_) => setState(() => _categoryId = c.id),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final c in chips)
+                    ChoiceChip(
+                      label: Text(c.name),
+                      selected: c.id == _categoryId,
+                      onSelected: (_) => setState(() => _categoryId = c.id),
+                    ),
+                  ActionChip(
+                    label: const Text('All…'),
+                    onPressed: () async {
+                      final picked = await pickCategory(context, ledger, _kind);
+                      if (picked != null) setState(() => _categoryId = picked.id);
+                    },
                   ),
-                ActionChip(
-                  label: const Text('All…'),
-                  onPressed: () async {
-                    final picked = await pickCategory(context, ledger, _kind);
-                    if (picked != null) setState(() => _categoryId = picked.id);
+                ],
+              ),
+            Row(
+              spacing: 8,
+              children: [
+                Expanded(
+                  child: switch (_mode) {
+                    QuickAddMode.expense => potField('Paid from', _from, (p) => _from = p),
+                    QuickAddMode.income => potField('Received in', _to, (p) => _to = p),
+                    QuickAddMode.move => potField('From', _from, (p) => _from = p),
                   },
                 ),
-              ]),
-            Row(spacing: 8, children: [
-              Expanded(
-                child: switch (_mode) {
-                  QuickAddMode.expense => potField('Paid from', _from, (p) => _from = p),
-                  QuickAddMode.income => potField('Received in', _to, (p) => _to = p),
-                  QuickAddMode.move => potField('From', _from, (p) => _from = p),
-                },
-              ),
-              Expanded(child: dateField),
-            ]),
+                Expanded(child: dateField),
+              ],
+            ),
             if (_mode == QuickAddMode.move) potField('To', _to, (p) => _to = p),
             TextField(
               controller: _note,

@@ -19,32 +19,35 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final today = ref.watch(todayProvider);
-    return LedgerBuilder(builder: (context, ledger) {
-      final period = Period.of(today);
-      final header = ScreenHeader(
-        period.label,
-        subtitle: 'Day ${today.day} of ${period.daysInMonth}',
-        trailing: ledger.isBalanced
-            ? const StatusChip('✓ Balanced', tone: ChipTone.good)
-            : const StatusChip('Not balanced', tone: ChipTone.bad),
-      );
-      if (ledger.isEmpty) return PageList(children: [header, const _EmptyHome()]);
+    return LedgerBuilder(
+      builder: (context, ledger) {
+        final period = Period.of(today);
+        final header = ScreenHeader(
+          period.label,
+          subtitle: 'Day ${today.day} of ${period.daysInMonth}',
+          trailing: ledger.isBalanced
+              ? const StatusChip('✓ Balanced', tone: ChipTone.good)
+              : const StatusChip('Not balanced', tone: ChipTone.bad),
+        );
+        if (ledger.isEmpty) return PageList(children: [header, const _EmptyHome()]);
 
-      final s = ledger.summary(period);
-      final toClose = ledger.monthToClose(today);
-      return PageList(children: [
-        header,
-        if (toClose != null) _CloseMonthBanner(period: toClose),
-        _LeftToSpend(summary: s, today: today),
-        _ThisMonth(ledger: ledger, summary: s),
-        _WhereAndWhat(ledger: ledger),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: AmountRow('Net worth', ledger.netWorth(),
-              detail: 'incl. investments & loans'),
-        ),
-      ]);
-    });
+        final s = ledger.summary(period);
+        final toClose = ledger.monthToClose(today);
+        return PageList(
+          children: [
+            header,
+            if (toClose != null) _CloseMonthBanner(period: toClose),
+            _LeftToSpend(summary: s, today: today),
+            _ThisMonth(ledger: ledger, summary: s),
+            _WhereAndWhat(ledger: ledger),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: AmountRow('Net worth', ledger.netWorth(), detail: 'incl. investments & loans'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -63,25 +66,33 @@ class _LeftToSpend extends StatelessWidget {
     final daysLeft = s.period.daysInMonth - today.day + 1;
     final planned = s.leftToSpend <= 0 ? 1.0 : s.budgetLeft / s.leftToSpend;
 
-    return SectionCard(color: scheme.primary, children: [
-      Label('Left to spend', color: on.withValues(alpha: .8)),
-      Money(s.leftToSpend,
+    return SectionCard(
+      color: scheme.primary,
+      children: [
+        Label('Left to spend', color: on.withValues(alpha: .8)),
+        Money(
+          s.leftToSpend,
           color: on,
-          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, height: 1.05)),
-      if (perDay != null && perDay > 0)
-        Text('≈ ${formatTaka(perDay)} a day for $daysLeft days',
-            style: TextStyle(color: on)),
-      Bar(planned, color: on, height: 6),
-      DefaultTextStyle.merge(
-        style: TextStyle(color: on, fontSize: 13),
-        child: Row(children: [
-          Expanded(child: Text('Budgeted ${formatTaka(s.budgetLeft)}')),
-          Text(s.unplanned >= 0
-              ? 'Unplanned ${formatTaka(s.unplanned)}'
-              : 'Short ${formatTaka(-s.unplanned)}'),
-        ]),
-      ),
-    ]);
+          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, height: 1.05),
+        ),
+        if (perDay != null && perDay > 0)
+          Text('≈ ${formatTaka(perDay)} a day for $daysLeft days', style: TextStyle(color: on)),
+        Bar(planned, color: on, height: 6),
+        DefaultTextStyle.merge(
+          style: TextStyle(color: on, fontSize: 13),
+          child: Row(
+            children: [
+              Expanded(child: Text('Budgeted ${formatTaka(s.budgetLeft)}')),
+              Text(
+                s.unplanned >= 0
+                    ? 'Unplanned ${formatTaka(s.unplanned)}'
+                    : 'Short ${formatTaka(-s.unplanned)}',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -94,22 +105,22 @@ class _ThisMonth extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = summary;
-    final income = ledger
-        .categoryLines(s.period, CategoryKind.income)
-        .where((l) => l.actual != 0);
-    return SectionCard(children: [
-      const Label('This month'),
-      AmountRow('Carried forward', s.carriedForward),
-      for (final line in income) AmountRow(line.category.name, line.actual, signed: true),
-      if (s.setAside != 0)
-        AmountRow('Set aside', -s.setAside, detail: 'savings, goals, DPS', signed: true),
-      AmountRow('Spent', -s.spendingExpenses, signed: true),
-      if (s.loanNet != 0)
-        AmountRow(s.loanNet > 0 ? 'Borrowed' : 'Loan repayment', s.loanNet, signed: true),
-      if (s.startingNet != 0) AmountRow('Starting balance', s.startingNet, signed: true),
-      if (s.adjustNet != 0) AmountRow('Adjustments', s.adjustNet, signed: true),
-      AmountRow('Left to spend', s.leftToSpend, total: true),
-    ]);
+    final income = ledger.categoryLines(s.period, CategoryKind.income).where((l) => l.actual != 0);
+    return SectionCard(
+      children: [
+        const Label('This month'),
+        AmountRow('Carried forward', s.carriedForward),
+        for (final line in income) AmountRow(line.category.name, line.actual, signed: true),
+        if (s.setAside != 0)
+          AmountRow('Set aside', -s.setAside, detail: 'savings, goals, DPS', signed: true),
+        AmountRow('Spent', -s.spendingExpenses, signed: true),
+        if (s.loanNet != 0)
+          AmountRow(s.loanNet > 0 ? 'Borrowed' : 'Loan repayment', s.loanNet, signed: true),
+        if (s.startingNet != 0) AmountRow('Starting balance', s.startingNet, signed: true),
+        if (s.adjustNet != 0) AmountRow('Adjustments', s.adjustNet, signed: true),
+        AmountRow('Left to spend', s.leftToSpend, total: true),
+      ],
+    );
   }
 }
 
@@ -132,28 +143,35 @@ class _WhereAndWhat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 12,
       children: [
-        SectionCard(children: [
-          const Label('Where it is'),
-          for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
-          AmountRow('Total', total, total: true),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
-              onPressed: () => showMatchBalance(context),
-              icon: const Icon(Icons.fact_check_outlined, size: 18),
-              label: const Text('Match with bank or cash'),
+        SectionCard(
+          children: [
+            const Label('Where it is'),
+            for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
+            AmountRow('Total', total, total: true),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () => showMatchBalance(context),
+                icon: const Icon(Icons.fact_check_outlined, size: 18),
+                label: const Text('Match with bank or cash'),
+              ),
             ),
-          ),
-        ]),
-        SectionCard(children: [
-          const Label("What it's for"),
-          AmountRow('Spending', ledger.fundBalance(ledger.spendingFund.id)),
-          for (final f in ledger.fundsOfKind(FundKind.savings))
-            AmountRow(f.name, ledger.fundBalance(f.id)),
-          if (goals != 0) AmountRow('Goals', goals),
-          AmountRow('Total', total, total: true),
-        ]),
+          ],
+        ),
+        SectionCard(
+          children: [
+            const Label("What it's for"),
+            AmountRow('Spending', ledger.fundBalance(ledger.spendingFund.id)),
+            for (final f in ledger.fundsOfKind(FundKind.savings))
+              AmountRow(f.name, ledger.fundBalance(f.id)),
+            if (goals != 0) AmountRow('Goals', goals),
+            AmountRow('Total', total, total: true),
+          ],
+        ),
       ],
     );
   }
@@ -167,18 +185,26 @@ class _CloseMonthBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = StatusColors.of(context);
-    return SectionCard(color: status.warnSoft, children: [
-      Text('${period.label} is over', style: TextStyle(fontWeight: FontWeight.w700, color: status.warn)),
-      Text('Check the bank balance and decide what happens to the leftover.',
-          style: TextStyle(color: status.warn)),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: FilledButton.tonal(
-          onPressed: () => showCloseMonth(context, period),
-          child: Text('Close ${period.label}'),
+    return SectionCard(
+      color: status.warnSoft,
+      children: [
+        Text(
+          '${period.label} is over',
+          style: TextStyle(fontWeight: FontWeight.w700, color: status.warn),
         ),
-      ),
-    ]);
+        Text(
+          'Check the bank balance and decide what happens to the leftover.',
+          style: TextStyle(color: status.warn),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonal(
+            onPressed: () => showCloseMonth(context, period),
+            child: Text('Close ${period.label}'),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -186,14 +212,18 @@ class _EmptyHome extends StatelessWidget {
   const _EmptyHome();
 
   @override
-  Widget build(BuildContext context) => SectionCard(children: [
-        Text('Welcome', style: Theme.of(context).textTheme.titleMedium),
-        Text(
-          'Start by entering what you have today: your bank, cash and bKash balances, and '
-          'how much of it is savings. Then add expenses with the + button.',
-          style: TextStyle(color: StatusColors.of(context).muted),
-        ),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+  Widget build(BuildContext context) => SectionCard(
+    children: [
+      Text('Welcome', style: Theme.of(context).textTheme.titleMedium),
+      Text(
+        'Start by entering what you have today: your bank, cash and bKash balances, and '
+        'how much of it is savings. Then add expenses with the + button.',
+        style: TextStyle(color: StatusColors.of(context).muted),
+      ),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
           FilledButton(
             onPressed: () => openScreen(context, const StartingBalancesScreen()),
             child: const Text('Enter starting balances'),
@@ -202,6 +232,8 @@ class _EmptyHome extends StatelessWidget {
             onPressed: () => context.go('/more'),
             child: const Text('Try the example first'),
           ),
-        ]),
-      ]);
+        ],
+      ),
+    ],
+  );
 }

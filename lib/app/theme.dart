@@ -20,8 +20,7 @@ class StatusColors extends ThemeExtension<StatusColors> {
   /// Secondary text, hairlines, and recessed fills.
   final Color muted, line, sunk;
 
-  static StatusColors of(BuildContext context) =>
-      Theme.of(context).extension<StatusColors>()!;
+  static StatusColors of(BuildContext context) => Theme.of(context).extension<StatusColors>()!;
 
   @override
   StatusColors copyWith() => this;

@@ -38,8 +38,7 @@ class Period implements Comparable<Period> {
       year != other.year ? year.compareTo(other.year) : month.compareTo(other.month);
 
   @override
-  bool operator ==(Object other) =>
-      other is Period && other.year == year && other.month == month;
+  bool operator ==(Object other) => other is Period && other.year == year && other.month == month;
 
   @override
   int get hashCode => Object.hash(year, month);

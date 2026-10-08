@@ -20,9 +20,9 @@ final router = GoRouter(
           ('/save', const SaveScreen()),
           ('/more', const MoreScreen()),
         ])
-          StatefulShellBranch(routes: [
-            GoRoute(path: path, builder: (_, _) => screen),
-          ]),
+          StatefulShellBranch(
+            routes: [GoRoute(path: path, builder: (_, _) => screen)],
+          ),
       ],
     ),
   ],
@@ -46,22 +46,29 @@ class AppShell extends StatelessWidget {
     Widget tab(int i) {
       final (icon, selectedIcon, label) = _tabs[i];
       final selected = shell.currentIndex == i;
-      final color =
-          selected ? Theme.of(context).colorScheme.primary : StatusColors.of(context).muted;
+      final color = selected
+          ? Theme.of(context).colorScheme.primary
+          : StatusColors.of(context).muted;
       return Expanded(
         child: InkWell(
           onTap: () => shell.goBranch(i, initialLocation: selected),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(selected ? selectedIcon : icon, color: color),
-              Text(label,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(selected ? selectedIcon : icon, color: color),
+                Text(
+                  label,
                   style: TextStyle(
-                      fontSize: 12,
-                      color: color,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
-            ]),
+                    fontSize: 12,
+                    color: color,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );

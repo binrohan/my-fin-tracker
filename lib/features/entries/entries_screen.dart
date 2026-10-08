@@ -48,28 +48,30 @@ class _EntriesScreenState extends ConsumerState<EntriesScreen> {
           ),
         ],
       ),
-      body: LedgerBuilder(builder: (context, ledger) {
-        final entries = ledger.entries.where((e) => _period.contains(e.date)).toList();
-        if (entries.isEmpty) {
-          return Center(child: Text('No entries in ${_period.label}.'));
-        }
-        final byDay = <DateTime, List<Entry>>{};
-        for (final e in entries) {
-          byDay.putIfAbsent(e.date, () => []).add(e);
-        }
-        return ListView(
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            for (final MapEntry(key: day, value: list) in byDay.entries) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Label(DateFormat.MMMEd().format(day)),
-              ),
-              for (final e in list) EntryTile(ledger: ledger, entry: e),
+      body: LedgerBuilder(
+        builder: (context, ledger) {
+          final entries = ledger.entries.where((e) => _period.contains(e.date)).toList();
+          if (entries.isEmpty) {
+            return Center(child: Text('No entries in ${_period.label}.'));
+          }
+          final byDay = <DateTime, List<Entry>>{};
+          for (final e in entries) {
+            byDay.putIfAbsent(e.date, () => []).add(e);
+          }
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 32),
+            children: [
+              for (final MapEntry(key: day, value: list) in byDay.entries) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: Label(DateFormat.MMMEd().format(day)),
+                ),
+                for (final e in list) EntryTile(ledger: ledger, entry: e),
+              ],
             ],
-          ],
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }
@@ -92,11 +94,11 @@ String entryTitle(Ledger ledger, Entry e) {
 
 /// The amount as it affects your money: − for expenses, + for income.
 Poisha entrySigned(Ledger ledger, Entry e) => switch (e.type) {
-      EntryType.expense => -e.amount,
-      EntryType.income => e.amount,
-      EntryType.move => 0,
-      _ => ledger.postingsOf(e.id).fold(0, (t, p) => t + p.amount),
-    };
+  EntryType.expense => -e.amount,
+  EntryType.income => e.amount,
+  EntryType.move => 0,
+  _ => ledger.postingsOf(e.id).fold(0, (t, p) => t + p.amount),
+};
 
 String entryDetail(Ledger ledger, Entry e) {
   final postings = ledger.postingsOf(e.id);
@@ -106,7 +108,12 @@ String entryDetail(Ledger ledger, Entry e) {
   final category = ledger.categories[e.categoryId]?.name;
   return [
     if (e.note.isNotEmpty && category != null) category,
-    if (out != null && into != null) '${pot(out)} → ${pot(into)}' else if (out != null) pot(out) else if (into != null) pot(into),
+    if (out != null && into != null)
+      '${pot(out)} → ${pot(into)}'
+    else if (out != null)
+      pot(out)
+    else if (into != null)
+      pot(into),
   ].join(' · ');
 }
 
@@ -151,57 +158,75 @@ bool _isLoanCreation(Entry e) =>
         e.type == EntryType.opening);
 
 Future<void> showEntryDetails(BuildContext context, Entry entry) => showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => Consumer(builder: (context, ref, _) {
-        final ledger = ref.watch(ledgerProvider).value;
-        if (ledger == null) return const SizedBox(height: 120);
-        final repo = ref.read(repositoryProvider);
-        final status = StatusColors.of(context);
-        return SheetBody(title: entryTitle(ledger, entry), children: [
+  useRootNavigator: true,
+  context: context,
+  showDragHandle: true,
+  builder: (_) => Consumer(
+    builder: (context, ref, _) {
+      final ledger = ref.watch(ledgerProvider).value;
+      if (ledger == null) return const SizedBox(height: 120);
+      final repo = ref.read(repositoryProvider);
+      final status = StatusColors.of(context);
+      return SheetBody(
+        title: entryTitle(ledger, entry),
+        children: [
           AmountRow('Amount', entry.amount),
-          Row(children: [
-            const Expanded(child: Text('Date')),
-            Text(DateFormat.yMMMEd().format(entry.date)),
-          ]),
+          Row(
+            children: [
+              const Expanded(child: Text('Date')),
+              Text(DateFormat.yMMMEd().format(entry.date)),
+            ],
+          ),
           for (final p in ledger.postingsOf(entry.id))
-            AmountRow(potLabel(ledger, (account: p.accountId, fund: p.fundId)), p.amount,
-                signed: true),
+            AmountRow(
+              potLabel(ledger, (account: p.accountId, fund: p.fundId)),
+              p.amount,
+              signed: true,
+            ),
           if (_isLoanCreation(entry))
-            Text('Loans are changed from the Loans screen (coming in Phase 3).',
-                style: TextStyle(color: status.muted)),
-          Row(spacing: 8, children: [
-            if (canEditInQuickAdd(entry))
-              Expanded(
-                child: FilledButton.tonal(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    showQuickAdd(context, editing: entry);
-                  },
-                  child: const Text('Edit'),
+            Text(
+              'Loans are changed from the Loans screen (coming in Phase 3).',
+              style: TextStyle(color: status.muted),
+            ),
+          Row(
+            spacing: 8,
+            children: [
+              if (canEditInQuickAdd(entry))
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showQuickAdd(context, editing: entry);
+                    },
+                    child: const Text('Edit'),
+                  ),
                 ),
-              ),
-            if (!_isLoanCreation(entry))
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(foregroundColor: status.bad),
-                  onPressed: () async {
-                    final ok = await confirm(context,
+              if (!_isLoanCreation(entry))
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(foregroundColor: status.bad),
+                    onPressed: () async {
+                      final ok = await confirm(
+                        context,
                         title: 'Delete this entry?',
                         body: 'Its amount will be removed from every balance.',
                         action: 'Delete',
-                        destructive: true);
-                    if (!ok || !context.mounted) return;
-                    await repo.deleteEntry(entry.id);
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      showSnack(context, 'Entry deleted');
-                    }
-                  },
-                  child: const Text('Delete'),
+                        destructive: true,
+                      );
+                      if (!ok || !context.mounted) return;
+                      await repo.deleteEntry(entry.id);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        showSnack(context, 'Entry deleted');
+                      }
+                    },
+                    child: const Text('Delete'),
+                  ),
                 ),
-              ),
-          ]),
-        ]);
-      }),
-    );
+            ],
+          ),
+        ],
+      );
+    },
+  ),
+);

@@ -13,10 +13,10 @@ class MyFinTrackerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp.router(
-        title: 'My Fin Tracker',
-        debugShowCheckedModeBanner: false,
-        theme: buildTheme(Brightness.light),
-        darkTheme: buildTheme(Brightness.dark),
-        routerConfig: router,
-      );
+    title: 'My Fin Tracker',
+    debugShowCheckedModeBanner: false,
+    theme: buildTheme(Brightness.light),
+    darkTheme: buildTheme(Brightness.dark),
+    routerConfig: router,
+  );
 }

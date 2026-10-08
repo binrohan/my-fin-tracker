@@ -16,17 +16,18 @@ class LedgerBuilder extends ConsumerWidget {
   final Widget Function(BuildContext context, Ledger ledger) builder;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      ref.watch(ledgerProvider).when(
-            data: (ledger) => builder(context, ledger),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Could not read your data: $e'),
-              ),
-            ),
-          );
+  Widget build(BuildContext context, WidgetRef ref) => ref
+      .watch(ledgerProvider)
+      .when(
+        data: (ledger) => builder(context, ledger),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('Could not read your data: $e'),
+          ),
+        ),
+      );
 }
 
 class Money extends StatelessWidget {
@@ -39,10 +40,12 @@ class Money extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        formatTaka(amount, showPlus: showPlus),
-        style: (style ?? DefaultTextStyle.of(context).style)
-            .copyWith(fontFeatures: _tabular, color: color),
-      );
+    formatTaka(amount, showPlus: showPlus),
+    style: (style ?? DefaultTextStyle.of(context).style).copyWith(
+      fontFeatures: _tabular,
+      color: color,
+    ),
+  );
 }
 
 /// Small uppercase heading inside a card: "THIS MONTH".
@@ -54,14 +57,14 @@ class Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.1,
-          color: color ?? StatusColors.of(context).muted,
-        ),
-      );
+    text.toUpperCase(),
+    style: TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 1.1,
+      color: color ?? StatusColors.of(context).muted,
+    ),
+  );
 }
 
 class SectionCard extends StatelessWidget {
@@ -76,11 +79,7 @@ class SectionCard extends StatelessWidget {
     final radius = BorderRadius.circular(16);
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 8,
-        children: children,
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: children),
     );
     // A Material (not a decorated Container) so tap ripples of tiles inside
     // the card stay visible.
@@ -125,8 +124,8 @@ class AmountRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = StatusColors.of(context);
     final weight = total ? FontWeight.w700 : FontWeight.w400;
-    final amountColor = color ??
-        (signed && amount != 0 ? (amount > 0 ? status.good : status.bad) : null);
+    final amountColor =
+        color ?? (signed && amount != 0 ? (amount > 0 ? status.good : status.bad) : null);
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
@@ -134,17 +133,25 @@ class AmountRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text.rich(
-            TextSpan(text: label, children: [
-              if (detail != null)
-                TextSpan(text: '  $detail', style: TextStyle(color: status.muted, fontSize: 12)),
-            ]),
+            TextSpan(
+              text: label,
+              children: [
+                if (detail != null)
+                  TextSpan(
+                    text: '  $detail',
+                    style: TextStyle(color: status.muted, fontSize: 12),
+                  ),
+              ],
+            ),
             style: TextStyle(fontWeight: weight),
           ),
         ),
-        Money(amount,
-            showPlus: signed,
-            color: amountColor,
-            style: TextStyle(fontWeight: total ? FontWeight.w700 : FontWeight.w500)),
+        Money(
+          amount,
+          showPlus: signed,
+          color: amountColor,
+          style: TextStyle(fontWeight: total ? FontWeight.w700 : FontWeight.w500),
+        ),
       ],
     );
     if (!total) return row;
@@ -165,14 +172,14 @@ class Bar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(height),
-        child: LinearProgressIndicator(
-          value: value.clamp(0, 1).toDouble(),
-          minHeight: height,
-          color: color ?? Theme.of(context).colorScheme.primary,
-          backgroundColor: StatusColors.of(context).sunk,
-        ),
-      );
+    borderRadius: BorderRadius.circular(height),
+    child: LinearProgressIndicator(
+      value: value.clamp(0, 1).toDouble(),
+      minHeight: height,
+      color: color ?? Theme.of(context).colorScheme.primary,
+      backgroundColor: StatusColors.of(context).sunk,
+    ),
+  );
 }
 
 enum ChipTone { good, warn, bad, accent, plain }
@@ -197,7 +204,10 @@ class StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(99)),
-      child: Text(text, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -212,27 +222,27 @@ class ScreenHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                  if (subtitle != null)
-                    Text(subtitle!, style: TextStyle(color: StatusColors.of(context).muted)),
-                ],
+    padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
-            ),
-            ?trailing,
-          ],
+              if (subtitle != null)
+                Text(subtitle!, style: TextStyle(color: StatusColors.of(context).muted)),
+            ],
+          ),
         ),
-      );
+        ?trailing,
+      ],
+    ),
+  );
 }
 
 /// Scrollable page body with the standard gutter and spacing.
@@ -243,15 +253,15 @@ class PageList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-          children: [
-            for (final (i, child) in children.indexed) ...[
-              if (i > 0) const SizedBox(height: 12),
-              child,
-            ],
-          ],
-        ),
-      );
+    bottom: false,
+    child: ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      children: [
+        for (final (i, child) in children.indexed) ...[
+          if (i > 0) const SizedBox(height: 12),
+          child,
+        ],
+      ],
+    ),
+  );
 }

@@ -44,9 +44,9 @@ class Ledger {
     required this.lines,
     this.settings = const {},
     this.monthCloses = const [],
-  })  : accounts = {for (final a in accounts) a.id: a},
-        funds = {for (final f in funds) f.id: f},
-        categories = {for (final c in categories) c.id: c};
+  }) : accounts = {for (final a in accounts) a.id: a},
+       funds = {for (final f in funds) f.id: f},
+       categories = {for (final c in categories) c.id: c};
 
   final Map<int, Account> accounts;
   final Map<int, Fund> funds;
@@ -63,20 +63,20 @@ class Ledger {
       innerJoin(db.entries, db.entries.id.equalsExp(db.postings.entryId)),
     ])).get();
     return Ledger(
-      accounts: await (db.select(db.accounts)
-            ..orderBy([(a) => OrderingTerm.asc(a.sortOrder), (a) => OrderingTerm.asc(a.id)]))
-          .get(),
-      funds: await (db.select(db.funds)
-            ..orderBy([(f) => OrderingTerm.asc(f.sortOrder), (f) => OrderingTerm.asc(f.id)]))
-          .get(),
-      categories: await (db.select(db.categories)
-            ..orderBy([(c) => OrderingTerm.asc(c.sortOrder), (c) => OrderingTerm.asc(c.id)]))
-          .get(),
+      accounts: await (db.select(
+        db.accounts,
+      )..orderBy([(a) => OrderingTerm.asc(a.sortOrder), (a) => OrderingTerm.asc(a.id)])).get(),
+      funds: await (db.select(
+        db.funds,
+      )..orderBy([(f) => OrderingTerm.asc(f.sortOrder), (f) => OrderingTerm.asc(f.id)])).get(),
+      categories: await (db.select(
+        db.categories,
+      )..orderBy([(c) => OrderingTerm.asc(c.sortOrder), (c) => OrderingTerm.asc(c.id)])).get(),
       loans: await db.select(db.loans).get(),
       budgets: await db.select(db.budgets).get(),
-      entries: await (db.select(db.entries)
-            ..orderBy([(e) => OrderingTerm.desc(e.date), (e) => OrderingTerm.desc(e.id)]))
-          .get(),
+      entries: await (db.select(
+        db.entries,
+      )..orderBy([(e) => OrderingTerm.desc(e.date), (e) => OrderingTerm.desc(e.id)])).get(),
       settings: {for (final s in await db.select(db.settings).get()) s.key: s.value},
       monthCloses: await db.select(db.monthCloses).get(),
       lines: [
@@ -112,8 +112,7 @@ class Ledger {
 
   bool isLiquid(int accountId) => accounts[accountId]!.type.isLiquid;
 
-  Fund get spendingFund =>
-      funds.values.firstWhere((f) => f.kind == FundKind.spending);
+  Fund get spendingFund => funds.values.firstWhere((f) => f.kind == FundKind.spending);
 
   Iterable<Account> accountsOfType(bool Function(AccountType) test) =>
       accounts.values.where((a) => test(a.type));
@@ -123,13 +122,11 @@ class Ledger {
 
   bool get isEmpty => entries.isEmpty;
 
-  Iterable<PostingLine> _between({DateTime? from, DateTime? before}) =>
-      lines.where((l) =>
-          (from == null || !l.date.isBefore(from)) &&
-          (before == null || l.date.isBefore(before)));
+  Iterable<PostingLine> _between({DateTime? from, DateTime? before}) => lines.where(
+    (l) => (from == null || !l.date.isBefore(from)) && (before == null || l.date.isBefore(before)),
+  );
 
-  static Poisha _sum(Iterable<PostingLine> lines) =>
-      lines.fold(0, (total, l) => total + l.amount);
+  static Poisha _sum(Iterable<PostingLine> lines) => lines.fold(0, (total, l) => total + l.amount);
 
   // ------------------------------------------------------------ balances
   // `before` is exclusive: balance(before: period.start) is the opening
@@ -140,25 +137,27 @@ class Ledger {
 
   /// A fund's balance. By default only money you can spend counts: money
   /// lent to a person still belongs to the fund but is not in your hands.
-  Poisha fundBalance(int fundId, {DateTime? before, bool liquidOnly = true}) =>
-      _sum(_between(before: before).where((l) =>
-          l.fundId == fundId && (!liquidOnly || isLiquid(l.accountId))));
+  Poisha fundBalance(int fundId, {DateTime? before, bool liquidOnly = true}) => _sum(
+    _between(before: before)
+        .where((l) => l.fundId == fundId && (!liquidOnly || isLiquid(l.accountId))),
+  );
 
   /// One cell of the account × fund grid, e.g. Cash × Monthly Savings.
   Poisha cell(int accountId, int fundId, {DateTime? before}) =>
-      _sum(_between(before: before)
-          .where((l) => l.accountId == accountId && l.fundId == fundId));
+      _sum(_between(before: before).where((l) => l.accountId == accountId && l.fundId == fundId));
 
   /// Bank + cash + wallets.
   Poisha liquidTotal({DateTime? before}) =>
       _sum(_between(before: before).where((l) => isLiquid(l.accountId)));
 
-  Poisha investmentTotal({DateTime? before}) => _sum(_between(before: before)
-      .where((l) => accounts[l.accountId]!.type == AccountType.investment));
+  Poisha investmentTotal({DateTime? before}) => _sum(
+    _between(before: before).where((l) => accounts[l.accountId]!.type == AccountType.investment),
+  );
 
   /// What people owe you minus what you owe them.
-  Poisha peopleNet({DateTime? before}) => _sum(_between(before: before)
-      .where((l) => accounts[l.accountId]!.type == AccountType.person));
+  Poisha peopleNet({DateTime? before}) => _sum(
+    _between(before: before).where((l) => accounts[l.accountId]!.type == AccountType.person),
+  );
 
   /// Everything you have, including investments and loans with people.
   Poisha netWorth({DateTime? before}) => _sum(_between(before: before));
@@ -178,8 +177,11 @@ class Ledger {
   PeriodSummary summary(Period p) {
     final spending = spendingFund.id;
     final inPeriod = _between(from: p.start, before: p.end).toList();
-    Poisha spendingFlow(Set<EntryType> types) => _sum(inPeriod.where((l) =>
-        l.fundId == spending && isLiquid(l.accountId) && types.contains(l.type)));
+    Poisha spendingFlow(Set<EntryType> types) => _sum(
+      inPeriod.where(
+        (l) => l.fundId == spending && isLiquid(l.accountId) && types.contains(l.type),
+      ),
+    );
 
     final expenseLines = categoryLines(p, CategoryKind.expense);
     return PeriodSummary(
@@ -193,17 +195,14 @@ class Ledger {
       spendingIncome: spendingFlow({EntryType.income}),
       spendingExpenses: -spendingFlow({EntryType.expense}),
       setAside: -spendingFlow({EntryType.move}),
-      loanNet: spendingFlow({
-        EntryType.borrow,
-        EntryType.repay,
-        EntryType.lend,
-        EntryType.collect,
-      }),
+      loanNet: spendingFlow({EntryType.borrow, EntryType.repay, EntryType.lend, EntryType.collect}),
       startingNet: spendingFlow({EntryType.opening}),
       adjustNet: spendingFlow({EntryType.adjust, EntryType.charge}),
-      invested: _sum(inPeriod.where((l) =>
-          l.type == EntryType.move &&
-          accounts[l.accountId]!.type == AccountType.investment)),
+      invested: _sum(
+        inPeriod.where(
+          (l) => l.type == EntryType.move && accounts[l.accountId]!.type == AccountType.investment,
+        ),
+      ),
       budget: expenseLines.fold(0, (t, l) => t + l.budget),
       budgetLeft: expenseLines.fold(0, (t, l) => t + l.plannedLeft),
     );
@@ -254,12 +253,12 @@ class Ledger {
 
   /// Categories you can put an entry on: those without sub-categories.
   List<CategoryRow> leafCategories(CategoryKind kind) => [
-        for (final c in categories.values)
-          if (c.kind == kind &&
-              !c.archived &&
-              !categories.values.any((x) => x.parentId == c.id && !x.archived))
-            c,
-      ];
+    for (final c in categories.values)
+      if (c.kind == kind &&
+          !c.archived &&
+          !categories.values.any((x) => x.parentId == c.id && !x.archived))
+        c,
+  ];
 
   /// Leaf categories ordered by how often you used them in the 90 days
   /// before [today], then in their usual order.
@@ -274,11 +273,10 @@ class Ledger {
     }
     final leaves = leafCategories(kind);
     final order = {for (final (i, c) in leaves.indexed) c.id: i};
-    return leaves
-      ..sort((a, b) {
-        final byUse = (uses[b.id] ?? 0).compareTo(uses[a.id] ?? 0);
-        return byUse != 0 ? byUse : order[a.id]!.compareTo(order[b.id]!);
-      });
+    return leaves..sort((a, b) {
+      final byUse = (uses[b.id] ?? 0).compareTo(uses[a.id] ?? 0);
+      return byUse != 0 ? byUse : order[a.id]!.compareTo(order[b.id]!);
+    });
   }
 
   /// Fixed bills with a budget that are not fully paid this month, with
@@ -300,8 +298,7 @@ class Ledger {
   }
 
   /// The postings of one entry.
-  List<PostingLine> postingsOf(int entryId) =>
-      lines.where((l) => l.entryId == entryId).toList();
+  List<PostingLine> postingsOf(int entryId) => lines.where((l) => l.entryId == entryId).toList();
 
   // --------------------------------------------------------- month close
 
@@ -325,24 +322,28 @@ class Ledger {
 
   LoanStatus loanStatus(Loan loan) {
     final repaid = entries
-        .where((e) =>
-            e.loanId == loan.id &&
-            (e.type == EntryType.repay || e.type == EntryType.collect))
+        .where(
+          (e) => e.loanId == loan.id && (e.type == EntryType.repay || e.type == EntryType.collect),
+        )
         .fold<Poisha>(loan.openingRepaid, (t, e) => t + e.amount);
     return LoanStatus(loan: loan, repaid: repaid);
   }
 
   List<LoanStatus> openLoans() => [
-        for (final l in loans)
-          if (l.closedAt == null) loanStatus(l),
-      ]..removeWhere((s) => s.remaining <= 0);
+    for (final l in loans)
+      if (l.closedAt == null) loanStatus(l),
+  ]..removeWhere((s) => s.remaining <= 0);
 
   // -------------------------------------------------------------- goals
 
   /// Net amount moved into a fund during a month (e.g. this month's
   /// deposit to a goal).
-  Poisha movedInto(int fundId, Period p) => _sum(_between(from: p.start, before: p.end)
-      .where((l) => l.fundId == fundId && l.type == EntryType.move));
+  Poisha movedInto(int fundId, Period p) => _sum(
+    _between(
+      from: p.start,
+      before: p.end,
+    ).where((l) => l.fundId == fundId && l.type == EntryType.move),
+  );
 
   GoalStatus goalStatus(Fund goal, DateTime today) {
     final period = Period.of(today);
@@ -474,9 +475,8 @@ class CategoryLine {
 
   /// Budget still expected to be spent. Over-budget sub-categories don't
   /// reduce what the others still need.
-  Poisha get plannedLeft => children.isEmpty
-      ? math.max(0, remaining)
-      : children.fold(0, (t, c) => t + c.plannedLeft);
+  Poisha get plannedLeft =>
+      children.isEmpty ? math.max(0, remaining) : children.fold(0, (t, c) => t + c.plannedLeft);
 }
 
 class LoanStatus {

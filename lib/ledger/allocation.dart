@@ -9,10 +9,10 @@ class AllocationItem {
   const AllocationItem({required this.fundId, required this.amount, this.accountId});
 
   factory AllocationItem.fromJson(Map<String, dynamic> json) => AllocationItem(
-        fundId: json['fund'] as int,
-        amount: json['amount'] as int,
-        accountId: json['account'] as int?,
-      );
+    fundId: json['fund'] as int,
+    amount: json['amount'] as int,
+    accountId: json['account'] as int?,
+  );
 
   final int fundId;
   final int? accountId;
@@ -33,7 +33,8 @@ class AllocationPlan {
     return AllocationPlan(
       categoryId: map['category'] as int?,
       items: [
-        for (final item in map['items'] as List) AllocationItem.fromJson(item as Map<String, dynamic>),
+        for (final item in map['items'] as List)
+          AllocationItem.fromJson(item as Map<String, dynamic>),
       ],
     );
   }
@@ -46,7 +47,7 @@ class AllocationPlan {
   bool get isEmpty => items.isEmpty;
 
   String encode() => jsonEncode({
-        'category': categoryId,
-        'items': [for (final i in items) i.toJson()],
-      });
+    'category': categoryId,
+    'items': [for (final i in items) i.toJson()],
+  });
 }

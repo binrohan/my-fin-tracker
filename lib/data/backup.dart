@@ -24,16 +24,16 @@ class Backup {
   /// The tables in the order they can be inserted without breaking
   /// references.
   static List<TableInfo> _tables(AppDatabase db) => [
-        db.accounts,
-        db.funds,
-        db.categories,
-        db.loans,
-        db.entries,
-        db.postings,
-        db.budgets,
-        db.monthCloses,
-        db.settings,
-      ];
+    db.accounts,
+    db.funds,
+    db.categories,
+    db.loans,
+    db.entries,
+    db.postings,
+    db.budgets,
+    db.monthCloses,
+    db.settings,
+  ];
 
   static Future<Uint8List> export(AppDatabase db, {DateTime? now}) async {
     final data = <String, List<Map<String, dynamic>>>{};
@@ -70,17 +70,20 @@ class Backup {
       throw const BackupException('This file is not a My Fin Tracker backup.');
     }
     final manifest = BackupManifest.fromJson(
-        jsonDecode(utf8.decode(manifestFile.content)) as Map<String, dynamic>);
+      jsonDecode(utf8.decode(manifestFile.content)) as Map<String, dynamic>,
+    );
     if (manifest.formatVersion > formatVersion) {
       throw const BackupException(
-          'This backup was made by a newer version of the app. Update the app, then restore.');
+        'This backup was made by a newer version of the app. Update the app, then restore.',
+      );
     }
     final dataBytes = dataFile.content;
     if (sha256.convert(dataBytes).toString() != manifest.sha256) {
       throw const BackupException('This backup is damaged: its checksum does not match.');
     }
-    final data = (jsonDecode(utf8.decode(dataBytes)) as Map<String, dynamic>)
-        .map((k, v) => MapEntry(k, (v as List).cast<Map<String, dynamic>>()));
+    final data = (jsonDecode(utf8.decode(dataBytes)) as Map<String, dynamic>).map(
+      (k, v) => MapEntry(k, (v as List).cast<Map<String, dynamic>>()),
+    );
     for (final MapEntry(:key, :value) in manifest.counts.entries) {
       if ((data[key]?.length ?? 0) != value) {
         throw const BackupException('This backup is damaged: record counts do not match.');
@@ -125,12 +128,12 @@ class BackupManifest {
   });
 
   factory BackupManifest.fromJson(Map<String, dynamic> json) => BackupManifest(
-        formatVersion: json['format_version'] as int,
-        schemaVersion: json['schema_version'] as int,
-        createdAt: DateTime.parse(json['created_at'] as String),
-        counts: (json['counts'] as Map<String, dynamic>).cast<String, int>(),
-        sha256: json['sha256'] as String,
-      );
+    formatVersion: json['format_version'] as int,
+    schemaVersion: json['schema_version'] as int,
+    createdAt: DateTime.parse(json['created_at'] as String),
+    counts: (json['counts'] as Map<String, dynamic>).cast<String, int>(),
+    sha256: json['sha256'] as String,
+  );
 
   final int formatVersion;
   final int schemaVersion;
@@ -139,13 +142,13 @@ class BackupManifest {
   final String sha256;
 
   Map<String, dynamic> toJson() => {
-        'app': 'My Fin Tracker',
-        'format_version': formatVersion,
-        'schema_version': schemaVersion,
-        'created_at': createdAt.toIso8601String(),
-        'counts': counts,
-        'sha256': sha256,
-      };
+    'app': 'My Fin Tracker',
+    'format_version': formatVersion,
+    'schema_version': schemaVersion,
+    'created_at': createdAt.toIso8601String(),
+    'counts': counts,
+    'sha256': sha256,
+  };
 }
 
 class BackupContents {

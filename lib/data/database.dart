@@ -88,8 +88,7 @@ class Entries extends Table {
 /// a sum of postings.
 class Postings extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get entryId =>
-      integer().references(Entries, #id, onDelete: KeyAction.cascade)();
+  IntColumn get entryId => integer().references(Entries, #id, onDelete: KeyAction.cascade)();
   IntColumn get accountId => integer().references(Accounts, #id)();
   IntColumn get fundId => integer().references(Funds, #id)();
   IntColumn get amount => integer()();
@@ -104,8 +103,8 @@ class Budgets extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {year, month, categoryId},
-      ];
+    {year, month, categoryId},
+  ];
 }
 
 /// A month you have closed, with the bank balance you confirmed.
@@ -127,60 +126,44 @@ class Settings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [
-  Accounts,
-  Funds,
-  Categories,
-  Loans,
-  Entries,
-  Postings,
-  Budgets,
-  MonthCloses,
-  Settings,
-])
+@DriftDatabase(
+  tables: [Accounts, Funds, Categories, Loans, Entries, Postings, Budgets, MonthCloses, Settings],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openOnDevice());
 
-  static QueryExecutor _openOnDevice() =>
-      driftDatabase(name: 'my_fin_tracker');
+  static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
   int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await insertDefaultData(this);
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await insertDefaultData(this);
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 
   /// Deletes every row and puts back the default accounts, funds and
   /// categories.
   Future<void> resetAllData() => transaction(() async {
-        await deleteEverything();
-        await insertDefaultData(this);
-      });
+    await deleteEverything();
+    await insertDefaultData(this);
+  });
 
   /// Deletes every row, leaving empty tables. Used by reset and restore.
   Future<void> deleteEverything() => transaction(() async {
-        // Children before parents so foreign keys stay valid.
-        for (final TableInfo table in [
-          postings,
-          entries,
-          budgets,
-          loans,
-          monthCloses,
-          settings,
-        ]) {
-          await delete(table).go();
-        }
-        await (delete(categories)..where((c) => c.parentId.isNotNull())).go();
-        await delete(categories).go();
-        await delete(funds).go();
-        await delete(accounts).go();
-      });
+    // Children before parents so foreign keys stay valid.
+    for (final TableInfo table in [postings, entries, budgets, loans, monthCloses, settings]) {
+      await delete(table).go();
+    }
+    await (delete(categories)..where((c) => c.parentId.isNotNull())).go();
+    await delete(categories).go();
+    await delete(funds).go();
+    await delete(accounts).go();
+  });
 }

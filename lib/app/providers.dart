@@ -12,15 +12,16 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
-final repositoryProvider =
-    Provider<LedgerRepository>((ref) => LedgerRepository(ref.watch(databaseProvider)));
+final repositoryProvider = Provider<LedgerRepository>(
+  (ref) => LedgerRepository(ref.watch(databaseProvider)),
+);
 
 /// The whole ledger, recalculated after every change. Screens watch this,
 /// so every figure updates the moment an entry is added.
-final ledgerProvider =
-    StreamProvider<Ledger>((ref) => Ledger.watch(ref.watch(databaseProvider)));
+final ledgerProvider = StreamProvider<Ledger>((ref) => Ledger.watch(ref.watch(databaseProvider)));
 
 final todayProvider = Provider<DateTime>((ref) => dateOnly(DateTime.now()));
 
-final setupRepositoryProvider =
-    Provider<SetupRepository>((ref) => SetupRepository(ref.watch(databaseProvider)));
+final setupRepositoryProvider = Provider<SetupRepository>(
+  (ref) => SetupRepository(ref.watch(databaseProvider)),
+);

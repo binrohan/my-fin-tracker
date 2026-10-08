@@ -33,8 +33,10 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen> {
     super.dispose();
   }
 
-  TextEditingController _field(int categoryId) =>
-      _fields.putIfAbsent(categoryId, () => TextEditingController(text: amountText(_original[categoryId] ?? 0)));
+  TextEditingController _field(int categoryId) => _fields.putIfAbsent(
+    categoryId,
+    () => TextEditingController(text: amountText(_original[categoryId] ?? 0)),
+  );
 
   @override
   void initState() {
@@ -75,48 +77,61 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Budgets')),
-      body: LedgerBuilder(builder: (context, ledger) {
-        if (_original.isEmpty) _original = ledger.budgetsFor(_period);
-        final leaves = ledger.leafCategories(CategoryKind.expense);
-        final status = StatusColors.of(context);
-        String? lastGroup;
+      body: LedgerBuilder(
+        builder: (context, ledger) {
+          if (_original.isEmpty) _original = ledger.budgetsFor(_period);
+          final leaves = ledger.leafCategories(CategoryKind.expense);
+          final status = StatusColors.of(context);
+          String? lastGroup;
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-          children: [
-            Text(
-              'Applies to ${_period.label} and later months until you change it. '
-              'Leave a category empty for no budget.',
-              style: TextStyle(color: status.muted),
-            ),
-            const SizedBox(height: 8),
-            for (final c in leaves) ...[
-              if (_groupOf(ledger, c) != lastGroup)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 4),
-                  child: Label(lastGroup = _groupOf(ledger, c)),
-                ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(spacing: 12, children: [
-                  Expanded(child: Text(c.name)),
-                  SizedBox(
-                    width: 150,
-                    child: AmountField(controller: _field(c.id), onChanged: (_) => setState(() {})),
-                  ),
-                ]),
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+            children: [
+              Text(
+                'Applies to ${_period.label} and later months until you change it. '
+                'Leave a category empty for no budget.',
+                style: TextStyle(color: status.muted),
               ),
+              const SizedBox(height: 8),
+              for (final c in leaves) ...[
+                if (_groupOf(ledger, c) != lastGroup)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, bottom: 4),
+                    child: Label(lastGroup = _groupOf(ledger, c)),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    spacing: 12,
+                    children: [
+                      Expanded(child: Text(c.name)),
+                      SizedBox(
+                        width: 150,
+                        child: AmountField(
+                          controller: _field(c.id),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
-          ],
-        );
-      }),
+          );
+        },
+      ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Row(spacing: 12, children: [
-            Expanded(child: Text('Total ${formatTaka(_total(ref.watch(ledgerProvider).value))} a month')),
-            FilledButton(onPressed: _save, child: const Text('Save')),
-          ]),
+          child: Row(
+            spacing: 12,
+            children: [
+              Expanded(
+                child: Text('Total ${formatTaka(_total(ref.watch(ledgerProvider).value))} a month'),
+              ),
+              FilledButton(onPressed: _save, child: const Text('Save')),
+            ],
+          ),
         ),
       ),
     );

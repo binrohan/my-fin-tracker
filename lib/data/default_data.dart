@@ -15,8 +15,9 @@ Future<void> insertDefaultData(AppDatabase db) async {
     ('Cash', AccountType.cash),
     ('bKash', AccountType.wallet),
   ]) {
-    await db.into(db.accounts).insert(
-        AccountsCompanion.insert(name: name, type: type, sortOrder: Value(order++)));
+    await db
+        .into(db.accounts)
+        .insert(AccountsCompanion.insert(name: name, type: type, sortOrder: Value(order++)));
   }
 
   order = 0;
@@ -25,20 +26,29 @@ Future<void> insertDefaultData(AppDatabase db) async {
     ('Monthly Savings', FundKind.savings),
     ('Investments', FundKind.investment),
   ]) {
-    await db.into(db.funds).insert(
-        FundsCompanion.insert(name: name, kind: kind, sortOrder: Value(order++)));
+    await db
+        .into(db.funds)
+        .insert(FundsCompanion.insert(name: name, kind: kind, sortOrder: Value(order++)));
   }
 
-  Future<int> category(String name, CategoryKind kind,
-          {int? parentId, bool isFixed = false, int? dueDay}) =>
-      db.into(db.categories).insert(CategoriesCompanion.insert(
-            name: name,
-            kind: kind,
-            parentId: Value(parentId),
-            isFixed: Value(isFixed),
-            dueDay: Value(dueDay),
-            sortOrder: Value(order++),
-          ));
+  Future<int> category(
+    String name,
+    CategoryKind kind, {
+    int? parentId,
+    bool isFixed = false,
+    int? dueDay,
+  }) => db
+      .into(db.categories)
+      .insert(
+        CategoriesCompanion.insert(
+          name: name,
+          kind: kind,
+          parentId: Value(parentId),
+          isFixed: Value(isFixed),
+          dueDay: Value(dueDay),
+          sortOrder: Value(order++),
+        ),
+      );
 
   order = 0;
   final fixed = await category('Fixed', CategoryKind.expense, isFixed: true);
@@ -49,8 +59,7 @@ Future<void> insertDefaultData(AppDatabase db) async {
     ('Internet', 5),
     ('Water & Service', 10),
   ]) {
-    await category(name, CategoryKind.expense,
-        parentId: fixed, isFixed: true, dueDay: due);
+    await category(name, CategoryKind.expense, parentId: fixed, isFixed: true, dueDay: due);
   }
   for (final name in ['Ration', 'Random', 'Mine']) {
     await category(name, CategoryKind.expense);

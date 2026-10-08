@@ -20,86 +20,106 @@ class SpendScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final period = Period.of(ref.watch(todayProvider));
-    return LedgerBuilder(builder: (context, ledger) {
-      final s = ledger.summary(period);
-      final lines = ledger.categoryLines(period, CategoryKind.expense);
-      final recent = ledger.entries
-          .where((e) => e.type == EntryType.expense && period.contains(e.date))
-          .take(10);
-      final status = StatusColors.of(context);
+    return LedgerBuilder(
+      builder: (context, ledger) {
+        final s = ledger.summary(period);
+        final lines = ledger.categoryLines(period, CategoryKind.expense);
+        final recent = ledger.entries
+            .where((e) => e.type == EntryType.expense && period.contains(e.date))
+            .take(10);
+        final status = StatusColors.of(context);
 
-      final bills = ledger.unpaidFixedBills(period);
-      final billsTotal = bills.fold<Poisha>(0, (t, b) => t + b.remaining);
-      return PageList(children: [
-        ScreenHeader(
-          'Expenses',
-          subtitle: period.label,
-          trailing: OutlinedButton.icon(
-            onPressed: () => openScreen(context, const BudgetsScreen()),
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Budgets'),
-          ),
-        ),
-        SectionCard(children: [
-          Row(children: [
-            const Expanded(child: Label('Spent of budget')),
-            if (s.budget > 0)
-              Text('${(s.expenses / s.budget * 100).round()}%',
-                  style: TextStyle(color: status.muted)),
-          ]),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Money(s.expenses,
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        final bills = ledger.unpaidFixedBills(period);
+        final billsTotal = bills.fold<Poisha>(0, (t, b) => t + b.remaining);
+        return PageList(
+          children: [
+            ScreenHeader(
+              'Expenses',
+              subtitle: period.label,
+              trailing: OutlinedButton.icon(
+                onPressed: () => openScreen(context, const BudgetsScreen()),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Budgets'),
               ),
-              Text('of ${formatTaka(s.budget)}', style: TextStyle(color: status.muted)),
-            ],
-          ),
-          Bar(s.budget == 0 ? 0 : s.expenses / s.budget),
-        ]),
-        SectionCard(children: [
-          for (final (i, line) in lines.indexed) ...[
-            if (i > 0) const Divider(),
-            _CategoryTile(line: line, period: period),
-          ],
-        ]),
-        if (bills.isNotEmpty)
-          FilledButton.tonal(
-            onPressed: () => _payBills(context, ref, ledger, bills),
-            child: Text('Pay ${bills.length} remaining fixed '
-                '${bills.length == 1 ? 'bill' : 'bills'} · ${formatTaka(billsTotal)}'),
-          ),
-        if (recent.isNotEmpty)
-          SectionCard(children: [
-            Row(children: [
-              const Expanded(child: Label('Recent')),
-              TextButton(
-                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                onPressed: () => openScreen(context, EntriesScreen(initial: period)),
-                child: const Text('See all'),
-              ),
-            ]),
-            for (final e in recent)
-              InkWell(
-                onTap: () => showEntryDetails(context, e),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: AmountRow(
-                    entryTitle(ledger, e),
-                    -e.amount,
-                    detail: [
-                      if (e.note.isNotEmpty) ledger.categories[e.categoryId]?.name,
-                      DateFormat.MMMd().format(e.date),
-                    ].whereType<String>().join(' · '),
-                  ),
+            ),
+            SectionCard(
+              children: [
+                Row(
+                  children: [
+                    const Expanded(child: Label('Spent of budget')),
+                    if (s.budget > 0)
+                      Text(
+                        '${(s.expenses / s.budget * 100).round()}%',
+                        style: TextStyle(color: status.muted),
+                      ),
+                  ],
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Expanded(
+                      child: Money(
+                        s.expenses,
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    Text('of ${formatTaka(s.budget)}', style: TextStyle(color: status.muted)),
+                  ],
+                ),
+                Bar(s.budget == 0 ? 0 : s.expenses / s.budget),
+              ],
+            ),
+            SectionCard(
+              children: [
+                for (final (i, line) in lines.indexed) ...[
+                  if (i > 0) const Divider(),
+                  _CategoryTile(line: line, period: period),
+                ],
+              ],
+            ),
+            if (bills.isNotEmpty)
+              FilledButton.tonal(
+                onPressed: () => _payBills(context, ref, ledger, bills),
+                child: Text(
+                  'Pay ${bills.length} remaining fixed '
+                  '${bills.length == 1 ? 'bill' : 'bills'} · ${formatTaka(billsTotal)}',
                 ),
               ),
-          ]),
-      ]);
-    });
+            if (recent.isNotEmpty)
+              SectionCard(
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(child: Label('Recent')),
+                      TextButton(
+                        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                        onPressed: () => openScreen(context, EntriesScreen(initial: period)),
+                        child: const Text('See all'),
+                      ),
+                    ],
+                  ),
+                  for (final e in recent)
+                    InkWell(
+                      onTap: () => showEntryDetails(context, e),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: AmountRow(
+                          entryTitle(ledger, e),
+                          -e.amount,
+                          detail: [
+                            if (e.note.isNotEmpty) ledger.categories[e.categoryId]?.name,
+                            DateFormat.MMMd().format(e.date),
+                          ].whereType<String>().join(' · '),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -115,8 +135,8 @@ class _CategoryTile extends StatelessWidget {
     Color barColor(CategoryLine l) => l.isOver
         ? status.bad
         : l.usage >= .9
-            ? status.warn
-            : Theme.of(context).colorScheme.primary;
+        ? status.warn
+        : Theme.of(context).colorScheme.primary;
 
     final title = Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -125,29 +145,39 @@ class _CategoryTile extends StatelessWidget {
         Expanded(
           child: Text(line.category.name, style: const TextStyle(fontWeight: FontWeight.w700)),
         ),
-        Money(line.actual,
-            color: line.isOver ? status.bad : null,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
+        Money(
+          line.actual,
+          color: line.isOver ? status.bad : null,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         if (line.budget > 0)
-          Text(' / ${formatTaka(line.budget, symbol: false)}',
-              style: TextStyle(color: status.muted)),
+          Text(
+            ' / ${formatTaka(line.budget, symbol: false)}',
+            style: TextStyle(color: status.muted),
+          ),
       ],
     );
     final bar = Bar(line.usage, color: barColor(line));
 
     if (line.children.isEmpty) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [title, bar]);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 6,
+        children: [title, bar],
+      );
     }
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(left: 12, bottom: 4),
-        title: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [title, bar]),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 6,
+          children: [title, bar],
+        ),
         initiallyExpanded: true,
-        children: [
-          for (final child in line.children) _SubCategoryRow(line: child, period: period),
-        ],
+        children: [for (final child in line.children) _SubCategoryRow(line: child, period: period)],
       ),
     );
   }
@@ -169,51 +199,72 @@ class _SubCategoryRow extends StatelessWidget {
       chip = paid
           ? const StatusChip('paid', tone: ChipTone.good)
           : c.dueDay != null
-              ? StatusChip('due ${c.dueDay} ${DateFormat.MMM().format(period.start)}',
-                  tone: ChipTone.warn)
-              : null;
+          ? StatusChip(
+              'due ${c.dueDay} ${DateFormat.MMM().format(period.start)}',
+              tone: ChipTone.warn,
+            )
+          : null;
     }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(spacing: 8, children: [
-        Expanded(child: Text(c.name)),
-        ?chip,
-        Money(line.actual == 0 ? line.budget : line.actual,
-            color: line.actual == 0 ? status.muted : (line.isOver ? status.bad : null)),
-      ]),
+      child: Row(
+        spacing: 8,
+        children: [
+          Expanded(child: Text(c.name)),
+          ?chip,
+          Money(
+            line.actual == 0 ? line.budget : line.actual,
+            color: line.actual == 0 ? status.muted : (line.isOver ? status.bad : null),
+          ),
+        ],
+      ),
     );
   }
 }
 
 Future<void> _payBills(
-    BuildContext context, WidgetRef ref, Ledger ledger, List<CategoryLine> bills) async {
+  BuildContext context,
+  WidgetRef ref,
+  Ledger ledger,
+  List<CategoryLine> bills,
+) async {
   final bank = defaultAccount(ledger, AccountType.bank);
   Pot from = (account: bank.id, fund: ledger.spendingFund.id);
   final total = bills.fold<Poisha>(0, (t, b) => t + b.remaining);
   final ok = await showModalBottomSheet<bool>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (context) => StatefulBuilder(
-      builder: (context, setState) => SheetBody(title: 'Pay fixed bills', children: [
-        for (final b in bills) AmountRow(b.category.name, b.remaining),
-        AmountRow('Total', total, total: true),
-        PickerField(
-          label: 'Paid from',
-          value: potLabel(ledger, from),
-          onTap: () async {
-            final picked = await pickPot(context, ledger, title: 'Paid from', initial: from);
-            if (picked != null) setState(() => from = picked);
-          },
-        ),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: Text('Pay ${formatTaka(total)} today')),
-      ]),
+      builder: (context, setState) => SheetBody(
+        title: 'Pay fixed bills',
+        children: [
+          for (final b in bills) AmountRow(b.category.name, b.remaining),
+          AmountRow('Total', total, total: true),
+          PickerField(
+            label: 'Paid from',
+            value: potLabel(ledger, from),
+            onTap: () async {
+              final picked = await pickPot(context, ledger, title: 'Paid from', initial: from);
+              if (picked != null) setState(() => from = picked);
+            },
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Pay ${formatTaka(total)} today'),
+          ),
+        ],
+      ),
     ),
   );
   if (ok != true) return;
-  await ref.read(repositoryProvider).payBills(
-      [for (final b in bills) (categoryId: b.category.id, amount: b.remaining)],
-      ref.read(todayProvider),
-      from);
+  await ref
+      .read(repositoryProvider)
+      .payBills(
+        [for (final b in bills) (categoryId: b.category.id, amount: b.remaining)],
+        ref.read(todayProvider),
+        from,
+      );
   if (context.mounted) showSnack(context, '${bills.length} bills paid');
 }
