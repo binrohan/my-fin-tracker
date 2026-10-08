@@ -1,8 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Release signing key. key.properties and the .jks file are kept out of git.
+val keyProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val hasReleaseKey = keyProperties.getProperty("storeFile")?.let { file(it).exists() } == true
 
 android {
     namespace = "com.myfin.my_fin_tracker"
@@ -14,8 +23,22 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(keyProperties.getProperty("storeFile"))
+                storePassword = keyProperties.getProperty("storePassword")
+                keyAlias = keyProperties.getProperty("keyAlias")
+                keyPassword = keyProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.myfin.my_fin_tracker"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -31,9 +54,20 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Without the key a release build can't update the installed app.
+                logger.warn("android/key.properties or the .jks file is missing: release build is signed with the DEBUG key")
+                signingConfig = signingConfigs.getByName("debug")
+            }
+            resValue("string", "app_name", "My Fin Tracker")
+        }
+        debug {
+            // A separate app with its own data, so development builds never
+            // touch the real app's data.
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "My Fin (dev)")
         }
     }
 }
