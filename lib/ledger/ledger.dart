@@ -364,6 +364,47 @@ class Ledger {
     );
   }
 
+  /// Entries that changed a fund's balance, newest first, with the net
+  /// amount for that fund. Moves within the fund (bank to cash) are left out.
+  List<({Entry entry, Poisha amount})> fundHistory(int fundId, {bool liquidOnly = false}) {
+    final net = <int, Poisha>{};
+    for (final l in lines) {
+      if (l.fundId == fundId && (!liquidOnly || isLiquid(l.accountId))) {
+        net.update(l.entryId, (v) => v + l.amount, ifAbsent: () => l.amount);
+      }
+    }
+    return [
+      for (final e in entries)
+        if ((net[e.id] ?? 0) != 0) (entry: e, amount: net[e.id]!),
+    ];
+  }
+
+  /// A loan's own entries, oldest first: the borrowing, charges and every
+  /// repayment.
+  List<Entry> loanEntries(int loanId) =>
+      entries.where((e) => e.loanId == loanId).toList().reversed.toList();
+
+  /// Every loan, open ones first, newest first within each group.
+  List<LoanStatus> allLoans() {
+    final all = [for (final l in loans) loanStatus(l)];
+    all.sort((a, b) {
+      final open = (b.remaining > 0 ? 1 : 0).compareTo(a.remaining > 0 ? 1 : 0);
+      return open != 0 ? open : b.loan.date.compareTo(a.loan.date);
+    });
+    return all;
+  }
+
+  /// The money in one account split by what it is for, e.g. the cash
+  /// drawer by sector. Zero sectors are left out.
+  List<({Fund fund, Poisha amount})> sectorsOf(int accountId, {DateTime? before}) => [
+    for (final f in funds.values)
+      if (cell(accountId, f.id, before: before) != 0)
+        (fund: f, amount: cell(accountId, f.id, before: before)),
+  ];
+
+  /// Charge for new loans from savings, in basis points.
+  int get borrowChargeBp => int.tryParse(settings['borrow_charge_bp'] ?? '') ?? 500;
+
   /// Total still owed back to a fund by own-savings loans.
   Poisha owedToFund(int fundId) => openLoans()
       .where((s) => s.loan.kind == LoanKind.ownSavings && s.loan.fundId == fundId)

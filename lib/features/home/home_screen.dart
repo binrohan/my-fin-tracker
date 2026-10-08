@@ -10,6 +10,7 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../cash/cash_screen.dart';
 import '../setup/starting_balances_screen.dart';
 import 'month_tasks.dart';
 
@@ -148,17 +149,22 @@ class _WhereAndWhat extends StatelessWidget {
             const Label('Where it is'),
             for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
             AmountRow('Total', total, total: true),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
+            Wrap(
+              spacing: 4,
+              children: [
+                TextButton.icon(
+                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                  onPressed: () => showMatchBalance(context),
+                  icon: const Icon(Icons.fact_check_outlined, size: 18),
+                  label: const Text('Match balance'),
                 ),
-                onPressed: () => showMatchBalance(context),
-                icon: const Icon(Icons.fact_check_outlined, size: 18),
-                label: const Text('Match with bank or cash'),
-              ),
+                TextButton.icon(
+                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                  onPressed: () => openScreen(context, const CashScreen()),
+                  icon: const Icon(Icons.payments_outlined, size: 18),
+                  label: const Text('Cash drawer'),
+                ),
+              ],
             ),
           ],
         ),

@@ -11,7 +11,9 @@ import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import '../../core/money.dart';
+import '../cash/cash_screen.dart';
 import '../entries/entries_screen.dart';
+import '../loans/loans_screen.dart';
 import '../home/month_tasks.dart';
 import '../setup/accounts_screen.dart';
 import '../setup/allocation_screen.dart';
@@ -106,6 +108,18 @@ class MoreScreen extends ConsumerWidget {
                   'Salary plan',
                   plan.isEmpty ? 'Not set' : '${formatTaka(plan.total)} set aside each salary',
                   () => openScreen(context, const AllocationScreen()),
+                ),
+                item(
+                  Icons.handshake_outlined,
+                  'Loans',
+                  'From your savings and with people',
+                  () => openScreen(context, const LoansScreen()),
+                ),
+                item(
+                  Icons.payments_outlined,
+                  'Cash drawer',
+                  'Cash by sector, count notes',
+                  () => openScreen(context, const CashScreen()),
                 ),
                 item(
                   Icons.list_alt,

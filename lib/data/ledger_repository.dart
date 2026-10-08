@@ -501,6 +501,67 @@ class LedgerRepository {
         }
       });
 
+  /// Deletes a loan together with its borrowing, repayments and charges.
+  Future<void> deleteLoan(int loanId) => db.transaction(() async {
+    await (db.delete(db.entries)..where((e) => e.loanId.equals(loanId))).go();
+    await (db.delete(db.loans)..where((l) => l.id.equals(loanId))).go();
+  });
+
+  // --------------------------------------------------------------- goals
+
+  Future<void> setGoalAchieved(int fundId, DateTime? date) =>
+      (db.update(db.funds)..where((f) => f.id.equals(fundId))).write(
+        FundsCompanion(achievedAt: Value(date == null ? null : dateOnly(date))),
+      );
+
+  /// Buys the thing a goal was for. The goal's money is gathered into the
+  /// paying account first (e.g. its cash part is counted as deposited);
+  /// anything above the goal's balance comes from Spending. The goal is
+  /// then marked achieved.
+  Future<int> buyGoal({
+    required int goalId,
+    required int spendingFund,
+    required int payFromAccount,
+    required List<({int account, Poisha amount})> goalMoney,
+    required DateTime date,
+    required Poisha price,
+    required int categoryId,
+    String note = '',
+  }) => db.transaction(() async {
+    final available = goalMoney.fold<Poisha>(0, (t, g) => t + g.amount);
+    final fromGoal = price < available ? price : available;
+    var stillNeeded =
+        fromGoal -
+        goalMoney.where((g) => g.account == payFromAccount).fold<Poisha>(0, (t, g) => t + g.amount);
+    for (final g in goalMoney) {
+      if (stillNeeded <= 0) break;
+      if (g.account == payFromAccount || g.amount <= 0) continue;
+      final take = g.amount < stillNeeded ? g.amount : stillNeeded;
+      await move(
+        date,
+        take,
+        from: (account: g.account, fund: goalId),
+        to: (account: payFromAccount, fund: goalId),
+        note: 'Gathered for purchase',
+      );
+      stillNeeded -= take;
+    }
+    final extra = price - fromGoal;
+    final entryId = await _write(
+      date: date,
+      type: EntryType.expense,
+      amount: price,
+      categoryId: categoryId,
+      postings: [
+        if (fromGoal > 0) ((account: payFromAccount, fund: goalId), -fromGoal),
+        if (extra > 0) ((account: payFromAccount, fund: spendingFund), -extra),
+      ],
+      note: note,
+    );
+    await setGoalAchieved(goalId, date);
+    return entryId;
+  });
+
   // ------------------------------------------------------------ settings
 
   Future<void> setSetting(String key, String value) =>

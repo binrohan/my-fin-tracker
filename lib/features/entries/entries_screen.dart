@@ -11,6 +11,7 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../loans/loans_screen.dart';
 import '../quick_add/quick_add_sheet.dart';
 
 /// Every entry in a month, newest first, grouped by day.
@@ -183,10 +184,14 @@ Future<void> showEntryDetails(BuildContext context, Entry entry) => showModalBot
               p.amount,
               signed: true,
             ),
-          if (_isLoanCreation(entry))
-            Text(
-              'Loans are changed from the Loans screen (coming in Phase 3).',
-              style: TextStyle(color: status.muted),
+          if (entry.loanId != null)
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                openScreen(context, LoanScreen(loanId: entry.loanId!));
+              },
+              icon: const Icon(Icons.handshake_outlined),
+              label: Text(_isLoanCreation(entry) ? 'Open the loan to change it' : 'Open the loan'),
             ),
           Row(
             spacing: 8,

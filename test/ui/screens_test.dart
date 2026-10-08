@@ -7,7 +7,10 @@ import 'package:my_fin_tracker/app/providers.dart';
 import 'package:my_fin_tracker/app/theme.dart';
 import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
+import 'package:my_fin_tracker/features/cash/cash_screen.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
+import 'package:my_fin_tracker/features/loans/loans_screen.dart';
+import 'package:my_fin_tracker/features/save/fund_screen.dart';
 import 'package:my_fin_tracker/features/more/more_screen.dart';
 import 'package:my_fin_tracker/features/save/save_screen.dart';
 import 'package:my_fin_tracker/features/spend/spend_screen.dart';
@@ -30,7 +33,7 @@ void main() {
   });
 
   Future<void> pump(WidgetTester tester, Widget screen, Ledger ledger,
-      {Brightness brightness = Brightness.light}) async {
+      {Brightness brightness = Brightness.light, bool fullScreen = false}) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 1080 / 384;
     addTearDown(tester.view.reset);
@@ -41,7 +44,7 @@ void main() {
       ],
       child: MaterialApp(
         theme: buildTheme(brightness),
-        home: Scaffold(body: screen),
+        home: fullScreen ? screen : Scaffold(body: screen),
       ),
     ));
     await tester.pumpAndSettle();
@@ -78,8 +81,8 @@ void main() {
         expect(find.text('৳2,250 owed back'), findsOneWidget);
         expect(find.text('Behind'), findsOneWidget);
         expect(find.text('On track'), findsOneWidget);
-        await tester.scrollUntilVisible(find.text('Karim'), 300);
-        expect(find.text('Karim'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('Lent to Karim'), 300);
+        expect(find.text('Lent to Karim'), findsOneWidget);
       });
 
       testWidgets('More lists setup and backup', (tester) async {
@@ -94,6 +97,59 @@ void main() {
       });
     });
   }
+
+  group('Phase 3 screens', () {
+    int fund(String name) => sample.funds.values.firstWhere((f) => f.name == name).id;
+
+    for (final brightness in Brightness.values) {
+      testWidgets('goal screen (${brightness.name})', (tester) async {
+        await pump(tester, FundScreen(fundId: fund('New Laptop')), sample,
+            brightness: brightness, fullScreen: true);
+        expect(find.text('New Laptop'), findsOneWidget);
+        expect(find.text('৳26,500'), findsWidgets);
+        expect(find.text('Buy it'), findsOneWidget);
+        expect(find.text('Behind'), findsOneWidget);
+      });
+
+      testWidgets('savings screen (${brightness.name})', (tester) async {
+        await pump(tester, FundScreen(fundId: fund('Monthly Savings')), sample,
+            brightness: brightness, fullScreen: true);
+        expect(find.text('৳2,250 borrowed, to be paid back'), findsOneWidget);
+        expect(find.text('Borrow'), findsOneWidget);
+      });
+
+      testWidgets('loans, both tabs (${brightness.name})', (tester) async {
+        await pump(tester, const LoansScreen(), sample, brightness: brightness, fullScreen: true);
+        expect(find.text('From Monthly Savings'), findsOneWidget);
+        await tester.tap(find.text('People'));
+        await tester.pumpAndSettle();
+        expect(find.text('Lent to Karim'), findsOneWidget);
+        expect(find.text('Borrowed from Brother'), findsOneWidget);
+        expect(find.text('৳6,000'), findsWidgets);
+        expect(find.text('৳10,000'), findsWidgets);
+      });
+
+      testWidgets('one loan (${brightness.name})', (tester) async {
+        final own = sample.loans.firstWhere((l) => l.personAccountId == null);
+        await pump(tester, LoanScreen(loanId: own.id), sample,
+            brightness: brightness, fullScreen: true);
+        expect(find.text('Pay back'), findsOneWidget);
+        expect(find.text('Charge 5%'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('TIMELINE'), 300);
+        expect(find.text('TIMELINE'), findsOneWidget);
+      });
+
+      testWidgets('cash drawer (${brightness.name})', (tester) async {
+        await pump(tester, const CashScreen(), sample, brightness: brightness, fullScreen: true);
+        expect(find.text('৳7,300'), findsOneWidget);
+        expect(find.text('Motorbike'), findsOneWidget);
+        expect(find.text('Count cash'), findsOneWidget);
+        await tester.tap(find.text('Count cash'));
+        await tester.pumpAndSettle();
+        expect(find.text('৳1000'), findsOneWidget);
+      });
+    }
+  });
 
   testWidgets('Home before any entries', (tester) async {
     await pump(tester, const HomeScreen(), empty);

@@ -9,7 +9,12 @@ import '../../core/period.dart';
 import '../../data/database.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
+import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../loans/loan_sheets.dart';
+import '../loans/loans_screen.dart';
+import '../setup/accounts_screen.dart';
+import 'fund_screen.dart';
 
 class SaveScreen extends ConsumerWidget {
   const SaveScreen({super.key});
@@ -20,13 +25,16 @@ class SaveScreen extends ConsumerWidget {
     return LedgerBuilder(
       builder: (context, ledger) {
         final period = Period.of(today);
+        final status = StatusColors.of(context);
         final savings = ledger.fundsOfKind(FundKind.savings).toList();
         final goals = [
           for (final f in ledger.fundsOfKind(FundKind.goal)) ledger.goalStatus(f, today),
         ];
+        final active = goals.where((g) => g.fund.achievedAt == null).toList();
+        final achieved = goals.where((g) => g.fund.achievedAt != null).toList();
         final pots = [
-          ...savings.map((f) => ledger.fundBalance(f.id)),
-          ...goals.map((g) => g.saved),
+          ...savings.map((f) => ledger.fundBalance(f.id, liquidOnly: false)),
+          ...active.map((g) => g.saved),
         ].fold<Poisha>(0, (t, v) => t + v);
         final loans = ledger.openLoans();
         final investments = ledger
@@ -35,12 +43,65 @@ class SaveScreen extends ConsumerWidget {
 
         return PageList(
           children: [
-            ScreenHeader('Savings', subtitle: '${formatTaka(pots)} across all pots'),
+            ScreenHeader(
+              'Savings',
+              subtitle: '${formatTaka(pots)} across all pots',
+              trailing: OutlinedButton.icon(
+                onPressed: () => openScreen(context, const AccountsScreen()),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Goal'),
+              ),
+            ),
             for (final f in savings) _SavingsCard(ledger: ledger, fund: f, period: period),
-            if (goals.isNotEmpty) const Label('Saving for something'),
-            for (final g in goals) _GoalCard(goal: g),
-            if (loans.isNotEmpty) const Label('Loans'),
-            for (final l in loans) _LoanCard(ledger: ledger, status: l),
+            if (active.isNotEmpty) const Label('Saving for something'),
+            for (final g in active) _GoalCard(goal: g),
+            if (achieved.isNotEmpty)
+              SectionCard(
+                children: [
+                  const Label('Achieved'),
+                  for (final g in achieved)
+                    InkWell(
+                      onTap: () => openScreen(context, FundScreen(fundId: g.fund.id)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: AmountRow(
+                          '${g.fund.name} ✓',
+                          g.target,
+                          detail: DateFormat.yMMM().format(g.fund.achievedAt!),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            Row(
+              children: [
+                const Expanded(child: Label('Loans')),
+                TextButton(
+                  onPressed: () => openScreen(context, const LoansScreen()),
+                  child: const Text('All loans'),
+                ),
+              ],
+            ),
+            if (loans.isEmpty)
+              SectionCard(
+                children: [
+                  Text('No open loans.', style: TextStyle(color: status.muted)),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => showNewLoan(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('New loan'),
+                    ),
+                  ),
+                ],
+              ),
+            for (final l in loans)
+              LoanCard(
+                ledger: ledger,
+                status: l,
+                onTap: () => openScreen(context, LoanScreen(loanId: l.loan.id)),
+              ),
             if (investments.isNotEmpty)
               SectionCard(
                 children: [
@@ -67,24 +128,33 @@ class _SavingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final added = ledger.movedInto(fund.id, period);
     final owed = ledger.owedToFund(fund.id);
+    final lent = ledger.fundBalance(fund.id, liquidOnly: false) - ledger.fundBalance(fund.id);
     return SectionCard(
+      onTap: () => openScreen(context, FundScreen(fundId: fund.id)),
       children: [
-        Label(fund.name),
+        Row(
+          children: [
+            Expanded(child: Label(fund.name)),
+            const Icon(Icons.chevron_right, size: 20),
+          ],
+        ),
         Money(
           ledger.fundBalance(fund.id),
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                added == 0
-                    ? 'Nothing added this month'
-                    : '${formatTaka(added, showPlus: true)} this month',
-                style: TextStyle(color: added > 0 ? StatusColors.of(context).good : null),
-              ),
+            Text(
+              added == 0
+                  ? 'Nothing added this month'
+                  : '${formatTaka(added, showPlus: true)} this month',
+              style: TextStyle(color: added > 0 ? StatusColors.of(context).good : null),
             ),
             if (owed > 0) StatusChip('${formatTaka(owed)} owed back', tone: ChipTone.warn),
+            if (lent > 0) StatusChip('${formatTaka(lent)} lent out', tone: ChipTone.accent),
           ],
         ),
       ],
@@ -106,8 +176,10 @@ class _GoalCard extends StatelessWidget {
     final finish = g.projectedFinish;
 
     String advice;
-    if (g.reached) {
-      advice = 'Target reached.';
+    if (g.target == 0) {
+      advice = 'No target set.';
+    } else if (g.reached) {
+      advice = 'Target reached. Tap to record the purchase.';
     } else if (needed == null) {
       advice = g.monthly > 0 ? 'Saving ${formatTaka(g.monthly)}/mo.' : 'No deposits yet.';
     } else if (g.onTrack) {
@@ -122,6 +194,7 @@ class _GoalCard extends StatelessWidget {
     }
 
     return SectionCard(
+      onTap: () => openScreen(context, FundScreen(fundId: g.fund.id)),
       children: [
         Row(
           children: [
@@ -131,11 +204,12 @@ class _GoalCard extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
             ),
-            g.reached
-                ? const StatusChip('Reached', tone: ChipTone.good)
-                : g.onTrack
-                ? const StatusChip('On track', tone: ChipTone.good)
-                : const StatusChip('Behind', tone: ChipTone.warn),
+            if (g.target > 0)
+              g.reached
+                  ? const StatusChip('Reached', tone: ChipTone.good)
+                  : g.onTrack
+                  ? const StatusChip('On track', tone: ChipTone.good)
+                  : const StatusChip('Behind', tone: ChipTone.warn),
           ],
         ),
         Row(
@@ -145,83 +219,20 @@ class _GoalCard extends StatelessWidget {
                 TextSpan(
                   children: [
                     TextSpan(text: formatTaka(g.saved, symbol: false)),
-                    TextSpan(
-                      text: ' of ${formatTaka(g.target, symbol: false)}',
-                      style: TextStyle(color: status.muted),
-                    ),
+                    if (g.target > 0)
+                      TextSpan(
+                        text: ' of ${formatTaka(g.target, symbol: false)}',
+                        style: TextStyle(color: status.muted),
+                      ),
                   ],
                 ),
               ),
             ),
-            Text('${(g.progress * 100).toStringAsFixed(1)}%'),
+            if (g.target > 0) Text('${(g.progress * 100).toStringAsFixed(1)}%'),
           ],
         ),
-        Bar(g.progress, color: g.onTrack ? status.good : status.warn),
+        if (g.target > 0) Bar(g.progress, color: g.onTrack ? status.good : status.warn),
         Text(advice, style: TextStyle(color: status.muted, fontSize: 13)),
-      ],
-    );
-  }
-}
-
-class _LoanCard extends StatelessWidget {
-  const _LoanCard({required this.ledger, required this.status});
-
-  final Ledger ledger;
-  final LoanStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = StatusColors.of(context);
-    final loan = status.loan;
-    final person = loan.personAccountId == null
-        ? null
-        : ledger.accounts[loan.personAccountId]!.name;
-    final (title, chip, tone, leftLabel) = switch (loan.kind) {
-      LoanKind.ownSavings => (
-        'From ${ledger.funds[loan.fundId]!.name}',
-        'Own savings',
-        ChipTone.warn,
-        'You owe',
-      ),
-      LoanKind.lent => (person!, 'Lent', ChipTone.good, 'Owes you'),
-      LoanKind.borrowed => (person!, 'Borrowed', ChipTone.bad, 'You owe'),
-    };
-    final rate = loan.chargeRateBp == 0
-        ? 'no charge'
-        : 'charge ${formatPercentBp(loan.chargeRateBp)}';
-
-    return SectionCard(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            ),
-            StatusChip(chip, tone: tone),
-          ],
-        ),
-        Text(
-          [
-            DateFormat.yMMMd().format(loan.date),
-            rate,
-            if (loan.note.isNotEmpty) loan.note,
-          ].join(' · '),
-          style: TextStyle(color: colors.muted, fontSize: 13),
-        ),
-        AmountRow(loan.kind == LoanKind.lent ? 'Lent' : 'Borrowed', loan.principal),
-        if (loan.charge > 0) AmountRow('Charge', loan.charge),
-        AmountRow(
-          loan.kind == LoanKind.lent ? 'Received back' : 'Paid back',
-          status.repaid,
-          color: colors.good,
-        ),
-        Bar(status.progress, color: colors.good),
-        AmountRow(
-          leftLabel,
-          status.remaining,
-          total: true,
-          color: loan.kind == LoanKind.lent ? colors.good : colors.bad,
-        ),
       ],
     );
   }
