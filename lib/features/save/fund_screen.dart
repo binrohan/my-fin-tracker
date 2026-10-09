@@ -278,7 +278,9 @@ class _History extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: AmountRow(
-                entryTitle(ledger, h.entry),
+                h.entry.type == EntryType.move && h.entry.note.isEmpty
+                    ? (h.amount > 0 ? 'Deposit' : 'Withdrawal')
+                    : entryTitle(ledger, h.entry),
                 h.amount,
                 signed: true,
                 detail: DateFormat.yMMMd().format(h.entry.date),

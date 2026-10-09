@@ -102,6 +102,7 @@ class _CashScreenState extends ConsumerState<CashScreen> {
                       child: SizedBox(
                         height: 12,
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             for (final (i, s) in sectors.where((s) => s.amount > 0).indexed)
                               Expanded(

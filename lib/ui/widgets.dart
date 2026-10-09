@@ -170,14 +170,18 @@ class Bar extends StatelessWidget {
   final Color? color;
   final double height;
 
+  // The figure a bar shows is always written next to it, so screen
+  // readers skip the bar itself.
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(height),
-    child: LinearProgressIndicator(
-      value: value.clamp(0, 1).toDouble(),
-      minHeight: height,
-      color: color ?? Theme.of(context).colorScheme.primary,
-      backgroundColor: StatusColors.of(context).sunk,
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(height),
+      child: LinearProgressIndicator(
+        value: value.clamp(0, 1).toDouble(),
+        minHeight: height,
+        color: color ?? Theme.of(context).colorScheme.primary,
+        backgroundColor: StatusColors.of(context).sunk,
+      ),
     ),
   );
 }
