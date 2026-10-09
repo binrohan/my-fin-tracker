@@ -65,8 +65,8 @@ void main() {
             (ref) async => PackageInfo(
               appName: 'My Fin Tracker',
               packageName: 'com.myfin.my_fin_tracker',
-              version: '1.0.3',
-              buildNumber: '10',
+              version: '1.0.4',
+              buildNumber: '11',
             ),
           ),
         ],
@@ -318,7 +318,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Ocean blue'), findsOneWidget);
       expect(find.text('Plum'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Version 1.0.3 (build 10)'), 300);
+      await tester.scrollUntilVisible(find.text('Version 1.0.4 (build 11)'), 300);
       expect(find.text('Open-source licences'), findsOneWidget);
     });
 
@@ -485,8 +485,44 @@ void main() {
       expect(find.text('UNUSED BUDGET TO SAVINGS'), findsOneWidget);
       expect(find.text('Mine → New Laptop'), findsOneWidget);
       expect(find.text('৳850'), findsOneWidget);
-      expect(find.text('৳9,270'), findsOneWidget, reason: 'still left over: 10,120 − 850');
+      expect(find.text('৳9,270'), findsOneWidget, reason: 'carried forward: 10,120 − 850');
     });
+  });
+
+  testWidgets('closing a month: split the leftover, the rest carries forward', (tester) async {
+    await pump(
+      tester,
+      Builder(
+        builder: (context) => Center(
+          child: TextButton(
+            onPressed: () => showCloseMonth(context, const Period(2026, 9)),
+            child: const Text('close'),
+          ),
+        ),
+      ),
+      sample,
+    );
+    await tester.tap(find.text('close'));
+    await tester.pumpAndSettle();
+    expect(find.text('THE LEFTOVER: ৳10,120'), findsOneWidget);
+    expect(find.text('৳10,120'), findsWidgets);
+
+    await tester.tap(find.text('Move part to savings or a goal'));
+    await tester.pumpAndSettle();
+    final amount = find.byType(TextField).last;
+    await tester.enterText(amount, '3000');
+    await tester.pumpAndSettle();
+    expect(find.text('৳7,120'), findsOneWidget, reason: 'carried forward');
+
+    await tester.tap(find.text('Move part to savings or a goal'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '9000');
+    await tester.pumpAndSettle();
+    expect(find.text('That is ৳1,880 more than the leftover.'), findsOneWidget);
+    final close = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Close September 2026'),
+    );
+    expect(close.onPressed, isNull, reason: 'cannot close while over');
   });
 
   testWidgets('Home before any entries', (tester) async {

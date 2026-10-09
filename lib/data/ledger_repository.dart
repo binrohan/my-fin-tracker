@@ -458,27 +458,46 @@ class LedgerRepository {
     );
   }
 
-  /// Closes a month. With [sweepTo], the Spending money left in each
-  /// account moves to that fund on the month's last day; otherwise it is
-  /// carried forward as it is.
+  /// Closes a month. The leftover in Spending can be split: each of
+  /// [leftoverTo] moves that much to a pot or goal (with [sweepTo], all of
+  /// it goes to one fund); the rest is carried forward. Money is taken
+  /// from [leftovers], the Spending money per account in the order given,
+  /// and stays in its account; only its purpose changes.
   Future<void> closeMonth(
     Period period, {
     int? spendingFund,
     int? sweepTo,
+    List<({int fund, Poisha amount})> leftoverTo = const [],
     List<({int account, Poisha amount})> leftovers = const [],
     Poisha? confirmedBank,
   }) => db.transaction(() async {
     final lastDay = period.end.subtract(const Duration(days: 1));
-    if (sweepTo != null && spendingFund != null) {
-      for (final l in leftovers) {
-        if (l.amount > 0) {
+    final available = [
+      for (final l in leftovers)
+        if (l.amount > 0) l,
+    ];
+    final total = available.fold<Poisha>(0, (t, l) => t + l.amount);
+    final targets = [
+      ...leftoverTo.where((t) => t.amount > 0),
+      if (sweepTo != null) (fund: sweepTo, amount: total),
+    ];
+    if (spendingFund != null && targets.isNotEmpty) {
+      final left = {for (final l in available) l.account: l.amount};
+      for (final target in targets) {
+        var need = target.amount;
+        for (final l in available) {
+          if (need <= 0) break;
+          final take = need < left[l.account]! ? need : left[l.account]!;
+          if (take <= 0) continue;
           await move(
             lastDay,
-            l.amount,
+            take,
             from: (account: l.account, fund: spendingFund),
-            to: (account: l.account, fund: sweepTo),
+            to: (account: l.account, fund: target.fund),
             note: 'Leftover from ${period.label}',
           );
+          left[l.account] = left[l.account]! - take;
+          need -= take;
         }
       }
     }
@@ -494,8 +513,6 @@ class LedgerRepository {
         );
   });
 
-  /// Saves the unused budget of linked categories to their pots, dated the
-  /// month's last day.
   /// Saves the unused budget of linked categories to their pots, dated the
   /// month's last day. Each move is marked with its category, so the same
   /// budget is never saved twice.

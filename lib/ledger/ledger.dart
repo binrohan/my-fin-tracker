@@ -568,6 +568,27 @@ class Ledger {
 
   // ------------------------------------------------- unused budget to pots
 
+  /// Spending money in each account at the end of month [p] (only accounts
+  /// with some), banks first, then the largest. This is where month-end
+  /// moves take their money from.
+  List<({int account, Poisha amount})> spendingCells(Period p) {
+    final spending = spendingFund.id;
+    final cells =
+        [
+          for (final a in accountsOfType((t) => t.isLiquid))
+            if (cell(a.id, spending, before: p.end) > 0)
+              (
+                account: a.id,
+                amount: cell(a.id, spending, before: p.end),
+                bank: a.type == AccountType.bank,
+              ),
+        ]..sort((a, b) {
+          final bank = (b.bank ? 1 : 0).compareTo(a.bank ? 1 : 0);
+          return bank != 0 ? bank : b.amount.compareTo(a.amount);
+        });
+    return [for (final c in cells) (account: c.account, amount: c.amount)];
+  }
+
   /// Unused budget of a category already saved to its pot for month [p].
   Poisha savedFromBudget(int categoryId, Period p) => entries
       .where((e) => e.type == EntryType.move && e.categoryId == categoryId && p.contains(e.date))
@@ -593,19 +614,9 @@ class Ledger {
     categoryLines(p, CategoryKind.expense).forEach(walk);
     if (wanted.isEmpty) return const [];
 
-    // Spending money per account at the end of the month, banks first.
-    final spending = spendingFund.id;
-    final available =
-        [
-          for (final a in accountsOfType((t) => t.isLiquid))
-            if (cell(a.id, spending, before: p.end) > 0)
-              (account: a, amount: cell(a.id, spending, before: p.end)),
-        ]..sort((a, b) {
-          final bank = (b.account.type == AccountType.bank ? 1 : 0).compareTo(
-            a.account.type == AccountType.bank ? 1 : 0,
-          );
-          return bank != 0 ? bank : b.amount.compareTo(a.amount);
-        });
+    final available = [
+      for (final c in spendingCells(p)) (account: accounts[c.account]!, amount: c.amount),
+    ];
     final left = {for (final a in available) a.account.id: a.amount};
 
     final moves = <UnusedBudgetMove>[];

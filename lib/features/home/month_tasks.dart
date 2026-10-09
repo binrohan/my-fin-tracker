@@ -127,13 +127,26 @@ class _CloseMonthSheet extends ConsumerStatefulWidget {
   ConsumerState<_CloseMonthSheet> createState() => _CloseMonthSheetState();
 }
 
+class _LeftoverRow {
+  _LeftoverRow(this.fund, Poisha amount) : amount = TextEditingController(text: amountText(amount));
+
+  int fund;
+  final TextEditingController amount;
+}
+
 class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
   final _bank = TextEditingController();
-  String? _leftover;
+
+  /// Parts of the leftover moved to pots and goals; the rest carries over.
+  final _rows = <_LeftoverRow>[];
+  bool _rowsReady = false;
 
   @override
   void dispose() {
     _bank.dispose();
+    for (final r in _rows) {
+      r.amount.dispose();
+    }
     super.dispose();
   }
 
@@ -144,7 +157,6 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
     final p = widget.period;
     final s = ledger.summary(p);
     final savings = ledger.fundsOfKind(FundKind.savings).firstOrNull;
-    _leftover ??= ledger.setting(leftoverSetting, leftoverCarry);
     final bank = ledger
         .accountsOfType((t) => t == AccountType.bank)
         .where((a) => !a.archived)
@@ -155,6 +167,22 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
     final toPots = ledger.unusedBudgetMoves(p);
     final toPotsTotal = toPots.fold<Poisha>(0, (t, m) => t + m.amount);
     final leftAfter = s.leftToSpend - toPotsTotal;
+    final pots = [
+      for (final f in ledger.funds.values)
+        if (!f.archived &&
+            (f.kind == FundKind.savings || (f.kind == FundKind.goal && f.achievedAt == null)))
+          f,
+    ];
+    if (!_rowsReady) {
+      _rowsReady = true;
+      // Last time everything went to savings: suggest the same.
+      if (ledger.setting(leftoverSetting, leftoverCarry) == leftoverToSavings &&
+          savings != null &&
+          leftAfter > 0) {
+        _rows.add(_LeftoverRow(savings.id, leftAfter));
+      }
+    }
+    final rest = leftAfter - _rows.fold<Poisha>(0, (t, r) => t + (parseTaka(r.amount.text) ?? 0));
 
     return SheetBody(
       title: 'Close ${p.label}',
@@ -176,7 +204,6 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
               'Less than the unused budget moves: only ${formatTaka(s.leftToSpend)} was left in Spending.',
               style: TextStyle(color: status.warn, fontSize: 13),
             ),
-          AmountRow('Still left over', leftAfter, total: true),
         ],
         if (bank != null) ...[
           const Label('Check the bank (optional)'),
@@ -197,72 +224,125 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
               style: TextStyle(color: status.warn),
             ),
         ],
-        if (leftAfter > 0 && savings != null) ...[
-          const Label('The leftover'),
-          RadioGroup<String>(
-            groupValue: _leftover,
-            onChanged: (v) => setState(() => _leftover = v),
-            child: Column(
+        if (leftAfter > 0) ...[
+          Label('The leftover: ${formatTaka(leftAfter)}'),
+          Text(
+            'Move parts of it to savings or goals. Whatever you do not move is carried forward.',
+            style: TextStyle(color: status.muted, fontSize: 13),
+          ),
+          for (final (i, r) in _rows.indexed)
+            Row(
+              spacing: 8,
               children: [
-                RadioListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: leftoverCarry,
-                  title: Text('Carry ${formatTaka(leftAfter)} forward to ${p.next.label}'),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    initialValue: r.fund,
+                    isExpanded: true,
+                    decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+                    items: [
+                      for (final f in pots) DropdownMenuItem(value: f.id, child: Text(f.name)),
+                    ],
+                    onChanged: (v) => setState(() => r.fund = v!),
+                  ),
                 ),
-                RadioListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: leftoverToSavings,
-                  title: Text('Move it to ${savings.name}'),
+                SizedBox(
+                  width: 120,
+                  child: AmountField(controller: r.amount, onChanged: (_) => setState(() {})),
+                ),
+                IconButton(
+                  tooltip: 'Remove',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() => _rows.removeAt(i).amount.dispose()),
                 ),
               ],
             ),
+          if (pots.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: const Text('Move part to savings or a goal'),
+                  onPressed: () =>
+                      setState(() => _rows.add(_LeftoverRow(pots.first.id, rest > 0 ? rest : 0))),
+                ),
+                if (_rows.isEmpty && savings != null)
+                  TextButton(
+                    onPressed: () => setState(() => _rows.add(_LeftoverRow(savings.id, leftAfter))),
+                    child: Text('All to ${savings.name}'),
+                  ),
+              ],
+            ),
+          AmountRow(
+            'Carried forward to ${p.next.label}',
+            rest,
+            total: true,
+            color: rest < 0 ? status.bad : null,
           ),
+          if (rest < 0)
+            Text(
+              'That is ${formatTaka(-rest)} more than the leftover.',
+              style: TextStyle(color: status.bad, fontSize: 13),
+            ),
         ],
         FilledButton(
-          onPressed: () async {
-            final repo = ref.read(repositoryProvider);
-            final lastDay = p.end.subtract(const Duration(days: 1));
-            if (bank != null && realBank != null) {
-              await repo.matchBalance(
-                date: lastDay,
-                pot: (account: bank.id, fund: ledger.spendingFund.id),
-                appBalance: appBank,
-                realBalance: realBank,
-                note: 'Matched to statement for ${p.label}',
-              );
-            }
-            final db = ref.read(databaseProvider);
-            // Recalculate after a bank correction, then save unused budget
-            // of linked categories before deciding on the leftover.
-            final afterBank = await Ledger.load(db);
-            await repo.moveUnusedBudgets(p, ledger.spendingFund.id, afterBank.unusedBudgetMoves(p));
-            final sweep = _leftover == leftoverToSavings && savings != null;
-            final fresh = await Ledger.load(db);
-            await repo.closeMonth(
-              p,
-              spendingFund: ledger.spendingFund.id,
-              sweepTo: sweep ? savings.id : null,
-              leftovers: [
-                for (final a in fresh.accountsOfType((t) => t.isLiquid))
-                  (account: a.id, amount: fresh.cell(a.id, ledger.spendingFund.id, before: p.end)),
-              ],
-              confirmedBank: realBank,
-            );
-            await repo.setSetting(leftoverSetting, _leftover!);
-            if (!context.mounted) return;
-            final navigator = Navigator.of(context, rootNavigator: true);
-            Navigator.pop(context);
-            showSnack(
-              context,
-              '${p.label} closed',
-              action: SnackBarAction(
-                label: 'View report',
-                onPressed: () => navigator.push(
-                  MaterialPageRoute<void>(builder: (_) => ReportPreviewScreen.monthly(p)),
-                ),
-              ),
-            );
-          },
+          onPressed: rest < 0
+              ? null
+              : () async {
+                  final repo = ref.read(repositoryProvider);
+                  final lastDay = p.end.subtract(const Duration(days: 1));
+                  if (bank != null && realBank != null) {
+                    await repo.matchBalance(
+                      date: lastDay,
+                      pot: (account: bank.id, fund: ledger.spendingFund.id),
+                      appBalance: appBank,
+                      realBalance: realBank,
+                      note: 'Matched to statement for ${p.label}',
+                    );
+                  }
+                  final db = ref.read(databaseProvider);
+                  // Recalculate after a bank correction, then save unused budget
+                  // of linked categories before deciding on the leftover.
+                  final afterBank = await Ledger.load(db);
+                  await repo.moveUnusedBudgets(
+                    p,
+                    ledger.spendingFund.id,
+                    afterBank.unusedBudgetMoves(p),
+                  );
+                  final fresh = await Ledger.load(db);
+                  final split = [
+                    for (final r in _rows)
+                      if ((parseTaka(r.amount.text) ?? 0) > 0)
+                        (fund: r.fund, amount: parseTaka(r.amount.text)!),
+                  ];
+                  await repo.closeMonth(
+                    p,
+                    spendingFund: ledger.spendingFund.id,
+                    leftoverTo: split,
+                    leftovers: fresh.spendingCells(p),
+                    confirmedBank: realBank,
+                  );
+                  // Remember: everything to savings next time, or carry forward.
+                  await repo.setSetting(
+                    leftoverSetting,
+                    split.length == 1 && split.single.fund == savings?.id && rest == 0
+                        ? leftoverToSavings
+                        : leftoverCarry,
+                  );
+                  if (!context.mounted) return;
+                  final navigator = Navigator.of(context, rootNavigator: true);
+                  Navigator.pop(context);
+                  showSnack(
+                    context,
+                    '${p.label} closed',
+                    action: SnackBarAction(
+                      label: 'View report',
+                      onPressed: () => navigator.push(
+                        MaterialPageRoute<void>(builder: (_) => ReportPreviewScreen.monthly(p)),
+                      ),
+                    ),
+                  );
+                },
           child: Text('Close ${p.label}'),
         ),
       ],
