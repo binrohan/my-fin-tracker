@@ -59,8 +59,8 @@ void main() {
             (ref) async => PackageInfo(
               appName: 'My Fin Tracker',
               packageName: 'com.myfin.my_fin_tracker',
-              version: '0.6.0',
-              buildNumber: '6',
+              version: '1.0.0',
+              buildNumber: '7',
             ),
           ),
         ],
@@ -80,7 +80,7 @@ void main() {
         expect(find.text('October 2026'), findsOneWidget);
         expect(find.text('৳24,420'), findsWidgets);
         expect(find.text('≈ ৳1,018 a day for 24 days'), findsOneWidget);
-        expect(find.text('✓ Balanced'), findsOneWidget);
+        expect(find.text('Balanced'), findsOneWidget);
         expect(find.text('September 2026 is over'), findsOneWidget);
         expect(find.text('NEEDS ATTENTION'), findsOneWidget);
         expect(find.text('No backup yet'), findsOneWidget);
@@ -312,7 +312,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Ocean blue'), findsOneWidget);
       expect(find.text('Plum'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Version 0.6.0 (build 6)'), 300);
+      await tester.scrollUntilVisible(find.text('Version 1.0.0 (build 7)'), 300);
       expect(find.text('Open-source licences'), findsOneWidget);
     });
 

@@ -288,7 +288,7 @@ class _CountSheetState extends State<_CountSheet> {
         AmountRow('The app says', widget.appBalance),
         if (_total > 0)
           diff == 0
-              ? const StatusChip('✓ Matches', tone: ChipTone.good)
+              ? const StatusChip('Matches', tone: ChipTone.good, icon: Icons.check)
               : AmountRow('Difference', diff, signed: true),
         FilledButton(
           onPressed: () => Navigator.pop(context, _total),

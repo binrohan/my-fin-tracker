@@ -31,7 +31,7 @@ class HomeScreen extends ConsumerWidget {
           period.label,
           subtitle: 'Day ${today.day} of ${period.daysInMonth}',
           trailing: ledger.isBalanced
-              ? const StatusChip('✓ Balanced', tone: ChipTone.good)
+              ? const StatusChip('Balanced', tone: ChipTone.good, icon: Icons.check)
               : const StatusChip('Not balanced', tone: ChipTone.bad),
         );
         if (ledger.isEmpty) return PageList(children: [header, const _EmptyHome()]);

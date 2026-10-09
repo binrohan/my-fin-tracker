@@ -189,10 +189,13 @@ class Bar extends StatelessWidget {
 enum ChipTone { good, warn, bad, accent, plain }
 
 class StatusChip extends StatelessWidget {
-  const StatusChip(this.text, {super.key, this.tone = ChipTone.plain});
+  const StatusChip(this.text, {super.key, this.tone = ChipTone.plain, this.icon});
 
   final String text;
   final ChipTone tone;
+
+  /// Shown before the text, e.g. a check mark (the app font has no ✓).
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -208,9 +211,18 @@ class StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(99)),
-      child: Text(
-        text,
-        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 4,
+        children: [
+          if (icon != null) Icon(icon, size: 14, color: fg),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

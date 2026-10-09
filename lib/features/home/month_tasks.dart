@@ -83,7 +83,7 @@ class _MatchBalanceSheetState extends ConsumerState<_MatchBalanceSheet> {
         ),
         if (diff != null)
           diff == 0
-              ? const StatusChip('✓ Matches', tone: ChipTone.good)
+              ? const StatusChip('Matches', tone: ChipTone.good, icon: Icons.check)
               : AmountRow('Difference', diff, signed: true),
         FilledButton(
           onPressed: diff == null || diff == 0

@@ -66,7 +66,7 @@ class SaveScreen extends ConsumerWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: AmountRow(
-                          '${g.fund.name} ✓',
+                          '${g.fund.name} (achieved)',
                           g.target,
                           detail: DateFormat.yMMM().format(g.fund.achievedAt!),
                         ),
