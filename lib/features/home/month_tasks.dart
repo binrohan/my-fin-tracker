@@ -152,6 +152,9 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
     final appBank = bank == null ? 0 : ledger.accountBalance(bank.id, before: p.end);
     final realBank = parseTaka(_bank.text);
     final status = StatusColors.of(context);
+    final toPots = ledger.unusedBudgetMoves(p);
+    final toPotsTotal = toPots.fold<Poisha>(0, (t, m) => t + m.amount);
+    final leftAfter = s.leftToSpend - toPotsTotal;
 
     return SheetBody(
       title: 'Close ${p.label}',
@@ -160,6 +163,21 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
         AmountRow('Spent', s.expenses, detail: 'budget ${formatTaka(s.budget)}'),
         AmountRow('Set aside', s.setAside),
         AmountRow('Left over', s.leftToSpend, total: true),
+        if (toPots.isNotEmpty) ...[
+          const Label('Unused budget to savings'),
+          for (final m in toPots)
+            AmountRow(
+              '${m.category.name} → ${m.fund.name}',
+              m.amount,
+              detail: m.amount < m.unused ? 'of ${formatTaka(m.unused)} unused' : null,
+            ),
+          if (toPots.any((m) => m.amount < m.unused))
+            Text(
+              'Less than the unused budget moves: only ${formatTaka(s.leftToSpend)} was left in Spending.',
+              style: TextStyle(color: status.warn, fontSize: 13),
+            ),
+          AmountRow('Still left over', leftAfter, total: true),
+        ],
         if (bank != null) ...[
           const Label('Check the bank (optional)'),
           Text(
@@ -179,7 +197,7 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
               style: TextStyle(color: status.warn),
             ),
         ],
-        if (s.leftToSpend > 0 && savings != null) ...[
+        if (leftAfter > 0 && savings != null) ...[
           const Label('The leftover'),
           RadioGroup<String>(
             groupValue: _leftover,
@@ -189,7 +207,7 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
                 RadioListTile(
                   contentPadding: EdgeInsets.zero,
                   value: leftoverCarry,
-                  title: Text('Carry ${formatTaka(s.leftToSpend)} forward to ${p.next.label}'),
+                  title: Text('Carry ${formatTaka(leftAfter)} forward to ${p.next.label}'),
                 ),
                 RadioListTile(
                   contentPadding: EdgeInsets.zero,
@@ -213,9 +231,13 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
                 note: 'Matched to statement for ${p.label}',
               );
             }
+            final db = ref.read(databaseProvider);
+            // Recalculate after a bank correction, then save unused budget
+            // of linked categories before deciding on the leftover.
+            final afterBank = await Ledger.load(db);
+            await repo.moveUnusedBudgets(p, ledger.spendingFund.id, afterBank.unusedBudgetMoves(p));
             final sweep = _leftover == leftoverToSavings && savings != null;
-            // Re-read so a bank correction just recorded is in the leftover.
-            final fresh = await Ledger.load(ref.read(databaseProvider));
+            final fresh = await Ledger.load(db);
             await repo.closeMonth(
               p,
               spendingFund: ledger.spendingFund.id,

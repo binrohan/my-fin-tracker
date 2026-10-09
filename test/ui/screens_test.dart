@@ -15,7 +15,11 @@ import 'package:my_fin_tracker/features/cash/cash_screen.dart';
 import 'package:my_fin_tracker/features/investments/investments_screen.dart';
 import 'package:my_fin_tracker/features/plan/monthly_plan_screen.dart';
 import 'package:my_fin_tracker/features/reports/reports_screen.dart';
+import 'package:my_fin_tracker/features/setup/categories_screen.dart';
 import 'package:my_fin_tracker/features/setup/starting_balances_screen.dart';
+import 'package:my_fin_tracker/features/home/month_tasks.dart';
+import 'package:my_fin_tracker/data/setup_repository.dart';
+import 'package:my_fin_tracker/core/period.dart';
 import 'package:my_fin_tracker/features/trackers/trackers_screen.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
 import 'package:my_fin_tracker/features/loans/loans_screen.dart';
@@ -61,8 +65,8 @@ void main() {
             (ref) async => PackageInfo(
               appName: 'My Fin Tracker',
               packageName: 'com.myfin.my_fin_tracker',
-              version: '1.0.2',
-              buildNumber: '9',
+              version: '1.0.3',
+              buildNumber: '10',
             ),
           ),
         ],
@@ -314,7 +318,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Ocean blue'), findsOneWidget);
       expect(find.text('Plum'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Version 1.0.2 (build 9)'), 300);
+      await tester.scrollUntilVisible(find.text('Version 1.0.3 (build 10)'), 300);
       expect(find.text('Open-source licences'), findsOneWidget);
     });
 
@@ -435,6 +439,53 @@ void main() {
       await tester.enterText(find.descendant(of: rent, matching: find.byType(TextField)), '24000');
       await tester.pumpAndSettle();
       expect(find.text('৳1,000 left to assign'), findsOneWidget);
+    });
+  });
+
+  group('Unused budget to a pot', () {
+    late Ledger linked;
+
+    setUpAll(() async {
+      final db = AppDatabase(
+        DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+      );
+      await loadSampleData(db);
+      final l = await Ledger.load(db);
+      final mine = l.categories.values.firstWhere((c) => c.name == 'Mine').id;
+      final laptop = l.funds.values.firstWhere((f) => f.name == 'New Laptop').id;
+      await SetupRepository(db).updateCategory(mine, savingsFundId: Value(laptop));
+      linked = await Ledger.load(db);
+      await db.close();
+    });
+
+    testWidgets('categories show the link and the editor offers it', (tester) async {
+      await pump(tester, const CategoriesScreen(), linked, fullScreen: true);
+      expect(find.text('Unused → New Laptop'), findsOneWidget);
+      await tester.tap(find.text('Mine'));
+      await tester.pumpAndSettle();
+      expect(find.text('Unused budget goes to (optional)'), findsOneWidget);
+      expect(find.text('New Laptop'), findsOneWidget);
+    });
+
+    testWidgets('closing September lists what will be saved', (tester) async {
+      await pump(
+        tester,
+        Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showCloseMonth(context, const Period(2026, 9)),
+              child: const Text('close'),
+            ),
+          ),
+        ),
+        linked,
+      );
+      await tester.tap(find.text('close'));
+      await tester.pumpAndSettle();
+      expect(find.text('UNUSED BUDGET TO SAVINGS'), findsOneWidget);
+      expect(find.text('Mine → New Laptop'), findsOneWidget);
+      expect(find.text('৳850'), findsOneWidget);
+      expect(find.text('৳9,270'), findsOneWidget, reason: 'still left over: 10,120 − 850');
     });
   });
 

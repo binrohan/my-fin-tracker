@@ -67,6 +67,7 @@ class SetupRepository {
     int? parentId,
     bool isFixed = false,
     int? dueDay,
+    int? savingsFundId,
   }) async => db
       .into(db.categories)
       .insert(
@@ -76,6 +77,7 @@ class SetupRepository {
           parentId: Value(parentId),
           isFixed: Value(isFixed),
           dueDay: Value(dueDay),
+          savingsFundId: Value(savingsFundId),
           sortOrder: Value(await _nextOrder(db.categories, db.categories.sortOrder)),
         ),
       );
@@ -85,12 +87,14 @@ class SetupRepository {
     String? name,
     bool? isFixed,
     Value<int?> dueDay = const Value.absent(),
+    Value<int?> savingsFundId = const Value.absent(),
     bool? archived,
   }) => (db.update(db.categories)..where((c) => c.id.equals(id))).write(
     CategoriesCompanion(
       name: name == null ? const Value.absent() : Value(name.trim()),
       isFixed: isFixed == null ? const Value.absent() : Value(isFixed),
       dueDay: dueDay,
+      savingsFundId: savingsFundId,
       archived: archived == null ? const Value.absent() : Value(archived),
     ),
   );

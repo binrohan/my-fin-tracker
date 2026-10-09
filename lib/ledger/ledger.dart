@@ -566,6 +566,76 @@ class Ledger {
         loanStatus(l, before: p.end),
   ];
 
+  // ------------------------------------------------- unused budget to pots
+
+  /// Unused budget of a category already saved to its pot for month [p].
+  Poisha savedFromBudget(int categoryId, Period p) => entries
+      .where((e) => e.type == EntryType.move && e.categoryId == categoryId && p.contains(e.date))
+      .fold(0, (t, e) => t + e.amount);
+
+  /// What closing [p] saves from categories linked to a pot: each linked
+  /// category's unused budget (nothing if it went over). A linked section
+  /// counts as a whole and its subsections' links are not used. The total
+  /// is capped at what is left in Spending; each move says which accounts
+  /// its money sits in, since only its purpose changes.
+  List<UnusedBudgetMove> unusedBudgetMoves(Period p) {
+    final wanted = <(CategoryRow, Fund, Poisha)>[];
+    void walk(CategoryLine l) {
+      final fund = funds[l.category.savingsFundId];
+      if (fund != null && !fund.archived) {
+        final unused = l.budget - l.actual - savedFromBudget(l.category.id, p);
+        if (unused > 0) wanted.add((l.category, fund, unused));
+        return;
+      }
+      l.children.forEach(walk);
+    }
+
+    categoryLines(p, CategoryKind.expense).forEach(walk);
+    if (wanted.isEmpty) return const [];
+
+    // Spending money per account at the end of the month, banks first.
+    final spending = spendingFund.id;
+    final available =
+        [
+          for (final a in accountsOfType((t) => t.isLiquid))
+            if (cell(a.id, spending, before: p.end) > 0)
+              (account: a, amount: cell(a.id, spending, before: p.end)),
+        ]..sort((a, b) {
+          final bank = (b.account.type == AccountType.bank ? 1 : 0).compareTo(
+            a.account.type == AccountType.bank ? 1 : 0,
+          );
+          return bank != 0 ? bank : b.amount.compareTo(a.amount);
+        });
+    final left = {for (final a in available) a.account.id: a.amount};
+
+    final moves = <UnusedBudgetMove>[];
+    for (final (category, fund, unused) in wanted) {
+      var need = unused;
+      final parts = <({int account, Poisha amount})>[];
+      for (final a in available) {
+        if (need <= 0) break;
+        final take = math.min(need, left[a.account.id]!);
+        if (take <= 0) continue;
+        parts.add((account: a.account.id, amount: take));
+        left[a.account.id] = left[a.account.id]! - take;
+        need -= take;
+      }
+      final moved = unused - need;
+      if (moved > 0) {
+        moves.add(
+          UnusedBudgetMove(
+            category: category,
+            fund: fund,
+            unused: unused,
+            amount: moved,
+            parts: parts,
+          ),
+        );
+      }
+    }
+    return moves;
+  }
+
   // --------------------------------------------------------- monthly plan
 
   AllocationPlan get plan => AllocationPlan.parse(settings[AllocationPlan.settingKey]);
@@ -831,4 +901,27 @@ class FundMovement {
   /// Expenses paid straight from the fund (negative).
   final Poisha spent;
   final Poisha other;
+}
+
+/// Unused budget of one category, saved to its linked pot at month close.
+class UnusedBudgetMove {
+  const UnusedBudgetMove({
+    required this.category,
+    required this.fund,
+    required this.unused,
+    required this.amount,
+    required this.parts,
+  });
+
+  final CategoryRow category;
+  final Fund fund;
+
+  /// Budget not spent.
+  final Poisha unused;
+
+  /// What will move: [unused], unless less was left in Spending.
+  final Poisha amount;
+
+  /// Where that money sits (it stays there; only its purpose changes).
+  final List<({int account, Poisha amount})> parts;
 }

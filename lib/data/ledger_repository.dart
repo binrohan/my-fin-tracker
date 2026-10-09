@@ -4,6 +4,7 @@ import '../core/money.dart';
 import '../core/period.dart';
 import '../ledger/allocation.dart';
 import '../ledger/enums.dart';
+import '../ledger/ledger.dart';
 import 'database.dart';
 
 /// One side of a posting: an (account, fund) pair.
@@ -492,6 +493,31 @@ class LedgerRepository {
           ),
         );
   });
+
+  /// Saves the unused budget of linked categories to their pots, dated the
+  /// month's last day.
+  /// Saves the unused budget of linked categories to their pots, dated the
+  /// month's last day. Each move is marked with its category, so the same
+  /// budget is never saved twice.
+  Future<void> moveUnusedBudgets(Period period, int spendingFund, List<UnusedBudgetMove> moves) =>
+      db.transaction(() async {
+        final lastDay = period.end.subtract(const Duration(days: 1));
+        for (final m in moves) {
+          for (final part in m.parts) {
+            await _write(
+              date: lastDay,
+              type: EntryType.move,
+              amount: part.amount,
+              categoryId: m.category.id,
+              postings: [
+                ((account: part.account, fund: spendingFund), -part.amount),
+                ((account: part.account, fund: m.fund.id), part.amount),
+              ],
+              note: 'Unused ${m.category.name} budget, ${period.label}',
+            );
+          }
+        }
+      });
 
   Future<void> reopenMonth(Period period) => (db.delete(
     db.monthCloses,

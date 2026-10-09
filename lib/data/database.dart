@@ -39,6 +39,10 @@ class Categories extends Table {
 
   /// Day of the month a fixed bill is due.
   IntColumn get dueDay => integer().nullable()();
+
+  /// Savings pot or goal that receives this category's unused budget when
+  /// a month is closed.
+  IntColumn get savingsFundId => integer().nullable().references(Funds, #id)();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
 }
@@ -201,7 +205,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -215,6 +219,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(investmentDetails);
         await m.createTable(purchases);
         await m.createTable(trackers);
+      }
+      if (from < 3) {
+        // Unused budget of a category saved to a pot at month close.
+        await m.addColumn(categories, categories.savingsFundId);
       }
     },
     beforeOpen: (details) async {

@@ -563,9 +563,10 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
           spacing: 12,
           children: [
             Expanded(
-              child: Text(
-                section.name,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              child: _NameWithLink(
+                name: section.name,
+                link: ledger.funds[section.savingsFundId]?.name,
+                bold: true,
               ),
             ),
             SizedBox(
@@ -580,7 +581,9 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
             child: Row(
               spacing: 12,
               children: [
-                Expanded(child: Text(sub.name)),
+                Expanded(
+                  child: _NameWithLink(name: sub.name, link: ledger.funds[sub.savingsFundId]?.name),
+                ),
                 SizedBox(
                   width: 124,
                   child: AmountField(
@@ -661,4 +664,26 @@ class _Balance extends StatelessWidget {
       style: TextStyle(color: color, fontWeight: FontWeight.w600),
     );
   }
+}
+
+/// A category name, with "Unused → New Laptop" under it when linked.
+class _NameWithLink extends StatelessWidget {
+  const _NameWithLink({required this.name, this.link, this.bold = false});
+
+  final String name;
+  final String? link;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(name, style: bold ? const TextStyle(fontWeight: FontWeight.w700, fontSize: 16) : null),
+      if (link != null)
+        Text(
+          'Unused → $link',
+          style: TextStyle(color: StatusColors.of(context).muted, fontSize: 12),
+        ),
+    ],
+  );
 }

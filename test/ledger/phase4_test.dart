@@ -253,7 +253,7 @@ void main() {
       reason: 'no default data added on upgrade',
     );
     final version = await old.customSelect('PRAGMA user_version').getSingle();
-    expect(version.data.values.single, 2);
+    expect(version.data.values.single, 3, reason: 'upgraded to the latest schema');
     // The new tables exist and work.
     await LedgerRepository(old)
         .addTracker(name: 'Test', kind: TrackerKind.project, startDate: DateTime(2026, 10, 1));

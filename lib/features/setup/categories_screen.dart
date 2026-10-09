@@ -81,9 +81,13 @@ class CategoriesScreen extends ConsumerWidget {
           fontWeight: indent ? null : FontWeight.w600,
         ),
       ),
-      subtitle: c.isFixed
-          ? Text(c.dueDay == null ? 'Fixed bill' : 'Fixed bill · due on day ${c.dueDay}')
-          : null,
+      subtitle: () {
+        final parts = [
+          if (c.isFixed) c.dueDay == null ? 'Fixed bill' : 'Fixed bill · due on day ${c.dueDay}',
+          if (ledger.funds[c.savingsFundId] case final f?) 'Unused → ${f.name}',
+        ];
+        return parts.isEmpty ? null : Text(parts.join(' · '));
+      }(),
       trailing: const Icon(Icons.edit_outlined, size: 20),
       onTap: () => _editCategory(context, ref, ledger, c),
     );
@@ -102,6 +106,13 @@ class CategoriesScreen extends ConsumerWidget {
     int? parentId = existing?.parentId;
     var fixed = existing?.isFixed ?? false;
     var archived = existing?.archived ?? false;
+    int? savingsFund = existing?.savingsFundId;
+    final pots = [
+      for (final f in ledger.funds.values)
+        if ((f.kind == FundKind.savings || (f.kind == FundKind.goal && f.achievedAt == null)) &&
+            (!f.archived || f.id == savingsFund))
+          f,
+    ];
     final hasChildren =
         existing != null && ledger.categories.values.any((c) => c.parentId == existing.id);
 
@@ -172,6 +183,22 @@ class CategoriesScreen extends ConsumerWidget {
                     border: OutlineInputBorder(),
                   ),
                 ),
+              if (kind == CategoryKind.expense)
+                DropdownButtonFormField<int?>(
+                  initialValue: pots.any((f) => f.id == savingsFund) ? savingsFund : null,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Unused budget goes to (optional)',
+                    helperText: 'When you close a month, what you did not spend is saved here',
+                    helperMaxLines: 2,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Nowhere: stays in Spending')),
+                    for (final f in pots) DropdownMenuItem(value: f.id, child: Text(f.name)),
+                  ],
+                  onChanged: (v) => setState(() => savingsFund = v),
+                ),
               if (existing != null)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -203,6 +230,7 @@ class CategoriesScreen extends ConsumerWidget {
         parentId: parentId,
         isFixed: fixed,
         dueDay: validDue,
+        savingsFundId: kind == CategoryKind.expense ? savingsFund : null,
       );
     } else {
       await setup.updateCategory(
@@ -210,6 +238,7 @@ class CategoriesScreen extends ConsumerWidget {
         name: name.text,
         isFixed: fixed,
         dueDay: Value(validDue),
+        savingsFundId: Value(kind == CategoryKind.expense ? savingsFund : null),
         archived: archived,
       );
     }
