@@ -11,6 +11,7 @@ import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import '../cash/cash_screen.dart';
+import '../investments/investments_screen.dart';
 import '../setup/starting_balances_screen.dart';
 import 'month_tasks.dart';
 
@@ -38,6 +39,24 @@ class HomeScreen extends ConsumerWidget {
           children: [
             header,
             if (toClose != null) _CloseMonthBanner(period: toClose),
+            for (final i in ledger.maturingSoon(today))
+              SectionCard(
+                color: StatusColors.of(context).warnSoft,
+                onTap: () => openScreen(context, InvestmentScreen(accountId: i.account.id)),
+                children: [
+                  Text(
+                    '${i.account.name}: ${maturityText(i, today).toLowerCase()}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: StatusColors.of(context).warn,
+                    ),
+                  ),
+                  Text(
+                    '${formatTaka(i.value)} to take out or renew. Tap to open.',
+                    style: TextStyle(color: StatusColors.of(context).warn),
+                  ),
+                ],
+              ),
             _LeftToSpend(summary: s, today: today),
             _ThisMonth(ledger: ledger, summary: s),
             _WhereAndWhat(ledger: ledger),

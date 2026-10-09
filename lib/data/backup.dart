@@ -33,6 +33,9 @@ class Backup {
     db.budgets,
     db.monthCloses,
     db.settings,
+    db.investmentDetails,
+    db.purchases,
+    db.trackers,
   ];
 
   static Future<Uint8List> export(AppDatabase db, {DateTime? now}) async {
@@ -113,6 +116,13 @@ class Backup {
         b.insertAll(db.budgets, rows(db.budgets).map(Budget.fromJson));
         b.insertAll(db.monthCloses, rows(db.monthCloses).map(MonthClose.fromJson));
         b.insertAll(db.settings, rows(db.settings).map(Setting.fromJson));
+        // Missing from backups made before these tables existed: empty.
+        b.insertAll(
+          db.investmentDetails,
+          rows(db.investmentDetails).map(InvestmentDetail.fromJson),
+        );
+        b.insertAll(db.purchases, rows(db.purchases).map(Purchase.fromJson));
+        b.insertAll(db.trackers, rows(db.trackers).map(Tracker.fromJson));
       });
     });
   }

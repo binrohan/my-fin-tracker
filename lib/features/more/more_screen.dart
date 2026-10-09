@@ -11,7 +11,10 @@ import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import '../../core/money.dart';
+import '../buying/buying_screen.dart';
 import '../cash/cash_screen.dart';
+import '../investments/investments_screen.dart';
+import '../trackers/trackers_screen.dart';
 import '../entries/entries_screen.dart';
 import '../loans/loans_screen.dart';
 import '../home/month_tasks.dart';
@@ -116,6 +119,24 @@ class MoreScreen extends ConsumerWidget {
                   () => openScreen(context, const LoansScreen()),
                 ),
                 item(
+                  Icons.trending_up,
+                  'Investments',
+                  'DPS, FDR, savings certificates, shares',
+                  () => openScreen(context, const InvestmentsScreen()),
+                ),
+                item(
+                  Icons.shopping_bag_outlined,
+                  'Buying',
+                  'Major purchases and warranties',
+                  () => openScreen(context, const BuyingScreen()),
+                ),
+                item(
+                  Icons.flag_outlined,
+                  'Trackers',
+                  'Projects and countdown budgets',
+                  () => openScreen(context, const TrackersScreen()),
+                ),
+                item(
                   Icons.payments_outlined,
                   'Cash drawer',
                   'Cash by sector, count notes',
@@ -200,7 +221,7 @@ class MoreScreen extends ConsumerWidget {
             ),
             Center(
               child: Text(
-                'My Fin Tracker · Phase 2',
+                'My Fin Tracker · Phase 4',
                 style: TextStyle(color: status.muted, fontSize: 12),
               ),
             ),

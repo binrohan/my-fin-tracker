@@ -22,7 +22,8 @@ void main() {
   int fund(String name) => ledger.funds.values.firstWhere((f) => f.name == name).id;
   int category(String name) => ledger.categories.values.firstWhere((c) => c.name == name).id;
   List<({int account, Poisha amount})> goalMoney(int goal) => [
-    for (final a in ledger.accountsOfType((t) => t.isLiquid)) (account: a.id, amount: ledger.cell(a.id, goal)),
+    for (final a in ledger.accountsOfType((t) => t.isLiquid))
+      (account: a.id, amount: ledger.cell(a.id, goal)),
   ];
 
   setUp(() async {
@@ -120,7 +121,11 @@ void main() {
 
   test('cash drawer sectors', () {
     final sectors = {for (final s in ledger.sectorsOf(account('Cash'))) s.fund.name: s.amount};
-    expect(sectors, {'Spending': taka(2800), 'Monthly Savings': taka(2500), 'Motorbike': taka(2000)});
+    expect(sectors, {
+      'Spending': taka(2800),
+      'Monthly Savings': taka(2500),
+      'Motorbike': taka(2000),
+    });
   });
 
   test('borrow charge comes from settings', () async {

@@ -11,6 +11,7 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../buying/buying_screen.dart';
 import '../loans/loans_screen.dart';
 import '../quick_add/quick_add_sheet.dart';
 
@@ -184,6 +185,52 @@ Future<void> showEntryDetails(BuildContext context, Entry entry) => showModalBot
               p.amount,
               signed: true,
             ),
+          if (entry.type == EntryType.expense) ...[
+            PickerField(
+              label: 'Tracker',
+              value: ledger.trackers[entry.trackerId]?.name ?? 'None',
+              onTap: () async {
+                final choice = await showDialog<int>(
+                  context: context,
+                  builder: (context) => SimpleDialog(
+                    title: const Text('Count this expense in'),
+                    children: [
+                      SimpleDialogOption(
+                        onPressed: () => Navigator.pop(context, -1),
+                        child: const Text('No tracker'),
+                      ),
+                      for (final t in ledger.activeTrackers())
+                        SimpleDialogOption(
+                          onPressed: () => Navigator.pop(context, t.tracker.id),
+                          child: Text(t.tracker.name),
+                        ),
+                    ],
+                  ),
+                );
+                if (choice == null) return;
+                await repo.setEntryTracker(entry.id, choice == -1 ? null : choice);
+              },
+            ),
+            if (ledger.purchaseFor(entry.id) case final purchase?)
+              OutlinedButton.icon(
+                onPressed: () => editPurchase(context, ref, purchase),
+                icon: const Icon(Icons.shopping_bag_outlined),
+                label: Text('In the Buying list: ${purchase.item}'),
+              )
+            else
+              TextButton.icon(
+                onPressed: () => repo.addPurchase(
+                  item: entry.note.isNotEmpty
+                      ? entry.note
+                      : ledger.categories[entry.categoryId]?.name ?? 'Purchase',
+                  date: entry.date,
+                  amount: entry.amount,
+                  entryId: entry.id,
+                ),
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text('Add to the Buying list'),
+              ),
+          ],
           if (entry.loanId != null)
             OutlinedButton.icon(
               onPressed: () {

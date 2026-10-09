@@ -16,13 +16,42 @@ import 'package:my_fin_tracker/ledger/ledger.dart';
 class RecordingRepository extends LedgerRepository {
   RecordingRepository(super.db);
 
-  final expenses = <({DateTime date, Poisha amount, int categoryId, Pot from, String note})>[];
+  final expenses =
+      <({DateTime date, Poisha amount, int categoryId, Pot from, String note, int? trackerId})>[];
+  final purchases = <({String item, Poisha amount, int? entryId})>[];
   final settingsWritten = <String, String>{};
 
   @override
-  Future<int> expense(DateTime date, Poisha amount,
-      {required int categoryId, required Pot from, String note = ''}) async {
-    expenses.add((date: date, amount: amount, categoryId: categoryId, from: from, note: note));
+  Future<int> expense(
+    DateTime date,
+    Poisha amount, {
+    required int categoryId,
+    required Pot from,
+    String note = '',
+    int? trackerId,
+  }) async {
+    expenses.add((
+      date: date,
+      amount: amount,
+      categoryId: categoryId,
+      from: from,
+      note: note,
+      trackerId: trackerId,
+    ));
+    return 41;
+  }
+
+  @override
+  Future<int> addPurchase({
+    required String item,
+    required DateTime date,
+    required Poisha amount,
+    int? entryId,
+    String shop = '',
+    DateTime? warrantyUntil,
+    String note = '',
+  }) async {
+    purchases.add((item: item, amount: amount, entryId: entryId));
     return 1;
   }
 
@@ -49,23 +78,28 @@ void main() {
     addTearDown(tester.view.reset);
     final repo = RecordingRepository(db);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        ledgerProvider.overrideWith((ref) => Stream.value(sample)),
-        repositoryProvider.overrideWithValue(repo),
-        todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
-      ],
-      child: MaterialApp(
-        theme: buildTheme(Brightness.light),
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => Center(
-              child: TextButton(onPressed: () => showQuickAdd(context), child: const Text('open')),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ledgerProvider.overrideWith((ref) => Stream.value(sample)),
+          repositoryProvider.overrideWithValue(repo),
+          todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
+        ],
+        child: MaterialApp(
+          theme: buildTheme(Brightness.light),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: TextButton(
+                  onPressed: () => showQuickAdd(context),
+                  child: const Text('open'),
+                ),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
@@ -97,13 +131,18 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 1080 / 384;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        ledgerProvider.overrideWith((ref) => Stream.value(sample)),
-        todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
-      ],
-      child: MaterialApp(theme: buildTheme(Brightness.light), home: const Scaffold(body: QuickAddSheet())),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ledgerProvider.overrideWith((ref) => Stream.value(sample)),
+          todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
+        ],
+        child: MaterialApp(
+          theme: buildTheme(Brightness.light),
+          home: const Scaffold(body: QuickAddSheet()),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     for (final key in ['1', '2', '5', '0', '0', '.', '5', '0', '9']) {
       await tester.tap(find.text(key).last);
@@ -111,5 +150,51 @@ void main() {
     await tester.pump();
     // 1-2-5-0-0 . 5-0, and the third decimal (9) is ignored.
     expect(find.textContaining('12,500.50', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('a major purchase tagged to a tracker', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 1080 / 384;
+    addTearDown(tester.view.reset);
+    final repo = RecordingRepository(db);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ledgerProvider.overrideWith((ref) => Stream.value(sample)),
+          repositoryProvider.overrideWithValue(repo),
+          todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
+        ],
+        child: MaterialApp(
+          theme: buildTheme(Brightness.light),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: TextButton(
+                  onPressed: () => showQuickAdd(context),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    for (final key in ['2', '4', '0', '0']) {
+      await tester.tap(find.text(key).last);
+    }
+    await tester.tap(find.text('Random'));
+    await tester.tap(find.text('Major purchase'));
+    await tester.tap(find.text('Sylhet Trip'));
+    await tester.enterText(find.byType(TextField), 'Bus tickets');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Save ৳2,400 to Random'));
+    await tester.tap(find.text('Save ৳2,400 to Random'));
+    await tester.pumpAndSettle();
+
+    final trip = sample.trackers.values.firstWhere((t) => t.name == 'Sylhet Trip');
+    expect(repo.expenses.single.trackerId, trip.id);
+    expect(repo.purchases.single, (item: 'Bus tickets', amount: taka(2400), entryId: 41));
   });
 }

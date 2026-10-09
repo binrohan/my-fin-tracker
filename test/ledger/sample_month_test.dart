@@ -19,18 +19,15 @@ void main() {
   const oct = Period(2026, 10);
 
   setUpAll(() async {
-    db = AppDatabase(DatabaseConnection(NativeDatabase.memory(),
-        closeStreamsSynchronously: true));
+    db = AppDatabase(DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true));
     await loadSampleData(db);
     ledger = await Ledger.load(db);
   });
 
   tearDownAll(() => db.close());
 
-  int account(String name) =>
-      ledger.accounts.values.firstWhere((a) => a.name == name).id;
-  int fund(String name) =>
-      ledger.funds.values.firstWhere((f) => f.name == name).id;
+  int account(String name) => ledger.accounts.values.firstWhere((a) => a.name == name).id;
+  int fund(String name) => ledger.funds.values.firstWhere((f) => f.name == name).id;
   CategoryLine line(List<CategoryLine> lines, String name) =>
       lines.firstWhere((l) => l.category.name == name);
 
@@ -168,8 +165,10 @@ void main() {
 
       expect(ledger.fundBalance(fund('Spending')), taka(24420));
       expect(ledger.fundBalance(fund('Monthly Savings')), taka(68000));
-      expect(ledger.fundBalance(fund('New Laptop')) + ledger.fundBalance(fund('Motorbike')),
-          taka(40500));
+      expect(
+        ledger.fundBalance(fund('New Laptop')) + ledger.fundBalance(fund('Motorbike')),
+        taka(40500),
+      );
       expect(ledger.isBalanced, isTrue);
     });
 
@@ -196,8 +195,8 @@ void main() {
 
   group('Goals on 7 Oct 2026', () {
     final today = DateTime(2026, 10, 7);
-    GoalStatus goal(String name) => ledger.goalStatus(
-        ledger.funds.values.firstWhere((f) => f.name == name), today);
+    GoalStatus goal(String name) =>
+        ledger.goalStatus(ledger.funds.values.firstWhere((f) => f.name == name), today);
 
     test('New Laptop is behind', () {
       final g = goal('New Laptop');
@@ -221,8 +220,9 @@ void main() {
   test('reset puts back only the defaults', () async {
     // A second, separate in-memory database is intended here.
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
-    final scratch = AppDatabase(DatabaseConnection(NativeDatabase.memory(),
-        closeStreamsSynchronously: true));
+    final scratch = AppDatabase(
+      DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+    );
     await loadSampleData(scratch);
     await scratch.resetAllData();
     final empty = await Ledger.load(scratch);

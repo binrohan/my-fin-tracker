@@ -58,3 +58,13 @@ enum LoanKind {
   /// You borrowed money from a person.
   borrowed,
 }
+
+enum InvestmentKind { dps, fdr, savingsCertificate, shares, other }
+
+enum TrackerKind {
+  /// Long-term spending with no limit: how much it cost so far.
+  project,
+
+  /// A budget with an end date: how much is left.
+  countdown,
+}

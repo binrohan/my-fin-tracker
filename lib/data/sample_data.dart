@@ -52,6 +52,61 @@ Future<void> loadSampleData(AppDatabase db) => db.transaction(() async {
   final laptop = await addGoal('New Laptop', 95000, DateTime(2027, 3, 31), 10);
   final motorbike = await addGoal('Motorbike', 150000, DateTime(2029, 12, 31), 11);
 
+  // Investment details for the two investment accounts.
+  for (final (account, kind, start, maturity, rate, instalment, total, paid) in [
+    (dps, InvestmentKind.dps, DateTime(2025, 4, 1), DateTime(2030, 4, 1), 750, 5000, 60, 17),
+    (
+      certificate,
+      InvestmentKind.savingsCertificate,
+      DateTime(2024, 3, 15),
+      DateTime(2029, 3, 15),
+      1150,
+      null,
+      null,
+      0,
+    ),
+  ]) {
+    await repo.saveInvestmentDetails(
+      InvestmentDetailsCompanion.insert(
+        accountId: Value(account),
+        kind: kind,
+        startDate: Value(start),
+        maturityDate: Value(maturity),
+        rateBp: Value(rate),
+        instalment: Value(instalment == null ? null : taka(instalment)),
+        totalInstalments: Value(total),
+        openingInstalments: Value(paid),
+      ),
+    );
+  }
+
+  // A goal reached before September, and what it bought.
+  final fridge = await addGoal('Refrigerator', 62500, DateTime(2026, 6, 30), 12);
+  await repo.setGoalAchieved(fridge, DateTime(2026, 6, 14));
+  await repo.addPurchase(
+    item: 'Refrigerator',
+    date: DateTime(2026, 6, 14),
+    amount: taka(62500),
+    shop: 'Walton Plaza',
+    warrantyUntil: DateTime(2031, 6, 14),
+  );
+
+  // Trackers that started before the app: what was spent before is opening.
+  final office = await repo.addTracker(
+    name: 'Home Office Setup',
+    kind: TrackerKind.project,
+    startDate: DateTime(2026, 3, 1),
+    openingSpent: taka(37500),
+  );
+  await repo.addTracker(
+    name: 'Sylhet Trip',
+    kind: TrackerKind.countdown,
+    startDate: DateTime(2026, 8, 15),
+    endDate: DateTime(2026, 12, 18),
+    budget: taka(25000),
+    openingSpent: taka(4000),
+  );
+
   final rent = await categoryId('House Rent');
   final electricity = await categoryId('Electricity');
   final gas = await categoryId('Gas');
@@ -157,12 +212,20 @@ Future<void> loadSampleData(AppDatabase db) => db.transaction(() async {
   );
   await repo.expense(d(9, 10), taka(1500), categoryId: water, from: pot(bank, spending));
   await repo.expense(d(9, 10), taka(3250), categoryId: ration, from: pot(cash, spending));
-  await repo.expense(
+  final fan = await repo.expense(
     d(9, 12),
     taka(3400),
     categoryId: random,
     from: pot(bank, spending),
     note: 'Ceiling fan',
+  );
+  await repo.addPurchase(
+    item: 'Ceiling fan',
+    date: d(9, 12),
+    amount: taka(3400),
+    entryId: fan,
+    shop: 'Walton Plaza',
+    warrantyUntil: DateTime(2028, 9, 12),
   );
   await repo.expense(
     d(9, 13),
@@ -194,6 +257,7 @@ Future<void> loadSampleData(AppDatabase db) => db.transaction(() async {
     categoryId: mine,
     from: pot(bank, spending),
     note: 'Desk lamp',
+    trackerId: office,
   );
   await repo.expense(
     d(9, 20),

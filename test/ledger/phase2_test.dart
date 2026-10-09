@@ -65,12 +65,16 @@ void main() {
 
   test('fixed bills still due, and paying them', () async {
     final due = ledger.unpaidFixedBills(oct);
-    expect({for (final b in due) b.category.name: b.remaining},
-        {'Electricity': taka(2500), 'Water & Service': taka(1500)});
+    expect(
+      {for (final b in due) b.category.name: b.remaining},
+      {'Electricity': taka(2500), 'Water & Service': taka(1500)},
+    );
 
-    await repo.payBills([
-      for (final b in due) (categoryId: b.category.id, amount: b.remaining),
-    ], today, (account: account('Bank'), fund: fund('Spending')));
+    await repo.payBills(
+      [for (final b in due) (categoryId: b.category.id, amount: b.remaining)],
+      today,
+      (account: account('Bank'), fund: fund('Spending')),
+    );
     await reload();
     expect(ledger.unpaidFixedBills(oct), isEmpty);
     expect(ledger.summary(oct).expenses, taka(36700));
@@ -78,12 +82,18 @@ void main() {
   });
 
   test('salary plan sets money aside', () async {
-    final plan = AllocationPlan(categoryId: category('Salary'), items: [
-      AllocationItem(fundId: fund('Monthly Savings'), amount: taka(20000)),
-      AllocationItem(fundId: fund('New Laptop'), amount: taka(8000)),
-      AllocationItem(
-          fundId: fund('Investments'), accountId: account('DPS · Bank'), amount: taka(5000)),
-    ]);
+    final plan = AllocationPlan(
+      categoryId: category('Salary'),
+      items: [
+        AllocationItem(fundId: fund('Monthly Savings'), amount: taka(20000)),
+        AllocationItem(fundId: fund('New Laptop'), amount: taka(8000)),
+        AllocationItem(
+          fundId: fund('Investments'),
+          accountId: account('DPS · Bank'),
+          amount: taka(5000),
+        ),
+      ],
+    );
     final decoded = AllocationPlan.parse(plan.encode());
     expect(decoded.total, taka(33000));
     expect(decoded.items.last.accountId, account('DPS · Bank'));
@@ -102,11 +112,15 @@ void main() {
   test('editing an entry replaces it', () async {
     final veg = ledger.entries.firstWhere((e) => e.note.startsWith('Vegetables'));
     await repo.replaceEntry(
-        veg.id,
-        () => repo.expense(veg.date, taka(400),
-            categoryId: veg.categoryId!,
-            from: (account: account('Cash'), fund: fund('Spending')),
-            note: veg.note));
+      veg.id,
+      () => repo.expense(
+        veg.date,
+        taka(400),
+        categoryId: veg.categoryId!,
+        from: (account: account('Cash'), fund: fund('Spending')),
+        note: veg.note,
+      ),
+    );
     await reload();
     expect(line(oct, 'Ration').actual, taka(4400));
     expect(ledger.entries.where((e) => e.id == veg.id), isEmpty);
@@ -130,13 +144,15 @@ void main() {
     expect(s.checks, isTrue);
 
     expect(
-        await repo.matchBalance(
-            date: today,
-            pot: (account: bank, fund: fund('Spending')),
-            appBalance: taka(5),
-            realBalance: taka(5)),
-        isNull,
-        reason: 'no entry when nothing differs');
+      await repo.matchBalance(
+        date: today,
+        pot: (account: bank, fund: fund('Spending')),
+        appBalance: taka(5),
+        realBalance: taka(5),
+      ),
+      isNull,
+      reason: 'no entry when nothing differs',
+    );
   });
 
   group('closing a month', () {
@@ -155,8 +171,12 @@ void main() {
         for (final a in ledger.accountsOfType((t) => t.isLiquid))
           (account: a.id, amount: ledger.cell(a.id, spending, before: sep.end)),
       ];
-      await repo.closeMonth(sep,
-          spendingFund: spending, sweepTo: fund('Monthly Savings'), leftovers: leftovers);
+      await repo.closeMonth(
+        sep,
+        spendingFund: spending,
+        sweepTo: fund('Monthly Savings'),
+        leftovers: leftovers,
+      );
       await reload();
       expect(ledger.summary(sep).leftToSpend, 0);
       expect(ledger.summary(oct).carriedForward, 0);
@@ -205,14 +225,20 @@ void main() {
       expect(after.netWorth(), taka(428770));
       expect(after.summary(oct).leftToSpend, taka(24420));
       expect(after.summary(sep).expenses, taka(54380));
-      expect(after.loanStatus(after.loans.firstWhere((l) => l.kind == LoanKind.ownSavings)).remaining,
-          taka(2250));
+      expect(
+        after.loanStatus(after.loans.firstWhere((l) => l.kind == LoanKind.ownSavings)).remaining,
+        taka(2250),
+      );
       expect(after.isClosed(sep), isTrue);
       expect(after.settings['borrow_charge_bp'], '700');
-      expect(after.funds.values.firstWhere((f) => f.name == 'New Laptop').targetDate,
-          DateTime(2027, 3, 31));
-      expect(after.categories.values.firstWhere((c) => c.name == 'Gas').parentId,
-          before.categories.values.firstWhere((c) => c.name == 'Gas').parentId);
+      expect(
+        after.funds.values.firstWhere((f) => f.name == 'New Laptop').targetDate,
+        DateTime(2027, 3, 31),
+      );
+      expect(
+        after.categories.values.firstWhere((c) => c.name == 'Gas').parentId,
+        before.categories.values.firstWhere((c) => c.name == 'Gas').parentId,
+      );
     });
 
     test('restore replaces what was there', () async {
@@ -226,21 +252,24 @@ void main() {
     });
 
     test('rejects files that are not backups', () {
-      expect(() => Backup.read(Uint8List.fromList(utf8.encode('hello'))),
-          throwsA(isA<BackupException>()));
+      expect(
+        () => Backup.read(Uint8List.fromList(utf8.encode('hello'))),
+        throwsA(isA<BackupException>()),
+      );
     });
 
     test('rejects a damaged backup', () async {
       final bytes = await Backup.export(db);
       final archive = ZipDecoder().decodeBytes(bytes);
-      final data = utf8.decode(archive.findFile('data.json')!.content).replaceFirst('85000', '95000');
+      final data = utf8
+          .decode(archive.findFile('data.json')!.content)
+          .replaceFirst('85000', '95000');
       final tampered = Archive()
         ..addFile(archive.findFile('manifest.json')!)
         ..addFile(ArchiveFile.string('data.json', data));
       expect(
         () => Backup.read(ZipEncoder().encodeBytes(tampered)),
-        throwsA(isA<BackupException>()
-            .having((e) => e.message, 'message', contains('checksum'))),
+        throwsA(isA<BackupException>().having((e) => e.message, 'message', contains('checksum'))),
       );
     });
 

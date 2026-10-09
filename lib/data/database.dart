@@ -118,6 +118,59 @@ class MonthCloses extends Table {
   Set<Column> get primaryKey => {year, month};
 }
 
+/// Extra facts about an investment account (DPS, FDR, savings
+/// certificate, shares). Its value is the account balance.
+class InvestmentDetails extends Table {
+  IntColumn get accountId => integer().references(Accounts, #id, onDelete: KeyAction.cascade)();
+  TextColumn get kind => textEnum<InvestmentKind>()();
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get maturityDate => dateTime().nullable()();
+
+  /// Yearly rate in basis points: 1150 = 11.5%.
+  IntColumn get rateBp => integer().nullable()();
+
+  /// Monthly instalment for a DPS.
+  IntColumn get instalment => integer().nullable()();
+  IntColumn get totalInstalments => integer().nullable()();
+
+  /// Instalments paid before the account was entered in the app.
+  IntColumn get openingInstalments => integer().withDefault(const Constant(0))();
+  TextColumn get note => text().withDefault(const Constant(''))();
+
+  @override
+  Set<Column> get primaryKey => {accountId};
+}
+
+/// The Buying register: major purchases, for the annual report.
+class Purchases extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// The expense that paid for it. Deleting the expense deletes the record.
+  IntColumn get entryId =>
+      integer().nullable().references(Entries, #id, onDelete: KeyAction.cascade)();
+  TextColumn get item => text()();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get amount => integer()();
+  TextColumn get shop => text().withDefault(const Constant(''))();
+  DateTimeColumn get warrantyUntil => dateTime().nullable()();
+  TextColumn get note => text().withDefault(const Constant(''))();
+}
+
+/// A long-term project (how much it cost so far) or a countdown budget
+/// (how much is left). Entries are tagged with [Entries.trackerId].
+class Trackers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  TextColumn get kind => textEnum<TrackerKind>()();
+  IntColumn get budget => integer().nullable()();
+
+  /// Spent before the tracker was entered in the app.
+  IntColumn get openingSpent => integer().withDefault(const Constant(0))();
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+}
+
 class Settings extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
@@ -127,7 +180,20 @@ class Settings extends Table {
 }
 
 @DriftDatabase(
-  tables: [Accounts, Funds, Categories, Loans, Entries, Postings, Budgets, MonthCloses, Settings],
+  tables: [
+    Accounts,
+    Funds,
+    Categories,
+    Loans,
+    Entries,
+    Postings,
+    Budgets,
+    MonthCloses,
+    Settings,
+    InvestmentDetails,
+    Purchases,
+    Trackers,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openOnDevice());
@@ -135,13 +201,21 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
       await insertDefaultData(this);
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // Phase 4: investments, buying register, trackers.
+        await m.createTable(investmentDetails);
+        await m.createTable(purchases);
+        await m.createTable(trackers);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -158,7 +232,17 @@ class AppDatabase extends _$AppDatabase {
   /// Deletes every row, leaving empty tables. Used by reset and restore.
   Future<void> deleteEverything() => transaction(() async {
     // Children before parents so foreign keys stay valid.
-    for (final TableInfo table in [postings, entries, budgets, loans, monthCloses, settings]) {
+    for (final TableInfo table in [
+      purchases,
+      investmentDetails,
+      trackers,
+      postings,
+      entries,
+      budgets,
+      loans,
+      monthCloses,
+      settings,
+    ]) {
       await delete(table).go();
     }
     await (delete(categories)..where((c) => c.parentId.isNotNull())).go();

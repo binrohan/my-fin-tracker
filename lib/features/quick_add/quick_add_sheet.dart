@@ -52,6 +52,14 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   final _note = TextEditingController();
   bool _saving = false;
 
+  /// Add to the Buying register.
+  bool _major = false;
+  int? _trackerId;
+
+  /// The purchase record of the entry being edited, kept so shop and
+  /// warranty survive the edit.
+  Purchase? _oldPurchase;
+
   @override
   void dispose() {
     _note.dispose();
@@ -88,6 +96,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     _categoryId = e.categoryId;
     _date = e.date;
     _note.text = e.note;
+    _trackerId = e.trackerId;
+    _oldPurchase = ledger.purchaseFor(e.id);
+    _major = _oldPurchase != null;
     final postings = ledger.postingsOf(e.id);
     Pot potOf(PostingLine p) => (account: p.accountId, fund: p.fundId);
     final out = postings.where((p) => p.amount < 0).firstOrNull;
@@ -145,6 +156,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         categoryId: _categoryId!,
         from: _from,
         note: note,
+        trackerId: _trackerId,
       ),
       QuickAddMode.income => repo.income(
         _date,
@@ -156,11 +168,27 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       QuickAddMode.move => repo.move(_date, amount, from: _from, to: _to, note: note),
     };
 
+    Future<int> writeWithPurchase() async {
+      final id = await write();
+      if (_mode == QuickAddMode.expense && _major) {
+        await repo.addPurchase(
+          item: note.isNotEmpty ? note : ledger.categories[_categoryId]!.name,
+          date: _date,
+          amount: amount,
+          entryId: id,
+          shop: _oldPurchase?.shop ?? '',
+          warrantyUntil: _oldPurchase?.warrantyUntil,
+          note: _oldPurchase?.note ?? '',
+        );
+      }
+      return id;
+    }
+
     final editing = widget.editing;
     if (editing != null) {
-      await repo.replaceEntry(editing.id, write);
+      await repo.replaceEntry(editing.id, writeWithPurchase);
     } else {
-      await write();
+      await writeWithPurchase();
     }
     if (_mode == QuickAddMode.expense) await repo.setSetting(_lastExpensePot, potSetting(_from));
     if (_mode == QuickAddMode.income) await repo.setSetting(_lastIncomePot, potSetting(_to));
@@ -322,6 +350,33 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               ],
             ),
             if (_mode == QuickAddMode.move) potField('To', _to, (p) => _to = p),
+            // One scrolling line, so the number pad stays on screen.
+            if (_mode == QuickAddMode.expense)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  spacing: 6,
+                  children: [
+                    FilterChip(
+                      label: const Text('Major purchase'),
+                      selected: _major,
+                      onSelected: (v) => setState(() => _major = v),
+                    ),
+                    for (final t in ledger.activeTrackers())
+                      ChoiceChip(
+                        avatar: Icon(
+                          t.tracker.kind == TrackerKind.countdown
+                              ? Icons.timer_outlined
+                              : Icons.construction,
+                          size: 16,
+                        ),
+                        label: Text(t.tracker.name),
+                        selected: _trackerId == t.tracker.id,
+                        onSelected: (v) => setState(() => _trackerId = v ? t.tracker.id : null),
+                      ),
+                  ],
+                ),
+              ),
             TextField(
               controller: _note,
               textCapitalization: TextCapitalization.sentences,

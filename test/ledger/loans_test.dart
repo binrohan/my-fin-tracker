@@ -14,15 +14,15 @@ void main() {
   final day = DateTime(2026, 10, 1);
 
   setUp(() async {
-    db = AppDatabase(DatabaseConnection(NativeDatabase.memory(),
-        closeStreamsSynchronously: true));
+    db = AppDatabase(DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true));
     repo = LedgerRepository(db);
     final l = await Ledger.load(db);
     bank = l.accounts.values.firstWhere((a) => a.type == AccountType.bank).id;
     spending = l.spendingFund.id;
     savings = l.funds.values.firstWhere((f) => f.kind == FundKind.savings).id;
-    friend = await db.into(db.accounts).insert(
-        AccountsCompanion.insert(name: 'Friend', type: AccountType.person));
+    friend = await db
+        .into(db.accounts)
+        .insert(AccountsCompanion.insert(name: 'Friend', type: AccountType.person));
     await repo.openingBalance(day, (account: bank, fund: savings), taka(50000));
     await repo.openingBalance(day, (account: bank, fund: spending), taka(10000));
   });
@@ -30,8 +30,14 @@ void main() {
   tearDown(() => db.close());
 
   test('own-savings loan: charge comes back to the source fund', () async {
-    final loan = await repo.borrowFromFund(day, taka(3000),
-        sourceFund: savings, intoFund: spending, account: bank, chargeRateBp: 500);
+    final loan = await repo.borrowFromFund(
+      day,
+      taka(3000),
+      sourceFund: savings,
+      intoFund: spending,
+      account: bank,
+      chargeRateBp: 500,
+    );
     var l = await Ledger.load(db);
     expect(l.fundBalance(savings), taka(47000));
     expect(l.fundBalance(spending), taka(13000));
@@ -46,8 +52,13 @@ void main() {
   });
 
   test('lending to a person with a charge', () async {
-    final loan = await repo.lendToPerson(day, taka(10000),
-        person: friend, from: (account: bank, fund: savings), chargeRateBp: 200);
+    final loan = await repo.lendToPerson(
+      day,
+      taka(10000),
+      person: friend,
+      from: (account: bank, fund: savings),
+      chargeRateBp: 200,
+    );
     var l = await Ledger.load(db);
     expect(l.fundBalance(savings), taka(40000), reason: 'not in your hands');
     expect(l.fundBalance(savings, liquidOnly: false), taka(50200));
@@ -62,8 +73,12 @@ void main() {
   });
 
   test('borrowing from a person', () async {
-    final loan = await repo.borrowFromPerson(day, taka(15000),
-        person: friend, to: (account: bank, fund: spending));
+    final loan = await repo.borrowFromPerson(
+      day,
+      taka(15000),
+      person: friend,
+      to: (account: bank, fund: spending),
+    );
     var l = await Ledger.load(db);
     expect(l.fundBalance(spending), taka(25000));
     expect(l.accountBalance(friend), taka(-15000));
@@ -77,8 +92,12 @@ void main() {
   });
 
   test('deleting an entry removes its postings', () async {
-    final id = await repo.move(day, taka(1000),
-        from: (account: bank, fund: spending), to: (account: bank, fund: savings));
+    final id = await repo.move(
+      day,
+      taka(1000),
+      from: (account: bank, fund: spending),
+      to: (account: bank, fund: savings),
+    );
     await repo.deleteEntry(id);
     final l = await Ledger.load(db);
     expect(l.fundBalance(spending), taka(10000));

@@ -11,6 +11,7 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../investments/investments_screen.dart';
 import '../loans/loan_sheets.dart';
 import '../loans/loans_screen.dart';
 import '../setup/accounts_screen.dart';
@@ -104,6 +105,7 @@ class SaveScreen extends ConsumerWidget {
               ),
             if (investments.isNotEmpty)
               SectionCard(
+                onTap: () => openScreen(context, const InvestmentsScreen()),
                 children: [
                   const Label('Investments'),
                   for (final a in investments) AmountRow(a.name, ledger.accountBalance(a.id)),

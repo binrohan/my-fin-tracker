@@ -44,9 +44,14 @@ class Ledger {
     required this.lines,
     this.settings = const {},
     this.monthCloses = const [],
+    List<InvestmentDetail> investmentDetails = const [],
+    this.purchases = const [],
+    List<Tracker> trackers = const [],
   }) : accounts = {for (final a in accounts) a.id: a},
        funds = {for (final f in funds) f.id: f},
-       categories = {for (final c in categories) c.id: c};
+       categories = {for (final c in categories) c.id: c},
+       investmentDetails = {for (final d in investmentDetails) d.accountId: d},
+       trackers = {for (final t in trackers) t.id: t};
 
   final Map<int, Account> accounts;
   final Map<int, Fund> funds;
@@ -57,6 +62,11 @@ class Ledger {
   final List<PostingLine> lines;
   final Map<String, String> settings;
   final List<MonthClose> monthCloses;
+  final Map<int, InvestmentDetail> investmentDetails;
+
+  /// Newest first.
+  final List<Purchase> purchases;
+  final Map<int, Tracker> trackers;
 
   static Future<Ledger> load(AppDatabase db) async {
     final rows = await (db.select(db.postings).join([
@@ -79,6 +89,11 @@ class Ledger {
       )..orderBy([(e) => OrderingTerm.desc(e.date), (e) => OrderingTerm.desc(e.id)])).get(),
       settings: {for (final s in await db.select(db.settings).get()) s.key: s.value},
       monthCloses: await db.select(db.monthCloses).get(),
+      investmentDetails: await db.select(db.investmentDetails).get(),
+      purchases: await (db.select(
+        db.purchases,
+      )..orderBy([(p) => OrderingTerm.desc(p.date), (p) => OrderingTerm.desc(p.id)])).get(),
+      trackers: await (db.select(db.trackers)..orderBy([(t) => OrderingTerm.asc(t.id)])).get(),
       lines: [
         for (final row in rows)
           () {
@@ -405,6 +420,87 @@ class Ledger {
   /// Charge for new loans from savings, in basis points.
   int get borrowChargeBp => int.tryParse(settings['borrow_charge_bp'] ?? '') ?? 500;
 
+  // ---------------------------------------------------------- investments
+
+  InvestmentStatus investmentStatus(Account account) {
+    final own = lines.where((l) => l.accountId == account.id);
+    final paidIn = own.where((l) => l.type == EntryType.move && l.amount > 0);
+    return InvestmentStatus(
+      account: account,
+      details: investmentDetails[account.id],
+      value: _sum(own),
+      invested: _sum(own.where((l) => l.type != EntryType.adjust)),
+      instalmentsPaid:
+          (investmentDetails[account.id]?.openingInstalments ?? 0) +
+          paidIn.map((l) => l.entryId).toSet().length,
+    );
+  }
+
+  /// Investments you still hold, maturing soonest first.
+  List<InvestmentStatus> investments() {
+    final list = [
+      for (final a in accountsOfType((t) => t == AccountType.investment))
+        if (!a.archived) investmentStatus(a),
+    ];
+    final far = DateTime(9999);
+    list.sort((a, b) => (a.details?.maturityDate ?? far).compareTo(b.details?.maturityDate ?? far));
+    return list;
+  }
+
+  /// Investments maturing within [days] of [today] (or already matured)
+  /// that still hold money.
+  List<InvestmentStatus> maturingSoon(DateTime today, {int days = 30}) => [
+    for (final i in investments())
+      if (i.value > 0 && i.daysToMaturity(today) != null && i.daysToMaturity(today)! <= days) i,
+  ];
+
+  // ------------------------------------------------------------- trackers
+
+  TrackerStatus trackerStatus(Tracker tracker) {
+    final tagged = [
+      for (final e in entries)
+        if (e.trackerId == tracker.id && e.type == EntryType.expense) e,
+    ];
+    final byCategory = <int?, Poisha>{};
+    for (final e in tagged) {
+      final top = _topCategory(e.categoryId);
+      byCategory.update(top, (v) => v + e.amount, ifAbsent: () => e.amount);
+    }
+    return TrackerStatus(tracker: tracker, entries: tagged, byCategory: byCategory);
+  }
+
+  int? _topCategory(int? id) {
+    var c = categories[id];
+    while (c?.parentId != null) {
+      c = categories[c!.parentId];
+    }
+    return c?.id;
+  }
+
+  /// Trackers not archived: countdowns first (soonest end), then projects.
+  List<TrackerStatus> activeTrackers() {
+    final list = [
+      for (final t in trackers.values)
+        if (!t.archived) trackerStatus(t),
+    ];
+    final far = DateTime(9999);
+    list.sort((a, b) {
+      final kind = a.tracker.kind.index.compareTo(b.tracker.kind.index);
+      if (kind != 0) return -kind;
+      return (a.tracker.endDate ?? far).compareTo(b.tracker.endDate ?? far);
+    });
+    return list;
+  }
+
+  // ------------------------------------------------------------ purchases
+
+  List<Purchase> purchasesIn(int year) => [
+    for (final p in purchases)
+      if (p.date.year == year) p,
+  ];
+
+  Purchase? purchaseFor(int entryId) => purchases.where((p) => p.entryId == entryId).firstOrNull;
+
   /// Total still owed back to a fund by own-savings loans.
   Poisha owedToFund(int fundId) => openLoans()
       .where((s) => s.loan.kind == LoanKind.ownSavings && s.loan.fundId == fundId)
@@ -574,4 +670,50 @@ class GoalStatus {
     final months = (remaining / monthly).ceil();
     return Period.of(DateTime(period.year, period.month + months));
   }
+}
+
+class InvestmentStatus {
+  const InvestmentStatus({
+    required this.account,
+    required this.details,
+    required this.value,
+    required this.invested,
+    required this.instalmentsPaid,
+  });
+
+  final Account account;
+  final InvestmentDetail? details;
+
+  /// What it is worth now.
+  final Poisha value;
+
+  /// What went in (starting value plus instalments, minus withdrawals).
+  final Poisha invested;
+  final int instalmentsPaid;
+
+  /// Profit recorded through value updates.
+  Poisha get growth => value - invested;
+
+  int? daysToMaturity(DateTime today) => details?.maturityDate == null
+      ? null
+      : details!.maturityDate!.difference(dateOnly(today)).inDays;
+}
+
+class TrackerStatus {
+  const TrackerStatus({required this.tracker, required this.entries, required this.byCategory});
+
+  final Tracker tracker;
+
+  /// Tagged expenses, newest first.
+  final List<Entry> entries;
+
+  /// Spent per top-level category (null: no category).
+  final Map<int?, Poisha> byCategory;
+
+  Poisha get spent => tracker.openingSpent + entries.fold<Poisha>(0, (t, e) => t + e.amount);
+  Poisha? get left => tracker.budget == null ? null : tracker.budget! - spent;
+  double get progress =>
+      (tracker.budget ?? 0) <= 0 ? 0 : (spent / tracker.budget!).clamp(0, 1).toDouble();
+
+  int? daysLeft(DateTime today) => tracker.endDate?.difference(dateOnly(today)).inDays;
 }

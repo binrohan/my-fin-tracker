@@ -7,7 +7,10 @@ import 'package:my_fin_tracker/app/providers.dart';
 import 'package:my_fin_tracker/app/theme.dart';
 import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
+import 'package:my_fin_tracker/features/buying/buying_screen.dart';
 import 'package:my_fin_tracker/features/cash/cash_screen.dart';
+import 'package:my_fin_tracker/features/investments/investments_screen.dart';
+import 'package:my_fin_tracker/features/trackers/trackers_screen.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
 import 'package:my_fin_tracker/features/loans/loans_screen.dart';
 import 'package:my_fin_tracker/features/save/fund_screen.dart';
@@ -24,29 +27,37 @@ void main() {
 
   setUpAll(() async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
-    final db = AppDatabase(DatabaseConnection(NativeDatabase.memory(),
-        closeStreamsSynchronously: true));
+    final db = AppDatabase(
+      DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+    );
     empty = await Ledger.load(db);
     await loadSampleData(db);
     sample = await Ledger.load(db);
     await db.close();
   });
 
-  Future<void> pump(WidgetTester tester, Widget screen, Ledger ledger,
-      {Brightness brightness = Brightness.light, bool fullScreen = false}) async {
+  Future<void> pump(
+    WidgetTester tester,
+    Widget screen,
+    Ledger ledger, {
+    Brightness brightness = Brightness.light,
+    bool fullScreen = false,
+  }) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 1080 / 384;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        ledgerProvider.overrideWith((ref) => Stream.value(ledger)),
-        todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
-      ],
-      child: MaterialApp(
-        theme: buildTheme(brightness),
-        home: fullScreen ? screen : Scaffold(body: screen),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ledgerProvider.overrideWith((ref) => Stream.value(ledger)),
+          todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
+        ],
+        child: MaterialApp(
+          theme: buildTheme(brightness),
+          home: fullScreen ? screen : Scaffold(body: screen),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
@@ -103,8 +114,13 @@ void main() {
 
     for (final brightness in Brightness.values) {
       testWidgets('goal screen (${brightness.name})', (tester) async {
-        await pump(tester, FundScreen(fundId: fund('New Laptop')), sample,
-            brightness: brightness, fullScreen: true);
+        await pump(
+          tester,
+          FundScreen(fundId: fund('New Laptop')),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
         expect(find.text('New Laptop'), findsOneWidget);
         expect(find.text('৳26,500'), findsWidgets);
         expect(find.text('Buy it'), findsOneWidget);
@@ -112,8 +128,13 @@ void main() {
       });
 
       testWidgets('savings screen (${brightness.name})', (tester) async {
-        await pump(tester, FundScreen(fundId: fund('Monthly Savings')), sample,
-            brightness: brightness, fullScreen: true);
+        await pump(
+          tester,
+          FundScreen(fundId: fund('Monthly Savings')),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
         expect(find.text('৳2,250 borrowed, to be paid back'), findsOneWidget);
         expect(find.text('Borrow'), findsOneWidget);
       });
@@ -131,8 +152,13 @@ void main() {
 
       testWidgets('one loan (${brightness.name})', (tester) async {
         final own = sample.loans.firstWhere((l) => l.personAccountId == null);
-        await pump(tester, LoanScreen(loanId: own.id), sample,
-            brightness: brightness, fullScreen: true);
+        await pump(
+          tester,
+          LoanScreen(loanId: own.id),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
         expect(find.text('Pay back'), findsOneWidget);
         expect(find.text('Charge 5%'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('TIMELINE'), 300);
@@ -147,6 +173,75 @@ void main() {
         await tester.tap(find.text('Count cash'));
         await tester.pumpAndSettle();
         expect(find.text('৳1000'), findsOneWidget);
+      });
+    }
+  });
+
+  group('Phase 4 screens', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('investments (${brightness.name})', (tester) async {
+        await pump(
+          tester,
+          const InvestmentsScreen(),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
+        expect(find.text('৳2,99,850'), findsOneWidget);
+        expect(find.text('DPS · Bank'), findsOneWidget);
+        expect(find.text('19 of 60 instalments · ৳5,000/mo'), findsOneWidget);
+        expect(find.textContaining('7.5% a year'), findsOneWidget);
+      });
+
+      testWidgets('one investment (${brightness.name})', (tester) async {
+        final dps = sample.accounts.values.firstWhere((a) => a.name == 'DPS · Bank');
+        await pump(
+          tester,
+          InvestmentScreen(accountId: dps.id),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
+        expect(find.text('Pay instalment'), findsOneWidget);
+        expect(find.text('Update value'), findsOneWidget);
+      });
+
+      testWidgets('buying (${brightness.name})', (tester) async {
+        await pump(tester, const BuyingScreen(), sample, brightness: brightness, fullScreen: true);
+        expect(find.text('৳65,900'), findsOneWidget);
+        expect(find.text('Ceiling fan'), findsOneWidget);
+        expect(find.text('Refrigerator'), findsOneWidget);
+        expect(find.text('Warranty until Sep 2028'), findsOneWidget);
+      });
+
+      testWidgets('trackers (${brightness.name})', (tester) async {
+        await pump(
+          tester,
+          const TrackersScreen(),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
+        expect(find.text('Sylhet Trip'), findsOneWidget);
+        expect(find.text('71 days to go'), findsOneWidget);
+        expect(find.text('৳21,000'), findsOneWidget);
+        expect(find.text('৳38,750'), findsOneWidget);
+      });
+
+      testWidgets('one tracker (${brightness.name})', (tester) async {
+        final office = sample.trackers.values.firstWhere((t) => t.name == 'Home Office Setup');
+        await pump(
+          tester,
+          TrackerScreen(trackerId: office.id),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
+        expect(find.text('Before the app'), findsOneWidget);
+        expect(find.text('৳37,500'), findsOneWidget);
+        final lamp = find.textContaining('Desk lamp  Sep 18', findRichText: true);
+        await tester.scrollUntilVisible(lamp, 300);
+        expect(lamp, findsOneWidget);
       });
     }
   });

@@ -23,6 +23,7 @@ class LedgerRepository {
     required List<(Pot, Poisha)> postings,
     int? categoryId,
     int? loanId,
+    int? trackerId,
     String note = '',
   }) {
     assert(amount >= 0, 'Entry amounts are positive; postings carry the sign');
@@ -36,6 +37,7 @@ class LedgerRepository {
               amount: amount,
               categoryId: Value(categoryId),
               loanId: Value(loanId),
+              trackerId: Value(trackerId),
               note: Value(note),
             ),
           );
@@ -76,11 +78,13 @@ class LedgerRepository {
     required int categoryId,
     required Pot to,
     String note = '',
+    int? trackerId,
   }) => _write(
     date: date,
     type: EntryType.income,
     amount: amount,
     categoryId: categoryId,
+    trackerId: trackerId,
     postings: [(to, amount)],
     note: note,
   );
@@ -91,11 +95,13 @@ class LedgerRepository {
     required int categoryId,
     required Pot from,
     String note = '',
+    int? trackerId,
   }) => _write(
     date: date,
     type: EntryType.expense,
     amount: amount,
     categoryId: categoryId,
+    trackerId: trackerId,
     postings: [(from, -amount)],
     note: note,
   );
@@ -559,8 +565,148 @@ class LedgerRepository {
       note: note,
     );
     await setGoalAchieved(goalId, date);
+    await addPurchase(
+      item: note.isEmpty ? 'Purchase' : note,
+      date: date,
+      amount: price,
+      entryId: entryId,
+    );
     return entryId;
   });
+
+  // --------------------------------------------------------- investments
+
+  /// Adds an investment account with its details. [currentValue] is what
+  /// it is worth on [asOf] (already paid in before using the app).
+  Future<int> addInvestment({
+    required String name,
+    required InvestmentKind kind,
+    DateTime? startDate,
+    DateTime? maturityDate,
+    int? rateBp,
+    Poisha? instalment,
+    int? totalInstalments,
+    int openingInstalments = 0,
+    Poisha currentValue = 0,
+    required DateTime asOf,
+    required int investmentFund,
+    String note = '',
+  }) => db.transaction(() async {
+    final accountId = await db
+        .into(db.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            name: name.trim(),
+            type: AccountType.investment,
+            sortOrder: const Value(50),
+          ),
+        );
+    await db
+        .into(db.investmentDetails)
+        .insert(
+          InvestmentDetailsCompanion.insert(
+            accountId: Value(accountId),
+            kind: kind,
+            startDate: Value(startDate),
+            maturityDate: Value(maturityDate),
+            rateBp: Value(rateBp),
+            instalment: Value(instalment),
+            totalInstalments: Value(totalInstalments),
+            openingInstalments: Value(openingInstalments),
+            note: Value(note),
+          ),
+        );
+    if (currentValue != 0) {
+      await openingBalance(
+        asOf,
+        (account: accountId, fund: investmentFund),
+        currentValue,
+        note: 'Value when added',
+      );
+    }
+    return accountId;
+  });
+
+  Future<void> saveInvestmentDetails(InvestmentDetailsCompanion details) =>
+      db.into(db.investmentDetails).insertOnConflictUpdate(details);
+
+  /// Records a new current value (profit added, or a market price change).
+  Future<int?> updateInvestmentValue({
+    required int accountId,
+    required int investmentFund,
+    required Poisha currentValue,
+    required Poisha newValue,
+    required DateTime date,
+  }) async {
+    final delta = newValue - currentValue;
+    if (delta == 0) return null;
+    return adjust(
+      date,
+      (account: accountId, fund: investmentFund),
+      delta,
+      note: 'Value update (${formatTaka(delta, showPlus: true)})',
+    );
+  }
+
+  // ------------------------------------------------------------ purchases
+
+  Future<int> addPurchase({
+    required String item,
+    required DateTime date,
+    required Poisha amount,
+    int? entryId,
+    String shop = '',
+    DateTime? warrantyUntil,
+    String note = '',
+  }) => db
+      .into(db.purchases)
+      .insert(
+        PurchasesCompanion.insert(
+          item: item.trim(),
+          date: dateOnly(date),
+          amount: amount,
+          entryId: Value(entryId),
+          shop: Value(shop.trim()),
+          warrantyUntil: Value(warrantyUntil),
+          note: Value(note),
+        ),
+      );
+
+  Future<void> updatePurchase(int id, PurchasesCompanion changes) =>
+      (db.update(db.purchases)..where((p) => p.id.equals(id))).write(changes);
+
+  Future<void> deletePurchase(int id) =>
+      (db.delete(db.purchases)..where((p) => p.id.equals(id))).go();
+
+  // ------------------------------------------------------------- trackers
+
+  Future<int> addTracker({
+    required String name,
+    required TrackerKind kind,
+    required DateTime startDate,
+    DateTime? endDate,
+    Poisha? budget,
+    Poisha openingSpent = 0,
+  }) => db
+      .into(db.trackers)
+      .insert(
+        TrackersCompanion.insert(
+          name: name.trim(),
+          kind: kind,
+          startDate: dateOnly(startDate),
+          endDate: Value(endDate == null ? null : dateOnly(endDate)),
+          budget: Value(budget),
+          openingSpent: Value(openingSpent),
+        ),
+      );
+
+  Future<void> updateTracker(int id, TrackersCompanion changes) =>
+      (db.update(db.trackers)..where((t) => t.id.equals(id))).write(changes);
+
+  /// Tags (or untags, with null) an entry for a project or countdown.
+  Future<void> setEntryTracker(int entryId, int? trackerId) => (db.update(
+    db.entries,
+  )..where((e) => e.id.equals(entryId))).write(EntriesCompanion(trackerId: Value(trackerId)));
 
   // ------------------------------------------------------------ settings
 
