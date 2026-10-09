@@ -11,7 +11,10 @@ import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import '../cash/cash_screen.dart';
+import '../../ledger/reminders.dart';
 import '../investments/investments_screen.dart';
+import '../loans/loans_screen.dart';
+import '../more/backup_screen.dart';
 import '../setup/starting_balances_screen.dart';
 import 'month_tasks.dart';
 
@@ -39,24 +42,8 @@ class HomeScreen extends ConsumerWidget {
           children: [
             header,
             if (toClose != null) _CloseMonthBanner(period: toClose),
-            for (final i in ledger.maturingSoon(today))
-              SectionCard(
-                color: StatusColors.of(context).warnSoft,
-                onTap: () => openScreen(context, InvestmentScreen(accountId: i.account.id)),
-                children: [
-                  Text(
-                    '${i.account.name}: ${maturityText(i, today).toLowerCase()}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: StatusColors.of(context).warn,
-                    ),
-                  ),
-                  Text(
-                    '${formatTaka(i.value)} to take out or renew. Tap to open.',
-                    style: TextStyle(color: StatusColors.of(context).warn),
-                  ),
-                ],
-              ),
+            if (remindersFor(ledger, today) case final list when list.isNotEmpty)
+              _NeedsAttention(reminders: list),
             _LeftToSpend(summary: s, today: today),
             _ThisMonth(ledger: ledger, summary: s),
             _WhereAndWhat(ledger: ledger),
@@ -261,4 +248,57 @@ class _EmptyHome extends StatelessWidget {
       ),
     ],
   );
+}
+
+class _NeedsAttention extends StatelessWidget {
+  const _NeedsAttention({required this.reminders});
+
+  final List<Reminder> reminders;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = StatusColors.of(context);
+    void open(Reminder r) => switch (r.kind) {
+      ReminderKind.bill => context.go('/spend'),
+      ReminderKind.loanOverdue ||
+      ReminderKind.loanLong => openScreen(context, LoanScreen(loanId: r.id!)),
+      ReminderKind.maturity => openScreen(context, InvestmentScreen(accountId: r.id!)),
+      ReminderKind.backup => openScreen(context, const BackupScreen()),
+    };
+    IconData icon(ReminderKind k) => switch (k) {
+      ReminderKind.bill => Icons.receipt_long_outlined,
+      ReminderKind.loanOverdue || ReminderKind.loanLong => Icons.handshake_outlined,
+      ReminderKind.maturity => Icons.trending_up,
+      ReminderKind.backup => Icons.backup_outlined,
+    };
+    return SectionCard(
+      children: [
+        const Label('Needs attention'),
+        for (final r in reminders)
+          InkWell(
+            onTap: () => open(r),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                spacing: 12,
+                children: [
+                  Icon(icon(r.kind), color: r.urgent ? status.bad : status.warn),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(r.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(r.detail, style: TextStyle(color: status.muted, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 20),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }

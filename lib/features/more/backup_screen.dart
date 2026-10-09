@@ -8,7 +8,10 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../data/auto_backup.dart';
 import '../../data/backup.dart';
+import '../../ledger/ledger.dart';
+import '../../ledger/reminders.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 
@@ -141,6 +144,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   ),
                 ],
               ),
+              _AutoBackupCard(ledger: ledger),
               SectionCard(
                 children: [
                   const Label('Restore or move to a new phone'),
@@ -161,6 +165,75 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+/// The weekly automatic backup: on or off, where, and sharing the newest.
+class _AutoBackupCard extends ConsumerWidget {
+  const _AutoBackupCard({required this.ledger});
+
+  final Ledger ledger;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = StatusColors.of(context);
+    final on = ledger.settings[autoBackupOffSetting] != 'true';
+    final last = DateTime.tryParse(ledger.settings[autoBackupSetting] ?? '');
+    return SectionCard(
+      children: [
+        const Label('Automatic backup'),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Every week'),
+          subtitle: Text(
+            last == null
+                ? 'Made when you open the app; keeps the newest 8'
+                : 'Last: ${DateFormat.yMMMd().add_jm().format(last)} · keeps the newest 8',
+          ),
+          value: on,
+          onChanged: (v) =>
+              ref.read(repositoryProvider).setSetting(autoBackupOffSetting, v ? 'false' : 'true'),
+        ),
+        Text(
+          'Saved inside the app\'s own folder on this phone (Android/data). They survive '
+          'updates but not uninstalling, so share one off the phone now and then.',
+          style: TextStyle(color: status.muted, fontSize: 13),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.backup_outlined),
+              label: const Text('Back up now'),
+              onPressed: () async {
+                final file = await AutoBackup(ref.read(databaseProvider))
+                    .run(folder: await AutoBackup.defaultFolder());
+                if (context.mounted) showSnack(context, 'Saved ${file.uri.pathSegments.last}');
+              },
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.share_outlined),
+              label: const Text('Share newest'),
+              onPressed: () async {
+                final files = await AutoBackup.list(await AutoBackup.defaultFolder());
+                if (files.isEmpty) {
+                  if (context.mounted) showSnack(context, 'No automatic backup yet');
+                  return;
+                }
+                final file = files.first;
+                await SharePlus.instance.share(
+                  ShareParams(
+                    files: [XFile(file.path, mimeType: 'application/octet-stream')],
+                    subject: 'My Fin Tracker backup',
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

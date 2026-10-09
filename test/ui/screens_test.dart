@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -79,10 +80,15 @@ void main() {
         expect(find.text('October 2026'), findsOneWidget);
         expect(find.text('৳24,420'), findsWidgets);
         expect(find.text('≈ ৳1,018 a day for 24 days'), findsOneWidget);
-        expect(find.text('৳1,23,970'), findsOneWidget);
-        expect(find.text('৳1,32,920'), findsNWidgets(2));
         expect(find.text('✓ Balanced'), findsOneWidget);
         expect(find.text('September 2026 is over'), findsOneWidget);
+        expect(find.text('NEEDS ATTENTION'), findsOneWidget);
+        expect(find.text('No backup yet'), findsOneWidget);
+        expect(find.text('Water & Service due in 2 days'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('৳1,23,970'), 300);
+        expect(find.text('৳1,23,970'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('৳1,32,920').last, 300);
+        expect(find.text('৳1,32,920'), findsNWidgets(2));
         await tester.scrollUntilVisible(find.text('৳4,28,770'), 300);
         expect(find.text('৳4,28,770'), findsOneWidget);
       });
@@ -267,6 +273,23 @@ void main() {
         expect(find.text('Not closed yet'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('Everything'), 300);
         expect(find.text('2026'), findsWidgets);
+      });
+
+      testWidgets('each report is its own button for screen readers (${brightness.name})', (
+        tester,
+      ) async {
+        final handle = tester.ensureSemantics();
+        await pump(tester, const ReportsScreen(), sample, brightness: brightness, fullScreen: true);
+        await tester.scrollUntilVisible(find.text('Year so far'), 300);
+        for (final label in ['September 2026', 'Year so far']) {
+          final node = tester.getSemantics(find.text(label));
+          expect(
+            node.getSemanticsData().hasAction(SemanticsAction.tap),
+            isTrue,
+            reason: '$label should be tappable on its own',
+          );
+        }
+        handle.dispose();
       });
 
       testWidgets('spend chart (${brightness.name})', (tester) async {

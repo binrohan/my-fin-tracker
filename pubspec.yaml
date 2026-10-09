@@ -47,6 +47,9 @@ dependencies:
   pdf: ^3.13.1
   printing: ^5.15.1
   package_info_plus: ^10.2.2
+  local_auth: ^3.0.2
+  quick_actions: ^1.1.1
+  home_widget: ^0.10.0
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +78,20 @@ flutter:
   # Fonts for PDF reports (IBM Plex, with Hind Siliguri for ৳). SIL OFL.
   assets:
     - assets/fonts/
+
+  fonts:
+    - family: IBMPlexSans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSans-Bold.ttf
+          weight: 700
+    - family: HindSiliguri
+      fonts:
+        - asset: assets/fonts/HindSiliguri-Regular.ttf
+        - asset: assets/fonts/HindSiliguri-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/appearance.dart';
+import '../../app/integrations.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../data/default_data.dart';
@@ -174,6 +175,28 @@ class MoreScreen extends ConsumerWidget {
             SectionCard(
               children: [
                 const Label('Rules'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.fingerprint),
+                  title: const Text('App lock'),
+                  subtitle: const Text('Fingerprint or phone PIN to open the app'),
+                  value: ledger.settings[appLockSetting] == 'true',
+                  onChanged: (on) async {
+                    final repo = ref.read(repositoryProvider);
+                    if (!on) {
+                      await repo.setSetting(appLockSetting, 'false');
+                      return;
+                    }
+                    if (await confirmAppLockAvailable()) {
+                      await repo.setSetting(appLockSetting, 'true');
+                    } else if (context.mounted) {
+                      showSnack(
+                        context,
+                        'Set up a fingerprint or screen lock in your phone Settings first',
+                      );
+                    }
+                  },
+                ),
                 item(
                   Icons.percent,
                   'Charge when borrowing from savings',

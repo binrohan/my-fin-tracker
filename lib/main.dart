@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/appearance.dart';
+import 'app/integrations.dart';
 import 'app/router.dart';
 import 'app/theme.dart';
 
@@ -34,6 +35,7 @@ class MyFinTrackerApp extends ConsumerWidget {
       theme: buildTheme(Brightness.light, palette: look.palette),
       darkTheme: buildTheme(Brightness.dark, palette: look.palette, pureBlack: look.pureBlack),
       routerConfig: router,
+      builder: (context, child) => AppIntegrations(child: child!),
     );
   }
 }

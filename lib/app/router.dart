@@ -8,7 +8,11 @@ import '../features/more/more_screen.dart';
 import '../features/save/save_screen.dart';
 import '../features/spend/spend_screen.dart';
 
+/// Lets code outside any screen (widget and shortcut taps) open sheets.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   routes: [
     StatefulShellRoute.indexedStack(

@@ -189,7 +189,14 @@ ThemeData buildTheme(
     surfaceContainerHighest: status.sunk,
   );
 
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme, brightness: brightness);
+  // IBM Plex Sans as in the designs; Hind Siliguri covers ৳ and Bangla.
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    brightness: brightness,
+    fontFamily: 'IBMPlexSans',
+    fontFamilyFallback: const ['HindSiliguri'],
+  );
   return base.copyWith(
     scaffoldBackgroundColor: bg,
     extensions: [status],
