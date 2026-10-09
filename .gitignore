@@ -52,3 +52,6 @@ app.*.map.json
 *.keystore
 android/key.properties
 myfin-release.jks
+
+# Built APKs to keep a copy of
+/release/
