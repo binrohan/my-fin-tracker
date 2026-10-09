@@ -164,7 +164,7 @@ class ReportPreviewScreen extends ConsumerWidget {
   final Period? period;
   final int? year;
 
-  String get _title => period != null ? 'Report · ${period!.label}' : 'Annual report · $year';
+  String get _title => period != null ? period!.label : 'Annual $year';
 
   String get _fileName =>
       period != null ? monthlyReportFileName(period!) : annualReportFileName(year!);
@@ -181,7 +181,24 @@ class ReportPreviewScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(_title),
         actions: [
-          if (ledger != null && fonts != null)
+          // Labelled buttons here instead of the preview's own unlabelled
+          // print and share bar, so screen readers can name them.
+          if (ledger != null && fonts != null) ...[
+            IconButton(
+              tooltip: 'Share',
+              icon: const Icon(Icons.share_outlined),
+              onPressed: () async =>
+                  Printing.sharePdf(bytes: await _build(ledger, fonts), filename: _fileName),
+            ),
+            IconButton(
+              tooltip: 'Print',
+              icon: const Icon(Icons.print_outlined),
+              onPressed: () => Printing.layoutPdf(
+                name: _fileName,
+                format: PdfPageFormat.a4,
+                onLayout: (_) => _build(ledger, fonts),
+              ),
+            ),
             IconButton(
               tooltip: 'Save to phone',
               icon: const Icon(Icons.save_alt),
@@ -195,6 +212,7 @@ class ReportPreviewScreen extends ConsumerWidget {
                 if (uri != null && context.mounted) showSnack(context, 'Saved $_fileName');
               },
             ),
+          ],
         ],
       ),
       body: ledger == null || fonts == null
@@ -205,6 +223,7 @@ class ReportPreviewScreen extends ConsumerWidget {
               canChangePageFormat: false,
               canChangeOrientation: false,
               canDebug: false,
+              useActions: false,
               pdfFileName: _fileName,
             ),
     );
