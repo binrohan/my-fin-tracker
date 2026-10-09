@@ -9,6 +9,7 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../reports/reports_screen.dart';
 
 const leftoverSetting = 'month_leftover';
 const leftoverCarry = 'carry_forward';
@@ -227,8 +228,18 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
             );
             await repo.setSetting(leftoverSetting, _leftover!);
             if (!context.mounted) return;
+            final navigator = Navigator.of(context, rootNavigator: true);
             Navigator.pop(context);
-            showSnack(context, '${p.label} closed');
+            showSnack(
+              context,
+              '${p.label} closed',
+              action: SnackBarAction(
+                label: 'View report',
+                onPressed: () => navigator.push(
+                  MaterialPageRoute<void>(builder: (_) => ReportPreviewScreen.monthly(p)),
+                ),
+              ),
+            );
           },
           child: Text('Close ${p.label}'),
         ),

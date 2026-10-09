@@ -143,7 +143,9 @@ class EntryTile extends StatelessWidget {
       ),
       title: Text(entryTitle(ledger, entry), maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(entryDetail(ledger, entry), maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: entry.type == EntryType.move
+      // Moves, and loans between your own pots, change no total: show the
+      // amount in grey rather than a net of zero.
+      trailing: entry.type == EntryType.move || signed == 0
           ? Money(entry.amount, color: status.muted)
           : Money(signed, showPlus: true, color: signed < 0 ? status.bad : status.good),
       onTap: () => showEntryDetails(context, entry),

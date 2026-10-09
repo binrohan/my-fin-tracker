@@ -335,10 +335,14 @@ class Ledger {
 
   // -------------------------------------------------------------- loans
 
-  LoanStatus loanStatus(Loan loan) {
+  /// A loan's position now, or on the day before [before].
+  LoanStatus loanStatus(Loan loan, {DateTime? before}) {
     final repaid = entries
         .where(
-          (e) => e.loanId == loan.id && (e.type == EntryType.repay || e.type == EntryType.collect),
+          (e) =>
+              e.loanId == loan.id &&
+              (e.type == EntryType.repay || e.type == EntryType.collect) &&
+              (before == null || e.date.isBefore(before)),
         )
         .fold<Poisha>(loan.openingRepaid, (t, e) => t + e.amount);
     return LoanStatus(loan: loan, repaid: repaid);
@@ -422,8 +426,8 @@ class Ledger {
 
   // ---------------------------------------------------------- investments
 
-  InvestmentStatus investmentStatus(Account account) {
-    final own = lines.where((l) => l.accountId == account.id);
+  InvestmentStatus investmentStatus(Account account, {DateTime? before}) {
+    final own = _between(before: before).where((l) => l.accountId == account.id);
     final paidIn = own.where((l) => l.type == EntryType.move && l.amount > 0);
     return InvestmentStatus(
       account: account,
@@ -500,6 +504,60 @@ class Ledger {
   ];
 
   Purchase? purchaseFor(int entryId) => purchases.where((p) => p.entryId == entryId).firstOrNull;
+
+  // -------------------------------------------------------------- reports
+
+  /// How a fund's spendable balance changed during a month.
+  FundMovement fundMovement(int fundId, Period p) {
+    final inP = _between(
+      from: p.start,
+      before: p.end,
+    ).where((l) => l.fundId == fundId && isLiquid(l.accountId));
+    Poisha sum(bool Function(PostingLine) test) => _sum(inP.where(test));
+    return FundMovement(
+      opening: fundBalance(fundId, before: p.start),
+      closing: fundBalance(fundId, before: p.end),
+      deposits: sum((l) => l.type == EntryType.move && l.amount > 0),
+      withdrawals: sum((l) => l.type == EntryType.move && l.amount < 0),
+      borrowedOut: sum((l) => l.type == EntryType.borrow && l.amount < 0),
+      repaidIn: sum((l) => l.type == EntryType.repay && l.amount > 0),
+      spent: sum((l) => l.type == EntryType.expense),
+      other: sum(
+        (l) =>
+            !(l.type == EntryType.move ||
+                (l.type == EntryType.borrow && l.amount < 0) ||
+                (l.type == EntryType.repay && l.amount > 0) ||
+                l.type == EntryType.expense),
+      ),
+    );
+  }
+
+  /// What Spending sent where during a month: savings pots, goals and
+  /// investments, by the kind of fund that received it.
+  Map<FundKind, Poisha> setAsideByKind(Period p) {
+    final spending = spendingFund.id;
+    final result = <FundKind, Poisha>{};
+    final moves = entries.where((e) => e.type == EntryType.move && p.contains(e.date));
+    for (final e in moves) {
+      final postings = postingsOf(e.id);
+      if (!postings.any((l) => l.fundId == spending && l.amount < 0)) continue;
+      for (final l in postings.where((l) => l.amount > 0 && l.fundId != spending)) {
+        final kind = funds[l.fundId]!.kind;
+        result.update(kind, (v) => v + l.amount, ifAbsent: () => l.amount);
+      }
+    }
+    return result;
+  }
+
+  /// Loans that were open at some point during the month.
+  List<LoanStatus> loansDuring(Period p) => [
+    for (final l in loans)
+      if (!l.date.isAfter(p.end) &&
+          (loanStatus(l, before: p.start).remaining > 0 ||
+              !l.date.isBefore(p.start) ||
+              loanEntries(l.id).any((e) => p.contains(e.date))))
+        loanStatus(l, before: p.end),
+  ];
 
   /// Total still owed back to a fund by own-savings loans.
   Poisha owedToFund(int fundId) => openLoans()
@@ -716,4 +774,32 @@ class TrackerStatus {
       (tracker.budget ?? 0) <= 0 ? 0 : (spent / tracker.budget!).clamp(0, 1).toDouble();
 
   int? daysLeft(DateTime today) => tracker.endDate?.difference(dateOnly(today)).inDays;
+}
+
+class FundMovement {
+  const FundMovement({
+    required this.opening,
+    required this.closing,
+    required this.deposits,
+    required this.withdrawals,
+    required this.borrowedOut,
+    required this.repaidIn,
+    required this.spent,
+    required this.other,
+  });
+
+  final Poisha opening;
+  final Poisha closing;
+
+  /// Moves in (positive) and out (negative).
+  final Poisha deposits;
+  final Poisha withdrawals;
+
+  /// Borrowed from the fund (negative) and paid back into it (positive).
+  final Poisha borrowedOut;
+  final Poisha repaidIn;
+
+  /// Expenses paid straight from the fund (negative).
+  final Poisha spent;
+  final Poisha other;
 }

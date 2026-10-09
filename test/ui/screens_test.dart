@@ -10,6 +10,7 @@ import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/features/buying/buying_screen.dart';
 import 'package:my_fin_tracker/features/cash/cash_screen.dart';
 import 'package:my_fin_tracker/features/investments/investments_screen.dart';
+import 'package:my_fin_tracker/features/reports/reports_screen.dart';
 import 'package:my_fin_tracker/features/trackers/trackers_screen.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
 import 'package:my_fin_tracker/features/loans/loans_screen.dart';
@@ -242,6 +243,31 @@ void main() {
         final lamp = find.textContaining('Desk lamp  Sep 18', findRichText: true);
         await tester.scrollUntilVisible(lamp, 300);
         expect(lamp, findsOneWidget);
+      });
+    }
+  });
+
+  group('Phase 5 screens', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('reports list (${brightness.name})', (tester) async {
+        await pump(tester, const ReportsScreen(), sample, brightness: brightness, fullScreen: true);
+        expect(find.text('October 2026'), findsOneWidget);
+        expect(find.text('In progress'), findsOneWidget);
+        expect(find.text('September 2026'), findsOneWidget);
+        expect(find.text('Not closed yet'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('Everything'), 300);
+        expect(find.text('2026'), findsWidgets);
+      });
+
+      testWidgets('spend chart (${brightness.name})', (tester) async {
+        await pump(tester, const SpendScreen(), sample, brightness: brightness);
+        await tester.scrollUntilVisible(find.text('LAST 6 MONTHS'), 300);
+        expect(find.text('Sep'), findsOneWidget);
+        expect(find.text('Oct'), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(RegExp(r'Spending by month\. Sep: ৳54,380 of ৳54,280')),
+          findsOneWidget,
+        );
       });
     }
   });

@@ -17,6 +17,7 @@ import '../investments/investments_screen.dart';
 import '../trackers/trackers_screen.dart';
 import '../entries/entries_screen.dart';
 import '../loans/loans_screen.dart';
+import '../reports/reports_screen.dart';
 import '../home/month_tasks.dart';
 import '../setup/accounts_screen.dart';
 import '../setup/allocation_screen.dart';
@@ -75,6 +76,25 @@ class MoreScreen extends ConsumerWidget {
                         days == 0 ? 'Today' : '$days days ago',
                         tone: days <= 7 ? ChipTone.good : ChipTone.warn,
                       ),
+                  ],
+                ),
+              ],
+            ),
+            SectionCard(
+              onTap: () => openScreen(context, const ReportsScreen()),
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.picture_as_pdf_outlined),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Reports & export',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Text('PDF · CSV', style: TextStyle(color: status.muted)),
+                    const Icon(Icons.chevron_right),
                   ],
                 ),
               ],
@@ -221,7 +241,7 @@ class MoreScreen extends ConsumerWidget {
             ),
             Center(
               child: Text(
-                'My Fin Tracker · Phase 4',
+                'My Fin Tracker · Phase 5',
                 style: TextStyle(color: status.muted, fontSize: 12),
               ),
             ),

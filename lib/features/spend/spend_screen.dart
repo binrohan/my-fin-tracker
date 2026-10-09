@@ -9,6 +9,7 @@ import '../../core/period.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../data/ledger_repository.dart';
+import '../../ui/charts.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import '../entries/entries_screen.dart';
@@ -30,6 +31,23 @@ class SpendScreen extends ConsumerWidget {
         final status = StatusColors.of(context);
 
         final bills = ledger.unpaidFixedBills(period);
+        final history = <MonthBar>[
+          for (
+            var p = Period.of(DateTime(period.year, period.month - 5));
+            p.compareTo(period) <= 0;
+            p = p.next
+          )
+            if (ledger.entries.any((e) => p.contains(e.date) && e.type != EntryType.opening))
+              () {
+                final s = ledger.summary(p);
+                return (
+                  label: DateFormat.MMM().format(p.start),
+                  actual: s.expenses,
+                  budget: s.budget,
+                  current: p == period,
+                );
+              }(),
+        ];
         final billsTotal = bills.fold<Poisha>(0, (t, b) => t + b.remaining);
         return PageList(
           children: [
@@ -78,6 +96,13 @@ class SpendScreen extends ConsumerWidget {
                 ],
               ],
             ),
+            if (history.length > 1)
+              SectionCard(
+                children: [
+                  const Label('Last 6 months'),
+                  MonthBars(bars: history),
+                ],
+              ),
             if (bills.isNotEmpty)
               FilledButton.tonal(
                 onPressed: () => _payBills(context, ref, ledger, bills),
