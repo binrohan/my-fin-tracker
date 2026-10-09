@@ -21,9 +21,46 @@ class AllocationItem {
   Map<String, dynamic> toJson() => {'fund': fundId, 'amount': amount, 'account': ?accountId};
 }
 
-/// What to set aside when a salary (or another chosen income) arrives.
+/// A regular income: how much, around which day of the month, and where
+/// it usually arrives.
+class IncomeSource {
+  const IncomeSource({required this.categoryId, required this.amount, this.day, this.accountId});
+
+  factory IncomeSource.fromJson(Map<String, dynamic> json) => IncomeSource(
+    categoryId: json['category'] as int,
+    amount: json['amount'] as int,
+    day: json['day'] as int?,
+    accountId: json['account'] as int?,
+  );
+
+  final int categoryId;
+  final Poisha amount;
+
+  /// Day of the month it usually arrives; the app asks about it from then on.
+  final int? day;
+
+  /// Where it usually arrives: a bank account, or cash.
+  final int? accountId;
+
+  Map<String, dynamic> toJson() => {
+    'category': categoryId,
+    'amount': amount,
+    'day': ?day,
+    'account': ?accountId,
+  };
+}
+
+/// The monthly plan: what comes in ([incomes]), how much of it is for
+/// monthly expenses ([expenseTarget]), and what is set aside to savings,
+/// goals and investments ([items]) when the main income ([categoryId])
+/// arrives.
 class AllocationPlan {
-  const AllocationPlan({this.categoryId, this.items = const []});
+  const AllocationPlan({
+    this.categoryId,
+    this.items = const [],
+    this.incomes = const [],
+    this.expenseTarget,
+  });
 
   static const settingKey = 'allocation_plan';
 
@@ -33,21 +70,50 @@ class AllocationPlan {
     return AllocationPlan(
       categoryId: map['category'] as int?,
       items: [
-        for (final item in map['items'] as List)
+        for (final item in (map['items'] as List? ?? const []))
           AllocationItem.fromJson(item as Map<String, dynamic>),
       ],
+      incomes: [
+        for (final item in (map['incomes'] as List? ?? const []))
+          IncomeSource.fromJson(item as Map<String, dynamic>),
+      ],
+      expenseTarget: map['expenses'] as int?,
     );
   }
 
-  /// The income category that triggers the plan, usually Salary.
+  /// The income that triggers setting money aside, usually Salary.
   final int? categoryId;
   final List<AllocationItem> items;
+  final List<IncomeSource> incomes;
 
+  /// The part of the income meant for monthly expenses.
+  final Poisha? expenseTarget;
+
+  /// Set aside to savings, goals and investments.
   Poisha get total => items.fold(0, (t, i) => t + i.amount);
   bool get isEmpty => items.isEmpty;
+
+  Poisha get plannedIncome => incomes.fold(0, (t, i) => t + i.amount);
+
+  /// Income not yet given a purpose (negative: more planned than earned).
+  Poisha get unassigned => plannedIncome - (expenseTarget ?? 0) - total;
+
+  AllocationPlan copyWith({
+    int? categoryId,
+    List<AllocationItem>? items,
+    List<IncomeSource>? incomes,
+    Poisha? expenseTarget,
+  }) => AllocationPlan(
+    categoryId: categoryId ?? this.categoryId,
+    items: items ?? this.items,
+    incomes: incomes ?? this.incomes,
+    expenseTarget: expenseTarget ?? this.expenseTarget,
+  );
 
   String encode() => jsonEncode({
     'category': categoryId,
     'items': [for (final i in items) i.toJson()],
+    'incomes': [for (final i in incomes) i.toJson()],
+    'expenses': ?expenseTarget,
   });
 }

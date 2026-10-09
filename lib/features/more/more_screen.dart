@@ -21,9 +21,8 @@ import '../entries/entries_screen.dart';
 import '../loans/loans_screen.dart';
 import '../reports/reports_screen.dart';
 import '../home/month_tasks.dart';
+import '../plan/monthly_plan_screen.dart';
 import '../setup/accounts_screen.dart';
-import '../setup/allocation_screen.dart';
-import '../setup/budgets_screen.dart';
 import '../setup/categories_screen.dart';
 import '../setup/starting_balances_screen.dart';
 import 'backup_screen.dart';
@@ -124,15 +123,11 @@ class MoreScreen extends ConsumerWidget {
                 ),
                 item(
                   Icons.pie_chart_outline,
-                  'Budgets',
-                  'Monthly amount per category',
-                  () => openScreen(context, const BudgetsScreen()),
-                ),
-                item(
-                  Icons.call_split,
-                  'Salary plan',
-                  plan.isEmpty ? 'Not set' : '${formatTaka(plan.total)} set aside each salary',
-                  () => openScreen(context, const AllocationScreen()),
+                  'Monthly plan',
+                  plan.plannedIncome == 0
+                      ? 'Income, how it is split, expense budget'
+                      : '${formatTaka(plan.plannedIncome)} income · ${formatTaka(plan.total)} set aside',
+                  () => openScreen(context, const MonthlyPlanScreen()),
                 ),
                 item(
                   Icons.handshake_outlined,

@@ -3,7 +3,7 @@ import '../core/period.dart';
 import 'enums.dart';
 import 'ledger.dart';
 
-enum ReminderKind { bill, loanOverdue, loanLong, maturity, backup }
+enum ReminderKind { income, bill, loanOverdue, loanLong, maturity, backup }
 
 /// Something that needs your attention, worst first.
 class Reminder {
@@ -36,6 +36,21 @@ List<Reminder> remindersFor(Ledger ledger, DateTime today, {int billDays = 3}) {
   final day = dateOnly(today);
   final period = Period.of(day);
   final list = <Reminder>[];
+
+  for (final income in ledger.incomesDue(day)) {
+    final name = ledger.categories[income.categoryId]!.name;
+    final where = ledger.accounts[income.accountId]?.name;
+    list.add(
+      Reminder(
+        kind: ReminderKind.income,
+        title: 'Has your $name arrived?',
+        detail:
+            '${formatTaka(income.amount)} expected${where == null ? '' : ' in $where'} · tap to record',
+        urgent: false,
+        id: income.categoryId,
+      ),
+    );
+  }
 
   for (final bill in ledger.unpaidFixedBills(period)) {
     final due = bill.category.dueDay;

@@ -15,6 +15,7 @@ import '../../ledger/reminders.dart';
 import '../investments/investments_screen.dart';
 import '../loans/loans_screen.dart';
 import '../more/backup_screen.dart';
+import '../plan/record_income_sheet.dart';
 import '../setup/starting_balances_screen.dart';
 import 'month_tasks.dart';
 
@@ -43,7 +44,7 @@ class HomeScreen extends ConsumerWidget {
             header,
             if (toClose != null) _CloseMonthBanner(period: toClose),
             if (remindersFor(ledger, today) case final list when list.isNotEmpty)
-              _NeedsAttention(reminders: list),
+              _NeedsAttention(ledger: ledger, reminders: list),
             _LeftToSpend(summary: s, today: today),
             _ThisMonth(ledger: ledger, summary: s),
             _WhereAndWhat(ledger: ledger),
@@ -251,14 +252,19 @@ class _EmptyHome extends StatelessWidget {
 }
 
 class _NeedsAttention extends StatelessWidget {
-  const _NeedsAttention({required this.reminders});
+  const _NeedsAttention({required this.ledger, required this.reminders});
 
+  final Ledger ledger;
   final List<Reminder> reminders;
 
   @override
   Widget build(BuildContext context) {
     final status = StatusColors.of(context);
     void open(Reminder r) => switch (r.kind) {
+      ReminderKind.income => showRecordIncome(
+        context,
+        ledger.plan.incomes.firstWhere((i) => i.categoryId == r.id),
+      ),
       ReminderKind.bill => context.go('/spend'),
       ReminderKind.loanOverdue ||
       ReminderKind.loanLong => openScreen(context, LoanScreen(loanId: r.id!)),
@@ -266,6 +272,7 @@ class _NeedsAttention extends StatelessWidget {
       ReminderKind.backup => openScreen(context, const BackupScreen()),
     };
     IconData icon(ReminderKind k) => switch (k) {
+      ReminderKind.income => Icons.savings_outlined,
       ReminderKind.bill => Icons.receipt_long_outlined,
       ReminderKind.loanOverdue || ReminderKind.loanLong => Icons.handshake_outlined,
       ReminderKind.maturity => Icons.trending_up,

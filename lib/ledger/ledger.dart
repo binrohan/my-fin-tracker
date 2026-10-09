@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show OrderingTerm, innerJoin;
 import '../core/money.dart';
 import '../core/period.dart';
 import '../data/database.dart';
+import 'allocation.dart';
 import 'enums.dart';
 
 /// A posting together with the entry it belongs to.
@@ -244,7 +245,13 @@ class Ledger {
         category: c,
         children: children,
         actual: (actual[c.id] ?? 0) + children.fold(0, (t, l) => t + l.actual),
-        budget: budget[c.id] ?? children.fold(0, (t, l) => t + l.budget),
+        // A section with its own budget keeps it; otherwise it is the sum
+        // of its subsections.
+        budget: children.isEmpty
+            ? budget[c.id] ?? 0
+            : (budget[c.id] ?? 0) > 0
+            ? budget[c.id]!
+            : children.fold(0, (t, l) => t + l.budget),
       );
     }
 
@@ -558,6 +565,28 @@ class Ledger {
               loanEntries(l.id).any((e) => p.contains(e.date))))
         loanStatus(l, before: p.end),
   ];
+
+  // --------------------------------------------------------- monthly plan
+
+  AllocationPlan get plan => AllocationPlan.parse(settings[AllocationPlan.settingKey]);
+
+  /// Planned incomes whose day has come this month but which have not been
+  /// recorded yet.
+  List<IncomeSource> incomesDue(DateTime today) {
+    final p = Period.of(today);
+    final received = {
+      for (final e in entries)
+        if (e.type == EntryType.income && p.contains(e.date)) e.categoryId,
+    };
+    return [
+      for (final i in plan.incomes)
+        if (i.day != null &&
+            today.day >= i.day!.clamp(1, p.daysInMonth) &&
+            !received.contains(i.categoryId) &&
+            categories[i.categoryId] != null)
+          i,
+    ];
+  }
 
   /// Total still owed back to a fund by own-savings loans.
   Poisha owedToFund(int fundId) => openLoans()

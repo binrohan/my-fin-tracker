@@ -13,7 +13,9 @@ import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/features/buying/buying_screen.dart';
 import 'package:my_fin_tracker/features/cash/cash_screen.dart';
 import 'package:my_fin_tracker/features/investments/investments_screen.dart';
+import 'package:my_fin_tracker/features/plan/monthly_plan_screen.dart';
 import 'package:my_fin_tracker/features/reports/reports_screen.dart';
+import 'package:my_fin_tracker/features/setup/starting_balances_screen.dart';
 import 'package:my_fin_tracker/features/trackers/trackers_screen.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
 import 'package:my_fin_tracker/features/loans/loans_screen.dart';
@@ -59,8 +61,8 @@ void main() {
             (ref) async => PackageInfo(
               appName: 'My Fin Tracker',
               packageName: 'com.myfin.my_fin_tracker',
-              version: '1.0.0',
-              buildNumber: '7',
+              version: '1.0.1',
+              buildNumber: '8',
             ),
           ),
         ],
@@ -312,7 +314,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Ocean blue'), findsOneWidget);
       expect(find.text('Plum'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Version 1.0.0 (build 7)'), 300);
+      await tester.scrollUntilVisible(find.text('Version 1.0.1 (build 8)'), 300);
       expect(find.text('Open-source licences'), findsOneWidget);
     });
 
@@ -366,6 +368,74 @@ void main() {
         expect(find.text('৳24,420'), findsWidgets);
       });
     }
+  });
+
+  group('Feedback screens', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('monthly plan, all three tabs (${brightness.name})', (tester) async {
+        await pump(
+          tester,
+          const MonthlyPlanScreen(),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
+        expect(find.text('Income'), findsWidgets);
+        expect(find.text('Add income source'), findsOneWidget);
+        expect(find.text('Usually arrives in'), findsWidgets);
+        await tester.tap(find.text('Split'));
+        await tester.pumpAndSettle();
+        expect(find.text('MONTHLY EXPENSES'), findsOneWidget);
+        expect(find.text('New goal'), findsOneWidget);
+        await tester.tap(find.text('Expenses'));
+        await tester.pumpAndSettle();
+        expect(find.text('Fixed'), findsOneWidget);
+        expect(find.text('House Rent'), findsOneWidget);
+        expect(find.text('Adds up'), findsWidgets);
+        await tester.scrollUntilVisible(
+          find.text('Add section'),
+          300,
+          scrollable: find
+              .byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)
+              .last,
+        );
+        expect(find.text('Add section'), findsOneWidget);
+      });
+
+      testWidgets('starting balances (${brightness.name})', (tester) async {
+        await pump(
+          tester,
+          const StartingBalancesScreen(),
+          sample,
+          brightness: brightness,
+          fullScreen: true,
+        );
+        expect(find.text('YOUR MONEY'), findsOneWidget);
+        expect(find.widgetWithText(TextButton, 'Bank account'), findsOneWidget);
+        expect(find.widgetWithText(TextButton, 'Mobile wallet'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('Add savings'),
+          300,
+          scrollable: find
+              .byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)
+              .first,
+        );
+        await tester.ensureVisible(find.text('Add savings'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Add savings'));
+        await tester.pumpAndSettle();
+        expect(find.text('Savings or goal'), findsOneWidget);
+        expect(find.text('Kept in'), findsOneWidget);
+      });
+    }
+
+    testWidgets('the expense tab shows when subsections do not add up', (tester) async {
+      await pump(tester, const MonthlyPlanScreen(initialTab: 2), sample, fullScreen: true);
+      final rent = find.ancestor(of: find.text('House Rent'), matching: find.byType(Row)).first;
+      await tester.enterText(find.descendant(of: rent, matching: find.byType(TextField)), '24000');
+      await tester.pumpAndSettle();
+      expect(find.text('৳1,000 left to assign'), findsOneWidget);
+    });
   });
 
   testWidgets('Home before any entries', (tester) async {

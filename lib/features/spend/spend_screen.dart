@@ -13,7 +13,7 @@ import '../../ui/charts.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import '../entries/entries_screen.dart';
-import '../setup/budgets_screen.dart';
+import '../plan/monthly_plan_screen.dart';
 
 class SpendScreen extends ConsumerWidget {
   const SpendScreen({super.key});
@@ -55,7 +55,7 @@ class SpendScreen extends ConsumerWidget {
               'Expenses',
               subtitle: period.label,
               trailing: OutlinedButton.icon(
-                onPressed: () => openScreen(context, const BudgetsScreen()),
+                onPressed: () => openScreen(context, const MonthlyPlanScreen(initialTab: 2)),
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Budgets'),
               ),
