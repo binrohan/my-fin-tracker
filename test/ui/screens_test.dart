@@ -3,6 +3,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:my_fin_tracker/app/appearance.dart';
 import 'package:my_fin_tracker/app/providers.dart';
 import 'package:my_fin_tracker/app/theme.dart';
 import 'package:my_fin_tracker/data/database.dart';
@@ -52,6 +54,14 @@ void main() {
         overrides: [
           ledgerProvider.overrideWith((ref) => Stream.value(ledger)),
           todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
+          packageInfoProvider.overrideWith(
+            (ref) async => PackageInfo(
+              appName: 'My Fin Tracker',
+              packageName: 'com.myfin.my_fin_tracker',
+              version: '0.6.0',
+              buildNumber: '6',
+            ),
+          ),
         ],
         child: MaterialApp(
           theme: buildTheme(brightness),
@@ -268,6 +278,69 @@ void main() {
           find.bySemanticsLabel(RegExp(r'Spending by month\. Sep: ৳54,380 of ৳54,280')),
           findsOneWidget,
         );
+      });
+    }
+  });
+
+  group('Appearance', () {
+    testWidgets('section and about card', (tester) async {
+      await pump(tester, const MoreScreen(), sample);
+      await tester.scrollUntilVisible(find.text('Pitch black'), 300);
+      expect(find.text('System'), findsOneWidget);
+      expect(find.text('Ocean blue'), findsOneWidget);
+      expect(find.text('Plum'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Version 0.6.0 (build 6)'), 300);
+      expect(find.text('Open-source licences'), findsOneWidget);
+    });
+
+    test('settings are read with safe defaults', () {
+      expect(Appearance.fromSettings({}).mode, ThemeMode.system);
+      final a = Appearance.fromSettings({
+        Appearance.modeKey: 'dark',
+        Appearance.paletteKey: 'plum',
+        Appearance.pureBlackKey: 'true',
+      });
+      expect(a.mode, ThemeMode.dark);
+      expect(a.palette, AppPalette.plum);
+      expect(a.pureBlack, isTrue);
+      expect(
+        Appearance.fromSettings({Appearance.paletteKey: 'nonsense'}).palette,
+        AppPalette.green,
+      );
+    });
+
+    test('pitch black is black only in dark mode', () {
+      expect(buildTheme(Brightness.dark, pureBlack: true).scaffoldBackgroundColor, Colors.black);
+      expect(
+        buildTheme(Brightness.light, pureBlack: true).scaffoldBackgroundColor,
+        isNot(Colors.black),
+      );
+      expect(buildTheme(Brightness.dark).scaffoldBackgroundColor, isNot(Colors.black));
+      expect(
+        buildTheme(Brightness.light, palette: AppPalette.blue).colorScheme.primary,
+        isNot(buildTheme(Brightness.light).colorScheme.primary),
+      );
+    });
+
+    for (final palette in AppPalette.values) {
+      testWidgets('home in ${palette.name}, pitch black', (tester) async {
+        tester.view.physicalSize = const Size(1080, 2340);
+        tester.view.devicePixelRatio = 1080 / 384;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              ledgerProvider.overrideWith((ref) => Stream.value(sample)),
+              todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
+            ],
+            child: MaterialApp(
+              theme: buildTheme(Brightness.dark, palette: palette, pureBlack: true),
+              home: const Scaffold(body: HomeScreen()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('৳24,420'), findsWidgets);
       });
     }
   });

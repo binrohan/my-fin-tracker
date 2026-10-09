@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/appearance.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../data/default_data.dart';
@@ -189,6 +190,8 @@ class MoreScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            const _AppearanceCard(),
+            const _AboutCard(),
             SectionCard(
               children: [
                 const Label('Example data'),
@@ -241,7 +244,7 @@ class MoreScreen extends ConsumerWidget {
             ),
             Center(
               child: Text(
-                'My Fin Tracker · Phase 5',
+                'My Fin Tracker ${ref.watch(packageInfoProvider).value?.version ?? ''}',
                 style: TextStyle(color: status.muted, fontSize: 12),
               ),
             ),
@@ -301,5 +304,127 @@ class MoreScreen extends ConsumerWidget {
       ),
     );
     if (value != null) await ref.read(repositoryProvider).setSetting(leftoverSetting, value);
+  }
+}
+
+/// Light / dark / system, colour scheme, and pitch black for OLED.
+class _AppearanceCard extends ConsumerWidget {
+  const _AppearanceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final look = ref.watch(appearanceProvider);
+    final repo = ref.read(repositoryProvider);
+    final status = StatusColors.of(context);
+    final darkNow = Theme.of(context).brightness == Brightness.dark;
+
+    return SectionCard(
+      children: [
+        const Label('Appearance'),
+        SegmentedButton<ThemeMode>(
+          segments: const [
+            ButtonSegment(
+              value: ThemeMode.system,
+              icon: Icon(Icons.brightness_auto_outlined),
+              label: Text('System'),
+            ),
+            ButtonSegment(
+              value: ThemeMode.light,
+              icon: Icon(Icons.light_mode_outlined),
+              label: Text('Light'),
+            ),
+            ButtonSegment(
+              value: ThemeMode.dark,
+              icon: Icon(Icons.dark_mode_outlined),
+              label: Text('Dark'),
+            ),
+          ],
+          selected: {look.mode},
+          showSelectedIcon: false,
+          onSelectionChanged: (s) => repo.setSetting(Appearance.modeKey, s.single.name),
+        ),
+        const SizedBox(height: 4),
+        Text('Colour', style: TextStyle(color: status.muted)),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final p in AppPalette.values)
+              ChoiceChip(
+                avatar: _Swatch(
+                  color: buildTheme(Theme.of(context).brightness, palette: p).colorScheme.primary,
+                ),
+                label: Text(p.label),
+                selected: look.palette == p,
+                onSelected: (_) => repo.setSetting(Appearance.paletteKey, p.name),
+              ),
+          ],
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Pitch black'),
+          subtitle: Text(
+            look.mode == ThemeMode.light
+                ? 'Used in dark mode. Black background saves battery on OLED screens.'
+                : 'Black background in dark mode; saves battery on OLED screens.',
+          ),
+          value: look.pureBlack,
+          onChanged: (v) => repo.setSetting(Appearance.pureBlackKey, '$v'),
+        ),
+        if (look.pureBlack && !darkNow && look.mode != ThemeMode.light)
+          Text(
+            'Your phone is in light mode now; pitch black shows when it switches to dark.',
+            style: TextStyle(color: status.muted, fontSize: 12),
+          ),
+      ],
+    );
+  }
+}
+
+class _Swatch extends StatelessWidget {
+  const _Swatch({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 16,
+    height: 16,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+}
+
+class _AboutCard extends ConsumerWidget {
+  const _AboutCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = ref.watch(packageInfoProvider).value;
+    final status = StatusColors.of(context);
+    final version = info == null ? '' : '${info.version} (build ${info.buildNumber})';
+    return SectionCard(
+      children: [
+        const Label('About'),
+        const Text('My Fin Tracker', style: TextStyle(fontWeight: FontWeight.w700)),
+        Text('Version $version', style: TextStyle(color: status.muted)),
+        Text(
+          'Personal finance for your phone: spending, savings, loans and reports in one place. '
+          'Works offline. Your data stays on this phone unless you share a backup.',
+          style: TextStyle(color: status.muted),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            onPressed: () => showLicensePage(
+              context: context,
+              applicationName: 'My Fin Tracker',
+              applicationVersion: version,
+            ),
+            child: const Text('Open-source licences'),
+          ),
+        ),
+      ],
+    );
   }
 }
