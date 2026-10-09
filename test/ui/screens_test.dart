@@ -61,8 +61,8 @@ void main() {
             (ref) async => PackageInfo(
               appName: 'My Fin Tracker',
               packageName: 'com.myfin.my_fin_tracker',
-              version: '1.0.1',
-              buildNumber: '8',
+              version: '1.0.2',
+              buildNumber: '9',
             ),
           ),
         ],
@@ -314,7 +314,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Ocean blue'), findsOneWidget);
       expect(find.text('Plum'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Version 1.0.1 (build 8)'), 300);
+      await tester.scrollUntilVisible(find.text('Version 1.0.2 (build 9)'), 300);
       expect(find.text('Open-source licences'), findsOneWidget);
     });
 

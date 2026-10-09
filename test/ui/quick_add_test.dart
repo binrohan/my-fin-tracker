@@ -10,6 +10,7 @@ import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/features/quick_add/quick_add_sheet.dart';
+import 'package:my_fin_tracker/ledger/enums.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
 
 /// Records what quick add asks the repository to write.
@@ -196,5 +197,65 @@ void main() {
     final trip = sample.trackers.values.firstWhere((t) => t.name == 'Sylhet Trip');
     expect(repo.expenses.single.trackerId, trip.id);
     expect(repo.purchases.single, (item: 'Bus tickets', amount: taka(2400), entryId: 41));
+  });
+
+  testWidgets('paid-from picker with many accounts and goals fits and scrolls', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 1080 / 384;
+    addTearDown(tester.view.reset);
+
+    final big = AppDatabase(
+      DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+    );
+    await loadSampleData(big);
+    for (final name in ['City Bank', 'BRAC Bank', 'Dutch-Bangla Bank', 'EBL', 'Nagad', 'Rocket']) {
+      await big
+          .into(big.accounts)
+          .insert(AccountsCompanion.insert(name: name, type: AccountType.bank));
+    }
+    for (var i = 1; i <= 10; i++) {
+      await big
+          .into(big.funds)
+          .insert(FundsCompanion.insert(name: 'Goal number $i', kind: FundKind.goal));
+    }
+    final ledger = await Ledger.load(big);
+    await big.close();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ledgerProvider.overrideWith((ref) => Stream.value(ledger)),
+          todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
+        ],
+        child: MaterialApp(
+          theme: buildTheme(Brightness.light),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: TextButton(
+                  onPressed: () => showQuickAdd(context),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cash · Spending'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull, reason: 'no overflow');
+    expect(find.text('Goal number 10'), findsOneWidget);
+    expect(find.text('Refrigerator'), findsNothing, reason: 'achieved goals are hidden');
+    expect(find.text('Investments'), findsNothing, reason: 'not a place to pay from');
+    // The button stays reachable.
+    await tester.tap(find.text('City Bank'));
+    await tester.pump();
+    await tester.tap(find.text('Use this'));
+    await tester.pumpAndSettle();
+    expect(find.text('City Bank · Spending'), findsOneWidget);
   });
 }

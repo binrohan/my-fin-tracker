@@ -147,7 +147,17 @@ Future<Pot?> pickPot(
             (a.type.isLiquid || (includeInvestments && a.type == AccountType.investment)),
       )
       .toList();
-  final funds = ledger.funds.values.where((f) => !f.archived).toList();
+  // Achieved goals and the investments fund are not places to pay from;
+  // keep whatever is already chosen so an edit still shows it.
+  final funds = ledger.funds.values
+      .where(
+        (f) =>
+            f.id == initial.fund ||
+            (!f.archived &&
+                f.achievedAt == null &&
+                (includeInvestments || f.kind != FundKind.investment)),
+      )
+      .toList();
   var account = initial.account;
   var fund = initial.fund;
 
@@ -155,6 +165,11 @@ Future<Pot?> pickPot(
     useRootNavigator: true,
     context: context,
     showDragHandle: true,
+    // With many accounts and goals the chips are taller than half the
+    // screen: let the sheet grow and the chips scroll, with the button
+    // always visible.
+    isScrollControlled: true,
+    constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .85),
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => SafeArea(
         child: Padding(
@@ -165,31 +180,41 @@ Future<Pot?> pickPot(
             spacing: 10,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleLarge),
-              const Label('Where the money is'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final a in accounts)
-                    ChoiceChip(
-                      label: Text(a.name),
-                      selected: account == a.id,
-                      onSelected: (_) => setState(() => account = a.id),
-                    ),
-                ],
-              ),
-              const Label('What it is for'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final f in funds)
-                    ChoiceChip(
-                      label: Text(f.name),
-                      selected: fund == f.id,
-                      onSelected: (_) => setState(() => fund = f.id),
-                    ),
-                ],
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 10,
+                    children: [
+                      const Label('Where the money is'),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (final a in accounts)
+                            ChoiceChip(
+                              label: Text(a.name),
+                              selected: account == a.id,
+                              onSelected: (_) => setState(() => account = a.id),
+                            ),
+                        ],
+                      ),
+                      const Label('What it is for'),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (final f in funds)
+                            ChoiceChip(
+                              label: Text(f.name),
+                              selected: fund == f.id,
+                              onSelected: (_) => setState(() => fund = f.id),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
               Text(
                 'In this pot now: ${formatTaka(ledger.cell(account, fund))}',

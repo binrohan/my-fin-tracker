@@ -162,8 +162,8 @@ void main() {
         l,
         DateTime(2026, 10, 8),
       ).firstWhere((r) => r.kind == ReminderKind.income);
-      expect(reminder.title, 'Has your Bonus arrived?');
-      expect(reminder.detail, '৳10,000 expected in Bank · tap to record');
+      expect(reminder.title, 'Has your Bonus arrived this month?');
+      expect(reminder.detail, 'Expected around 5 Oct: ৳10,000 in Bank · tap to record');
 
       await repo.income(
         DateTime(2026, 10, 8),

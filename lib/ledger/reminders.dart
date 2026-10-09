@@ -43,9 +43,10 @@ List<Reminder> remindersFor(Ledger ledger, DateTime today, {int billDays = 3}) {
     list.add(
       Reminder(
         kind: ReminderKind.income,
-        title: 'Has your $name arrived?',
+        title: 'Has your $name arrived this month?',
         detail:
-            '${formatTaka(income.amount)} expected${where == null ? '' : ' in $where'} · tap to record',
+            'Expected around ${_date(DateTime(period.year, period.month, income.day!.clamp(1, period.daysInMonth)))}: '
+            '${formatTaka(income.amount)}${where == null ? '' : ' in $where'} · tap to record',
         urgent: false,
         id: income.categoryId,
       ),
