@@ -270,8 +270,8 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
                 Row(
                   spacing: 8,
                   children: [
-                    SizedBox(
-                      width: 110,
+                    Expanded(
+                      flex: 2,
                       child: TextFormField(
                         initialValue: r.day?.toString() ?? '',
                         keyboardType: TextInputType.number,
@@ -280,7 +280,8 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
                           LengthLimitingTextInputFormatter(2),
                         ],
                         decoration: const InputDecoration(
-                          labelText: 'Around day',
+                          labelText: 'Day',
+                          hintText: '1–31',
                           isDense: true,
                           border: OutlineInputBorder(),
                         ),
@@ -291,6 +292,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
                       ),
                     ),
                     Expanded(
+                      flex: 3,
                       child: DropdownButtonFormField<int>(
                         initialValue: accounts.any((a) => a.id == r.accountId) ? r.accountId : null,
                         isExpanded: true,
