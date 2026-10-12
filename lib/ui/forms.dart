@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../app/theme.dart';
 import '../core/money.dart';
+import '../core/period.dart';
 import '../data/database.dart';
 import '../data/ledger_repository.dart';
 import '../ledger/enums.dart';
@@ -234,7 +235,7 @@ Future<Pot?> pickPot(
 
 /// Chooses one leaf category from the full list, grouped by parent.
 Future<CategoryRow?> pickCategory(BuildContext context, Ledger ledger, CategoryKind kind) {
-  final leaves = ledger.leafCategories(kind);
+  final leaves = ledger.leafCategories(kind, month: Period.current());
   return showModalBottomSheet<CategoryRow>(
     useRootNavigator: true,
     context: context,

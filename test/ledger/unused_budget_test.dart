@@ -142,7 +142,10 @@ void main() {
     var l = await Ledger.load(old);
     expect(l.netWorth(), taka(20000));
     expect(l.trackers.length, 1);
-    expect((await old.customSelect('PRAGMA user_version').getSingle()).data.values.single, 3);
+    expect(
+      (await old.customSelect('PRAGMA user_version').getSingle()).data.values.single,
+      old.schemaVersion,
+    );
     await SetupRepository(old).updateCategory(1, savingsFundId: const Value(2));
     l = await Ledger.load(old);
     expect(l.categories[1]!.savingsFundId, 2);

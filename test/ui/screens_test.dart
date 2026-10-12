@@ -22,6 +22,8 @@ import 'package:my_fin_tracker/data/setup_repository.dart';
 import 'package:my_fin_tracker/core/period.dart';
 import 'package:my_fin_tracker/features/trackers/trackers_screen.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
+import 'package:my_fin_tracker/data/ledger_repository.dart';
+import 'package:my_fin_tracker/core/money.dart';
 import 'package:my_fin_tracker/features/loans/loans_screen.dart';
 import 'package:my_fin_tracker/features/save/fund_screen.dart';
 import 'package:my_fin_tracker/features/more/more_screen.dart';
@@ -65,8 +67,8 @@ void main() {
             (ref) async => PackageInfo(
               appName: 'My Fin Tracker',
               packageName: 'com.myfin.my_fin_tracker',
-              version: '1.0.4',
-              buildNumber: '11',
+              version: '1.0.5',
+              buildNumber: '12',
             ),
           ),
         ],
@@ -318,7 +320,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Ocean blue'), findsOneWidget);
       expect(find.text('Plum'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Version 1.0.4 (build 11)'), 300);
+      await tester.scrollUntilVisible(find.text('Version 1.0.5 (build 12)'), 300);
       expect(find.text('Open-source licences'), findsOneWidget);
     });
 
@@ -523,6 +525,79 @@ void main() {
       find.widgetWithText(FilledButton, 'Close September 2026'),
     );
     expect(close.onPressed, isNull, reason: 'cannot close while over');
+  });
+
+  group('Slots', () {
+    late Ledger withSlot;
+
+    setUpAll(() async {
+      final db = AppDatabase(
+        DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+      );
+      await loadSampleData(db);
+      final l = await Ledger.load(db);
+      int cat(String n) => l.categories.values.firstWhere((c) => c.name == n).id;
+      await LedgerRepository(db).createSlot(
+        const Period(2026, 10),
+        name: 'Medical Test',
+        from: [
+          (category: cat('Mine'), amount: taka(2000)),
+          (category: cat('Ration'), amount: taka(6000)),
+        ],
+        date: DateTime(2026, 10, 8),
+      );
+      withSlot = await Ledger.load(db);
+      await db.close();
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets('Spend shows the slot and where it came from (${brightness.name})', (
+        tester,
+      ) async {
+        await pump(tester, const SpendScreen(), withSlot, brightness: brightness);
+        await tester.scrollUntilVisible(find.text('Give back'), 300);
+        expect(find.text('Medical Test'), findsWidgets);
+        expect(find.text('From Ration ৳6,000 + Mine ৳2,000'), findsOneWidget);
+        expect(find.text('Spent ৳0 · left ৳8,000'), findsOneWidget);
+        expect(find.text('New slot'), findsOneWidget);
+        expect(find.text('Move budget'), findsOneWidget);
+      });
+    }
+
+    testWidgets('new slot sheet checks what each category has left', (tester) async {
+      await pump(tester, const SpendScreen(), sample);
+      await tester.scrollUntilVisible(find.text('New slot'), 300);
+      await tester.ensureVisible(find.text('New slot'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New slot'));
+      await tester.pumpAndSettle();
+      expect(find.text('New slot · October 2026'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'Medical Test');
+      await tester.enterText(find.byType(TextField).last, '50000');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Only ৳'), findsOneWidget);
+      final create = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Create slot'));
+      expect(create.onPressed, isNull);
+    });
+
+    testWidgets('closing the month returns what is left in a slot', (tester) async {
+      await pump(
+        tester,
+        Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showCloseMonth(context, const Period(2026, 10)),
+              child: const Text('close'),
+            ),
+          ),
+        ),
+        withSlot,
+      );
+      await tester.tap(find.text('close'));
+      await tester.pumpAndSettle();
+      expect(find.text('SLOTS WITH MONEY LEFT'), findsOneWidget);
+      expect(find.textContaining('back to Ration, Mine', findRichText: true), findsOneWidget);
+    });
   });
 
   testWidgets('Home before any entries', (tester) async {

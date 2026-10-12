@@ -12,6 +12,7 @@ import '../../data/ledger_repository.dart';
 import '../../ui/charts.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import 'slots.dart';
 import '../entries/entries_screen.dart';
 import '../plan/monthly_plan_screen.dart';
 
@@ -103,6 +104,7 @@ class SpendScreen extends ConsumerWidget {
                   MonthBars(bars: history),
                 ],
               ),
+            SlotsCard(ledger: ledger, period: period),
             if (bills.isNotEmpty)
               FilledButton.tonal(
                 onPressed: () => _payBills(context, ref, ledger, bills),
@@ -168,7 +170,23 @@ class _CategoryTile extends StatelessWidget {
       textBaseline: TextBaseline.alphabetic,
       children: [
         Expanded(
-          child: Text(line.category.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+          child: Text.rich(
+            TextSpan(
+              text: line.category.name,
+              children: [
+                if (line.category.slotYear != null)
+                  TextSpan(
+                    text: '  slot',
+                    style: TextStyle(
+                      color: status.muted,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
         Money(
           line.actual,

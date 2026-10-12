@@ -31,7 +31,7 @@ class CategoriesScreen extends ConsumerWidget {
           final status = StatusColors.of(context);
           List<Widget> section(CategoryKind kind) {
             final roots = ledger.categories.values.where(
-              (c) => c.kind == kind && c.parentId == null,
+              (c) => c.kind == kind && c.parentId == null && !ledger.isSlot(c),
             );
             return [
               for (final root in roots) ...[

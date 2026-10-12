@@ -536,6 +536,104 @@ class LedgerRepository {
         }
       });
 
+  // ---------------------------------------------- slots and budget moves
+
+  /// Moves [amount] of budget from one category to another for month
+  /// [period] only.
+  Future<int> moveBudget(
+    Period period, {
+    required int from,
+    required int to,
+    required Poisha amount,
+    required DateTime date,
+    String note = '',
+  }) => db
+      .into(db.budgetMoves)
+      .insert(
+        BudgetMovesCompanion.insert(
+          year: period.year,
+          month: period.month,
+          fromCategoryId: from,
+          toCategoryId: to,
+          amount: amount,
+          date: dateOnly(date),
+          note: Value(note),
+        ),
+      );
+
+  /// A slot for a coming expense this month, funded from other categories'
+  /// budgets. It is a category of month [period] only.
+  Future<int> createSlot(
+    Period period, {
+    required String name,
+    required List<({int category, Poisha amount})> from,
+    required DateTime date,
+  }) => db.transaction(() async {
+    final id = await db
+        .into(db.categories)
+        .insert(
+          CategoriesCompanion.insert(
+            name: name.trim(),
+            kind: CategoryKind.expense,
+            slotYear: Value(period.year),
+            slotMonth: Value(period.month),
+            sortOrder: const Value(1000),
+          ),
+        );
+    await fundSlot(period, slot: id, from: from, date: date);
+    return id;
+  });
+
+  Future<void> fundSlot(
+    Period period, {
+    required int slot,
+    required List<({int category, Poisha amount})> from,
+    required DateTime date,
+  }) => db.transaction(() async {
+    for (final f in from.where((f) => f.amount > 0)) {
+      await moveBudget(period, from: f.category, to: slot, amount: f.amount, date: date);
+    }
+  });
+
+  /// Gives a slot's unused budget back to categories.
+  Future<void> giveBack(
+    Period period, {
+    required int slot,
+    required List<({int category, Poisha amount})> to,
+    required DateTime date,
+    String note = '',
+  }) => db.transaction(() async {
+    for (final t in to.where((t) => t.amount > 0)) {
+      await moveBudget(
+        period,
+        from: slot,
+        to: t.category,
+        amount: t.amount,
+        date: date,
+        note: note,
+      );
+    }
+  });
+
+  /// At month end, what is left in each slot goes back where it came from,
+  /// in the same proportions.
+  Future<void> returnSlotLeftovers(Period period, Ledger ledger) => db.transaction(() async {
+    final lastDay = period.end.subtract(const Duration(days: 1));
+    for (final slot in ledger.slotsIn(period)) {
+      if (slot.left <= 0) continue;
+      await giveBack(
+        period,
+        slot: slot.category.id,
+        to: ledger.giveBackShares(slot, slot.left),
+        date: lastDay,
+        note: 'Left in slot at month end',
+      );
+    }
+  });
+
+  Future<void> deleteBudgetMove(int id) =>
+      (db.delete(db.budgetMoves)..where((m) => m.id.equals(id))).go();
+
   Future<void> reopenMonth(Period period) => (db.delete(
     db.monthCloses,
   )..where((c) => c.year.equals(period.year) & c.month.equals(period.month))).go();

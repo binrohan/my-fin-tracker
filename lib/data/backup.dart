@@ -36,6 +36,7 @@ class Backup {
     db.investmentDetails,
     db.purchases,
     db.trackers,
+    db.budgetMoves,
   ];
 
   static Future<Uint8List> export(AppDatabase db, {DateTime? now}) async {
@@ -123,6 +124,7 @@ class Backup {
         );
         b.insertAll(db.purchases, rows(db.purchases).map(Purchase.fromJson));
         b.insertAll(db.trackers, rows(db.trackers).map(Tracker.fromJson));
+        b.insertAll(db.budgetMoves, rows(db.budgetMoves).map(BudgetMove.fromJson));
       });
     });
   }

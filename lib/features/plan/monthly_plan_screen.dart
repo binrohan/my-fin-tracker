@@ -93,7 +93,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
     _trigger = plan.categoryId ?? _incomes.firstOrNull?.categoryId;
     _originalBudgets = _budgetValues(ledger);
     final total = ledger
-        .categoryLines(_period, CategoryKind.expense)
+        .categoryLines(_period, CategoryKind.expense, withMoves: false)
         .fold<Poisha>(0, (t, l) => t + l.budget);
     _expenseTarget.text = amountText(plan.expenseTarget ?? total);
   }
@@ -107,7 +107,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
       l.children.forEach(walk);
     }
 
-    ledger.categoryLines(_period, CategoryKind.expense).forEach(walk);
+    ledger.categoryLines(_period, CategoryKind.expense, withMoves: false).forEach(walk);
     return values;
   }
 
@@ -506,7 +506,11 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
     final status = StatusColors.of(context);
     final sections = [
       for (final c in ledger.categories.values)
-        if (c.kind == CategoryKind.expense && c.parentId == null && !c.archived) c,
+        if (c.kind == CategoryKind.expense &&
+            c.parentId == null &&
+            !c.archived &&
+            !ledger.isSlot(c))
+          c,
     ];
     List<CategoryRow> subsOf(int id) => [
       for (final c in ledger.categories.values)

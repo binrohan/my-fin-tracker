@@ -43,6 +43,11 @@ class Categories extends Table {
   /// Savings pot or goal that receives this category's unused budget when
   /// a month is closed.
   IntColumn get savingsFundId => integer().nullable().references(Funds, #id)();
+
+  /// Set for a slot: a category that exists for one month only, funded by
+  /// moving budget from other categories.
+  IntColumn get slotYear => integer().nullable()();
+  IntColumn get slotMonth => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
 }
@@ -175,6 +180,22 @@ class Trackers extends Table {
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
 }
 
+/// Budget moved from one category to another for one month only (for a
+/// slot, or to cover an overspent category). The month's total budget
+/// never changes; the Monthly plan is not touched.
+class BudgetMoves extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get year => integer()();
+  IntColumn get month => integer()();
+  IntColumn get fromCategoryId =>
+      integer().references(Categories, #id, onDelete: KeyAction.cascade)();
+  IntColumn get toCategoryId =>
+      integer().references(Categories, #id, onDelete: KeyAction.cascade)();
+  IntColumn get amount => integer()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().withDefault(const Constant(''))();
+}
+
 class Settings extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
@@ -197,6 +218,7 @@ class Settings extends Table {
     InvestmentDetails,
     Purchases,
     Trackers,
+    BudgetMoves,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -205,7 +227,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -224,6 +246,12 @@ class AppDatabase extends _$AppDatabase {
         // Unused budget of a category saved to a pot at month close.
         await m.addColumn(categories, categories.savingsFundId);
       }
+      if (from < 4) {
+        // Slots and month-only budget moves.
+        await m.addColumn(categories, categories.slotYear);
+        await m.addColumn(categories, categories.slotMonth);
+        await m.createTable(budgetMoves);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -241,6 +269,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteEverything() => transaction(() async {
     // Children before parents so foreign keys stay valid.
     for (final TableInfo table in [
+      budgetMoves,
       purchases,
       investmentDetails,
       trackers,

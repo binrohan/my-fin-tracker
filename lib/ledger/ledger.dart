@@ -47,6 +47,7 @@ class Ledger {
     this.monthCloses = const [],
     List<InvestmentDetail> investmentDetails = const [],
     this.purchases = const [],
+    this.budgetMoves = const [],
     List<Tracker> trackers = const [],
   }) : accounts = {for (final a in accounts) a.id: a},
        funds = {for (final f in funds) f.id: f},
@@ -67,6 +68,9 @@ class Ledger {
 
   /// Newest first.
   final List<Purchase> purchases;
+
+  /// Month-only budget moves between categories, oldest first.
+  final List<BudgetMove> budgetMoves;
   final Map<int, Tracker> trackers;
 
   static Future<Ledger> load(AppDatabase db) async {
@@ -95,6 +99,9 @@ class Ledger {
         db.purchases,
       )..orderBy([(p) => OrderingTerm.desc(p.date), (p) => OrderingTerm.desc(p.id)])).get(),
       trackers: await (db.select(db.trackers)..orderBy([(t) => OrderingTerm.asc(t.id)])).get(),
+      budgetMoves: await (db.select(
+        db.budgetMoves,
+      )..orderBy([(m) => OrderingTerm.asc(m.date), (m) => OrderingTerm.asc(m.id)])).get(),
       lines: [
         for (final row in rows)
           () {
@@ -226,7 +233,9 @@ class Ledger {
 
   /// Actual against budget for each top-level category of [kind]. Parents
   /// include their sub-categories.
-  List<CategoryLine> categoryLines(Period p, CategoryKind kind) {
+  /// With [withMoves] false the budgets are the Monthly plan's, without
+  /// this month's moves (what the Monthly plan screen edits).
+  List<CategoryLine> categoryLines(Period p, CategoryKind kind, {bool withMoves = true}) {
     final type = kind == CategoryKind.expense ? EntryType.expense : EntryType.income;
     final actual = <int, Poisha>{};
     for (final e in _entriesIn(p, type)) {
@@ -235,29 +244,35 @@ class Ledger {
       }
     }
     final budget = budgetsFor(p);
+    final delta = withMoves ? budgetDeltas(p) : const <int, Poisha>{};
+
+    // Moves into or out of a category and everything under it.
+    Poisha deltaUnder(int id) =>
+        (delta[id] ?? 0) +
+        categories.values.where((c) => c.parentId == id).fold(0, (t, c) => t + deltaUnder(c.id));
 
     CategoryLine build(CategoryRow c) {
       final children = [
         for (final child in categories.values)
-          if (child.parentId == c.id) build(child),
+          if (child.parentId == c.id && _visibleIn(child, p)) build(child),
       ]..removeWhere((l) => l.category.archived && l.actual == 0);
       return CategoryLine(
         category: c,
         children: children,
         actual: (actual[c.id] ?? 0) + children.fold(0, (t, l) => t + l.actual),
-        // A section with its own budget keeps it; otherwise it is the sum
-        // of its subsections.
+        // A section with its own budget keeps it (plus any moves under it);
+        // otherwise it is the sum of its subsections.
         budget: children.isEmpty
-            ? budget[c.id] ?? 0
+            ? (budget[c.id] ?? 0) + (delta[c.id] ?? 0)
             : (budget[c.id] ?? 0) > 0
-            ? budget[c.id]!
+            ? budget[c.id]! + deltaUnder(c.id)
             : children.fold(0, (t, l) => t + l.budget),
       );
     }
 
     return [
       for (final c in categories.values)
-        if (c.parentId == null && c.kind == kind) build(c),
+        if (c.parentId == null && c.kind == kind && _visibleIn(c, p)) build(c),
     ]..removeWhere((l) => l.category.archived && l.actual == 0);
   }
 
@@ -274,13 +289,22 @@ class Ledger {
   }
 
   /// Categories you can put an entry on: those without sub-categories.
-  List<CategoryRow> leafCategories(CategoryKind kind) => [
+  /// Categories you can put an entry on: those without sub-categories.
+  /// Slots are included only for their own [month].
+  List<CategoryRow> leafCategories(CategoryKind kind, {Period? month}) => [
     for (final c in categories.values)
       if (c.kind == kind &&
           !c.archived &&
+          (!isSlot(c) || (month != null && _visibleIn(c, month))) &&
           !categories.values.any((x) => x.parentId == c.id && !x.archived))
         c,
   ];
+
+  bool isSlot(CategoryRow c) => c.slotYear != null && c.slotMonth != null;
+
+  /// Slots belong to one month; everything else to every month.
+  bool _visibleIn(CategoryRow c, Period p) =>
+      !isSlot(c) || (c.slotYear == p.year && c.slotMonth == p.month);
 
   /// Leaf categories ordered by how often you used them in the 90 days
   /// before [today], then in their usual order.
@@ -293,9 +317,12 @@ class Ledger {
         uses.update(e.categoryId!, (n) => n + 1, ifAbsent: () => 1);
       }
     }
-    final leaves = leafCategories(kind);
+    final leaves = leafCategories(kind, month: Period.of(today));
     final order = {for (final (i, c) in leaves.indexed) c.id: i};
     return leaves..sort((a, b) {
+      // This month's slots first: they exist to be spent from.
+      final slot = (isSlot(b) ? 1 : 0).compareTo(isSlot(a) ? 1 : 0);
+      if (slot != 0) return slot;
       final byUse = (uses[b.id] ?? 0).compareTo(uses[a.id] ?? 0);
       return byUse != 0 ? byUse : order[a.id]!.compareTo(order[b.id]!);
     });
@@ -647,6 +674,131 @@ class Ledger {
     return moves;
   }
 
+  // ----------------------------------------------- slots and budget moves
+
+  List<BudgetMove> movesIn(Period p) => [
+    for (final m in budgetMoves)
+      if (m.year == p.year && m.month == p.month) m,
+  ];
+
+  /// Net budget moved into (+) or out of (−) each category in month [p].
+  Map<int, Poisha> budgetDeltas(Period p) {
+    final d = <int, Poisha>{};
+    for (final m in movesIn(p)) {
+      d.update(m.toCategoryId, (v) => v + m.amount, ifAbsent: () => m.amount);
+      d.update(m.fromCategoryId, (v) => v - m.amount, ifAbsent: () => -m.amount);
+    }
+    return d;
+  }
+
+  /// Every expense category's line in month [p], sections and
+  /// subsections, by id.
+  Map<int, CategoryLine> _linesById(Period p) {
+    final byId = <int, CategoryLine>{};
+    void walk(CategoryLine l) {
+      byId[l.category.id] = l;
+      l.children.forEach(walk);
+    }
+
+    categoryLines(p, CategoryKind.expense).forEach(walk);
+    return byId;
+  }
+
+  /// Budget a category has left this month that can be moved elsewhere.
+  Poisha movableFrom(int categoryId, Period p) =>
+      math.max(0, _linesById(p)[categoryId]?.remaining ?? 0);
+
+  /// This month's slots with what went in, what was spent and what is left.
+  List<SlotStatus> slotsIn(Period p) {
+    final lines = _linesById(p);
+    return [
+      for (final c in categories.values)
+        if (isSlot(c) && _visibleIn(c, p) && !c.archived)
+          SlotStatus(
+            category: c,
+            budget: lines[c.id]?.budget ?? 0,
+            spent: lines[c.id]?.actual ?? 0,
+            sources: _sourcesOf(c.id, p),
+            moves: [
+              for (final m in movesIn(p))
+                if (m.toCategoryId == c.id || m.fromCategoryId == c.id) m,
+            ],
+          ),
+    ];
+  }
+
+  /// Net budget a slot received from each category (given back is taken
+  /// off), largest first.
+  Map<int, Poisha> _sourcesOf(int slotId, Period p) {
+    final net = <int, Poisha>{};
+    for (final m in movesIn(p)) {
+      if (m.toCategoryId == slotId) {
+        net.update(m.fromCategoryId, (v) => v + m.amount, ifAbsent: () => m.amount);
+      } else if (m.fromCategoryId == slotId) {
+        net.update(m.toCategoryId, (v) => v - m.amount, ifAbsent: () => -m.amount);
+      }
+    }
+    final entries = net.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return {for (final e in entries) e.key: e.value};
+  }
+
+  /// The same ledger with each slot's leftover in month [p] given back
+  /// to its sources, without saving anything: what closing the month will
+  /// see once the slots are emptied.
+  Ledger withSlotsReturned(Period p) {
+    final lastDay = p.end.subtract(const Duration(days: 1));
+    var nextId = -1;
+    final extra = [
+      for (final slot in slotsIn(p))
+        if (slot.left > 0)
+          for (final share in giveBackShares(slot, slot.left))
+            BudgetMove(
+              id: nextId--,
+              year: p.year,
+              month: p.month,
+              fromCategoryId: slot.category.id,
+              toCategoryId: share.category,
+              amount: share.amount,
+              date: lastDay,
+              note: 'Left in slot at month end',
+            ),
+    ];
+    if (extra.isEmpty) return this;
+    return Ledger(
+      accounts: accounts.values.toList(),
+      funds: funds.values.toList(),
+      categories: categories.values.toList(),
+      loans: loans,
+      budgets: budgets,
+      entries: entries,
+      lines: lines,
+      settings: settings,
+      monthCloses: monthCloses,
+      investmentDetails: investmentDetails.values.toList(),
+      purchases: purchases,
+      budgetMoves: [...budgetMoves, ...extra],
+      trackers: trackers.values.toList(),
+    );
+  }
+
+  /// Giving [amount] back to where a slot's money came from, in the same
+  /// proportions; any rounding goes to the largest source.
+  List<({int category, Poisha amount})> giveBackShares(SlotStatus slot, Poisha amount) {
+    final total = slot.sources.values.fold<Poisha>(0, (t, v) => t + v);
+    if (total <= 0 || amount <= 0) return const [];
+    final shares = [
+      for (final MapEntry(:key, :value) in slot.sources.entries)
+        (category: key, amount: (amount * value / total).floor()),
+    ];
+    final rest = amount - shares.fold<Poisha>(0, (t, s) => t + s.amount);
+    return [
+      for (final (i, s) in shares.indexed)
+        if (s.amount + (i == 0 ? rest : 0) > 0)
+          (category: s.category, amount: s.amount + (i == 0 ? rest : 0)),
+    ];
+  }
+
   // --------------------------------------------------------- monthly plan
 
   AllocationPlan get plan => AllocationPlan.parse(settings[AllocationPlan.settingKey]);
@@ -935,4 +1087,30 @@ class UnusedBudgetMove {
 
   /// Where that money sits (it stays there; only its purpose changes).
   final List<({int account, Poisha amount})> parts;
+}
+
+/// A slot: money for a coming expense this month, moved in from other
+/// categories' budgets.
+class SlotStatus {
+  const SlotStatus({
+    required this.category,
+    required this.budget,
+    required this.spent,
+    required this.sources,
+    required this.moves,
+  });
+
+  final CategoryRow category;
+
+  /// Moved in minus given back.
+  final Poisha budget;
+  final Poisha spent;
+
+  /// Where its money came from: category id → net amount.
+  final Map<int, Poisha> sources;
+
+  /// Every move into or out of it this month, oldest first.
+  final List<BudgetMove> moves;
+
+  Poisha get left => budget - spent;
 }

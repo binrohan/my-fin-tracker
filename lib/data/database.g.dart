@@ -836,6 +836,24 @@ class $CategoriesTable extends Categories with TableInfo<$CategoriesTable, Categ
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES funds (id)'),
   );
+  static const VerificationMeta _slotYearMeta = const VerificationMeta('slotYear');
+  @override
+  late final GeneratedColumn<int> slotYear = GeneratedColumn<int>(
+    'slot_year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _slotMonthMeta = const VerificationMeta('slotMonth');
+  @override
+  late final GeneratedColumn<int> slotMonth = GeneratedColumn<int>(
+    'slot_month',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta('sortOrder');
   @override
   late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
@@ -866,6 +884,8 @@ class $CategoriesTable extends Categories with TableInfo<$CategoriesTable, Categ
     isFixed,
     dueDay,
     savingsFundId,
+    slotYear,
+    slotMonth,
     sortOrder,
     archived,
   ];
@@ -905,6 +925,18 @@ class $CategoriesTable extends Categories with TableInfo<$CategoriesTable, Categ
       context.handle(
         _savingsFundIdMeta,
         savingsFundId.isAcceptableOrUnknown(data['savings_fund_id']!, _savingsFundIdMeta),
+      );
+    }
+    if (data.containsKey('slot_year')) {
+      context.handle(
+        _slotYearMeta,
+        slotYear.isAcceptableOrUnknown(data['slot_year']!, _slotYearMeta),
+      );
+    }
+    if (data.containsKey('slot_month')) {
+      context.handle(
+        _slotMonthMeta,
+        slotMonth.isAcceptableOrUnknown(data['slot_month']!, _slotMonthMeta),
       );
     }
     if (data.containsKey('sort_order')) {
@@ -949,6 +981,14 @@ class $CategoriesTable extends Categories with TableInfo<$CategoriesTable, Categ
         DriftSqlType.int,
         data['${effectivePrefix}savings_fund_id'],
       ),
+      slotYear: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot_year'],
+      ),
+      slotMonth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot_month'],
+      ),
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -982,6 +1022,11 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
   /// Savings pot or goal that receives this category's unused budget when
   /// a month is closed.
   final int? savingsFundId;
+
+  /// Set for a slot: a category that exists for one month only, funded by
+  /// moving budget from other categories.
+  final int? slotYear;
+  final int? slotMonth;
   final int sortOrder;
   final bool archived;
   const CategoryRow({
@@ -992,6 +1037,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     required this.isFixed,
     this.dueDay,
     this.savingsFundId,
+    this.slotYear,
+    this.slotMonth,
     required this.sortOrder,
     required this.archived,
   });
@@ -1013,6 +1060,12 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     if (!nullToAbsent || savingsFundId != null) {
       map['savings_fund_id'] = Variable<int>(savingsFundId);
     }
+    if (!nullToAbsent || slotYear != null) {
+      map['slot_year'] = Variable<int>(slotYear);
+    }
+    if (!nullToAbsent || slotMonth != null) {
+      map['slot_month'] = Variable<int>(slotMonth);
+    }
     map['sort_order'] = Variable<int>(sortOrder);
     map['archived'] = Variable<bool>(archived);
     return map;
@@ -1029,6 +1082,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       savingsFundId: savingsFundId == null && nullToAbsent
           ? const Value.absent()
           : Value(savingsFundId),
+      slotYear: slotYear == null && nullToAbsent ? const Value.absent() : Value(slotYear),
+      slotMonth: slotMonth == null && nullToAbsent ? const Value.absent() : Value(slotMonth),
       sortOrder: Value(sortOrder),
       archived: Value(archived),
     );
@@ -1044,6 +1099,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       isFixed: serializer.fromJson<bool>(json['isFixed']),
       dueDay: serializer.fromJson<int?>(json['dueDay']),
       savingsFundId: serializer.fromJson<int?>(json['savingsFundId']),
+      slotYear: serializer.fromJson<int?>(json['slotYear']),
+      slotMonth: serializer.fromJson<int?>(json['slotMonth']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       archived: serializer.fromJson<bool>(json['archived']),
     );
@@ -1059,6 +1116,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       'isFixed': serializer.toJson<bool>(isFixed),
       'dueDay': serializer.toJson<int?>(dueDay),
       'savingsFundId': serializer.toJson<int?>(savingsFundId),
+      'slotYear': serializer.toJson<int?>(slotYear),
+      'slotMonth': serializer.toJson<int?>(slotMonth),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'archived': serializer.toJson<bool>(archived),
     };
@@ -1072,6 +1131,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     bool? isFixed,
     Value<int?> dueDay = const Value.absent(),
     Value<int?> savingsFundId = const Value.absent(),
+    Value<int?> slotYear = const Value.absent(),
+    Value<int?> slotMonth = const Value.absent(),
     int? sortOrder,
     bool? archived,
   }) => CategoryRow(
@@ -1082,6 +1143,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     isFixed: isFixed ?? this.isFixed,
     dueDay: dueDay.present ? dueDay.value : this.dueDay,
     savingsFundId: savingsFundId.present ? savingsFundId.value : this.savingsFundId,
+    slotYear: slotYear.present ? slotYear.value : this.slotYear,
+    slotMonth: slotMonth.present ? slotMonth.value : this.slotMonth,
     sortOrder: sortOrder ?? this.sortOrder,
     archived: archived ?? this.archived,
   );
@@ -1094,6 +1157,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       isFixed: data.isFixed.present ? data.isFixed.value : this.isFixed,
       dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
       savingsFundId: data.savingsFundId.present ? data.savingsFundId.value : this.savingsFundId,
+      slotYear: data.slotYear.present ? data.slotYear.value : this.slotYear,
+      slotMonth: data.slotMonth.present ? data.slotMonth.value : this.slotMonth,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       archived: data.archived.present ? data.archived.value : this.archived,
     );
@@ -1109,6 +1174,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           ..write('isFixed: $isFixed, ')
           ..write('dueDay: $dueDay, ')
           ..write('savingsFundId: $savingsFundId, ')
+          ..write('slotYear: $slotYear, ')
+          ..write('slotMonth: $slotMonth, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('archived: $archived')
           ..write(')'))
@@ -1116,8 +1183,19 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, parentId, name, kind, isFixed, dueDay, savingsFundId, sortOrder, archived);
+  int get hashCode => Object.hash(
+    id,
+    parentId,
+    name,
+    kind,
+    isFixed,
+    dueDay,
+    savingsFundId,
+    slotYear,
+    slotMonth,
+    sortOrder,
+    archived,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1129,6 +1207,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           other.isFixed == this.isFixed &&
           other.dueDay == this.dueDay &&
           other.savingsFundId == this.savingsFundId &&
+          other.slotYear == this.slotYear &&
+          other.slotMonth == this.slotMonth &&
           other.sortOrder == this.sortOrder &&
           other.archived == this.archived);
 }
@@ -1141,6 +1221,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
   final Value<bool> isFixed;
   final Value<int?> dueDay;
   final Value<int?> savingsFundId;
+  final Value<int?> slotYear;
+  final Value<int?> slotMonth;
   final Value<int> sortOrder;
   final Value<bool> archived;
   const CategoriesCompanion({
@@ -1151,6 +1233,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     this.isFixed = const Value.absent(),
     this.dueDay = const Value.absent(),
     this.savingsFundId = const Value.absent(),
+    this.slotYear = const Value.absent(),
+    this.slotMonth = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.archived = const Value.absent(),
   });
@@ -1162,6 +1246,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     this.isFixed = const Value.absent(),
     this.dueDay = const Value.absent(),
     this.savingsFundId = const Value.absent(),
+    this.slotYear = const Value.absent(),
+    this.slotMonth = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.archived = const Value.absent(),
   }) : name = Value(name),
@@ -1174,6 +1260,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Expression<bool>? isFixed,
     Expression<int>? dueDay,
     Expression<int>? savingsFundId,
+    Expression<int>? slotYear,
+    Expression<int>? slotMonth,
     Expression<int>? sortOrder,
     Expression<bool>? archived,
   }) {
@@ -1185,6 +1273,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       if (isFixed != null) 'is_fixed': isFixed,
       if (dueDay != null) 'due_day': dueDay,
       if (savingsFundId != null) 'savings_fund_id': savingsFundId,
+      if (slotYear != null) 'slot_year': slotYear,
+      if (slotMonth != null) 'slot_month': slotMonth,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (archived != null) 'archived': archived,
     });
@@ -1198,6 +1288,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Value<bool>? isFixed,
     Value<int?>? dueDay,
     Value<int?>? savingsFundId,
+    Value<int?>? slotYear,
+    Value<int?>? slotMonth,
     Value<int>? sortOrder,
     Value<bool>? archived,
   }) {
@@ -1209,6 +1301,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       isFixed: isFixed ?? this.isFixed,
       dueDay: dueDay ?? this.dueDay,
       savingsFundId: savingsFundId ?? this.savingsFundId,
+      slotYear: slotYear ?? this.slotYear,
+      slotMonth: slotMonth ?? this.slotMonth,
       sortOrder: sortOrder ?? this.sortOrder,
       archived: archived ?? this.archived,
     );
@@ -1238,6 +1332,12 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     if (savingsFundId.present) {
       map['savings_fund_id'] = Variable<int>(savingsFundId.value);
     }
+    if (slotYear.present) {
+      map['slot_year'] = Variable<int>(slotYear.value);
+    }
+    if (slotMonth.present) {
+      map['slot_month'] = Variable<int>(slotMonth.value);
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -1257,6 +1357,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
           ..write('isFixed: $isFixed, ')
           ..write('dueDay: $dueDay, ')
           ..write('savingsFundId: $savingsFundId, ')
+          ..write('slotYear: $slotYear, ')
+          ..write('slotMonth: $slotMonth, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('archived: $archived')
           ..write(')'))
@@ -4919,6 +5021,457 @@ class TrackersCompanion extends UpdateCompanion<Tracker> {
   }
 }
 
+class $BudgetMovesTable extends BudgetMoves with TableInfo<$BudgetMovesTable, BudgetMove> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BudgetMovesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'),
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<int> month = GeneratedColumn<int>(
+    'month',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromCategoryIdMeta = const VerificationMeta('fromCategoryId');
+  @override
+  late final GeneratedColumn<int> fromCategoryId = GeneratedColumn<int>(
+    'from_category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _toCategoryIdMeta = const VerificationMeta('toCategoryId');
+  @override
+  late final GeneratedColumn<int> toCategoryId = GeneratedColumn<int>(
+    'to_category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    year,
+    month,
+    fromCategoryId,
+    toCategoryId,
+    amount,
+    date,
+    note,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'budget_moves';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BudgetMove> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('year')) {
+      context.handle(_yearMeta, year.isAcceptableOrUnknown(data['year']!, _yearMeta));
+    } else if (isInserting) {
+      context.missing(_yearMeta);
+    }
+    if (data.containsKey('month')) {
+      context.handle(_monthMeta, month.isAcceptableOrUnknown(data['month']!, _monthMeta));
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('from_category_id')) {
+      context.handle(
+        _fromCategoryIdMeta,
+        fromCategoryId.isAcceptableOrUnknown(data['from_category_id']!, _fromCategoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fromCategoryIdMeta);
+    }
+    if (data.containsKey('to_category_id')) {
+      context.handle(
+        _toCategoryIdMeta,
+        toCategoryId.isAcceptableOrUnknown(data['to_category_id']!, _toCategoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_toCategoryIdMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta, amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(_dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(_noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BudgetMove map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BudgetMove(
+      id: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      year: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}year'])!,
+      month: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}month'])!,
+      fromCategoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}from_category_id'],
+      )!,
+      toCategoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_category_id'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      note: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}note'])!,
+    );
+  }
+
+  @override
+  $BudgetMovesTable createAlias(String alias) {
+    return $BudgetMovesTable(attachedDatabase, alias);
+  }
+}
+
+class BudgetMove extends DataClass implements Insertable<BudgetMove> {
+  final int id;
+  final int year;
+  final int month;
+  final int fromCategoryId;
+  final int toCategoryId;
+  final int amount;
+  final DateTime date;
+  final String note;
+  const BudgetMove({
+    required this.id,
+    required this.year,
+    required this.month,
+    required this.fromCategoryId,
+    required this.toCategoryId,
+    required this.amount,
+    required this.date,
+    required this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['year'] = Variable<int>(year);
+    map['month'] = Variable<int>(month);
+    map['from_category_id'] = Variable<int>(fromCategoryId);
+    map['to_category_id'] = Variable<int>(toCategoryId);
+    map['amount'] = Variable<int>(amount);
+    map['date'] = Variable<DateTime>(date);
+    map['note'] = Variable<String>(note);
+    return map;
+  }
+
+  BudgetMovesCompanion toCompanion(bool nullToAbsent) {
+    return BudgetMovesCompanion(
+      id: Value(id),
+      year: Value(year),
+      month: Value(month),
+      fromCategoryId: Value(fromCategoryId),
+      toCategoryId: Value(toCategoryId),
+      amount: Value(amount),
+      date: Value(date),
+      note: Value(note),
+    );
+  }
+
+  factory BudgetMove.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BudgetMove(
+      id: serializer.fromJson<int>(json['id']),
+      year: serializer.fromJson<int>(json['year']),
+      month: serializer.fromJson<int>(json['month']),
+      fromCategoryId: serializer.fromJson<int>(json['fromCategoryId']),
+      toCategoryId: serializer.fromJson<int>(json['toCategoryId']),
+      amount: serializer.fromJson<int>(json['amount']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      note: serializer.fromJson<String>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'year': serializer.toJson<int>(year),
+      'month': serializer.toJson<int>(month),
+      'fromCategoryId': serializer.toJson<int>(fromCategoryId),
+      'toCategoryId': serializer.toJson<int>(toCategoryId),
+      'amount': serializer.toJson<int>(amount),
+      'date': serializer.toJson<DateTime>(date),
+      'note': serializer.toJson<String>(note),
+    };
+  }
+
+  BudgetMove copyWith({
+    int? id,
+    int? year,
+    int? month,
+    int? fromCategoryId,
+    int? toCategoryId,
+    int? amount,
+    DateTime? date,
+    String? note,
+  }) => BudgetMove(
+    id: id ?? this.id,
+    year: year ?? this.year,
+    month: month ?? this.month,
+    fromCategoryId: fromCategoryId ?? this.fromCategoryId,
+    toCategoryId: toCategoryId ?? this.toCategoryId,
+    amount: amount ?? this.amount,
+    date: date ?? this.date,
+    note: note ?? this.note,
+  );
+  BudgetMove copyWithCompanion(BudgetMovesCompanion data) {
+    return BudgetMove(
+      id: data.id.present ? data.id.value : this.id,
+      year: data.year.present ? data.year.value : this.year,
+      month: data.month.present ? data.month.value : this.month,
+      fromCategoryId: data.fromCategoryId.present ? data.fromCategoryId.value : this.fromCategoryId,
+      toCategoryId: data.toCategoryId.present ? data.toCategoryId.value : this.toCategoryId,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      date: data.date.present ? data.date.value : this.date,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetMove(')
+          ..write('id: $id, ')
+          ..write('year: $year, ')
+          ..write('month: $month, ')
+          ..write('fromCategoryId: $fromCategoryId, ')
+          ..write('toCategoryId: $toCategoryId, ')
+          ..write('amount: $amount, ')
+          ..write('date: $date, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, year, month, fromCategoryId, toCategoryId, amount, date, note);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BudgetMove &&
+          other.id == this.id &&
+          other.year == this.year &&
+          other.month == this.month &&
+          other.fromCategoryId == this.fromCategoryId &&
+          other.toCategoryId == this.toCategoryId &&
+          other.amount == this.amount &&
+          other.date == this.date &&
+          other.note == this.note);
+}
+
+class BudgetMovesCompanion extends UpdateCompanion<BudgetMove> {
+  final Value<int> id;
+  final Value<int> year;
+  final Value<int> month;
+  final Value<int> fromCategoryId;
+  final Value<int> toCategoryId;
+  final Value<int> amount;
+  final Value<DateTime> date;
+  final Value<String> note;
+  const BudgetMovesCompanion({
+    this.id = const Value.absent(),
+    this.year = const Value.absent(),
+    this.month = const Value.absent(),
+    this.fromCategoryId = const Value.absent(),
+    this.toCategoryId = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.date = const Value.absent(),
+    this.note = const Value.absent(),
+  });
+  BudgetMovesCompanion.insert({
+    this.id = const Value.absent(),
+    required int year,
+    required int month,
+    required int fromCategoryId,
+    required int toCategoryId,
+    required int amount,
+    required DateTime date,
+    this.note = const Value.absent(),
+  }) : year = Value(year),
+       month = Value(month),
+       fromCategoryId = Value(fromCategoryId),
+       toCategoryId = Value(toCategoryId),
+       amount = Value(amount),
+       date = Value(date);
+  static Insertable<BudgetMove> custom({
+    Expression<int>? id,
+    Expression<int>? year,
+    Expression<int>? month,
+    Expression<int>? fromCategoryId,
+    Expression<int>? toCategoryId,
+    Expression<int>? amount,
+    Expression<DateTime>? date,
+    Expression<String>? note,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (year != null) 'year': year,
+      if (month != null) 'month': month,
+      if (fromCategoryId != null) 'from_category_id': fromCategoryId,
+      if (toCategoryId != null) 'to_category_id': toCategoryId,
+      if (amount != null) 'amount': amount,
+      if (date != null) 'date': date,
+      if (note != null) 'note': note,
+    });
+  }
+
+  BudgetMovesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? year,
+    Value<int>? month,
+    Value<int>? fromCategoryId,
+    Value<int>? toCategoryId,
+    Value<int>? amount,
+    Value<DateTime>? date,
+    Value<String>? note,
+  }) {
+    return BudgetMovesCompanion(
+      id: id ?? this.id,
+      year: year ?? this.year,
+      month: month ?? this.month,
+      fromCategoryId: fromCategoryId ?? this.fromCategoryId,
+      toCategoryId: toCategoryId ?? this.toCategoryId,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      note: note ?? this.note,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (month.present) {
+      map['month'] = Variable<int>(month.value);
+    }
+    if (fromCategoryId.present) {
+      map['from_category_id'] = Variable<int>(fromCategoryId.value);
+    }
+    if (toCategoryId.present) {
+      map['to_category_id'] = Variable<int>(toCategoryId.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetMovesCompanion(')
+          ..write('id: $id, ')
+          ..write('year: $year, ')
+          ..write('month: $month, ')
+          ..write('fromCategoryId: $fromCategoryId, ')
+          ..write('toCategoryId: $toCategoryId, ')
+          ..write('amount: $amount, ')
+          ..write('date: $date, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4934,6 +5487,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $InvestmentDetailsTable investmentDetails = $InvestmentDetailsTable(this);
   late final $PurchasesTable purchases = $PurchasesTable(this);
   late final $TrackersTable trackers = $TrackersTable(this);
+  late final $BudgetMovesTable budgetMoves = $BudgetMovesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4951,6 +5505,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     investmentDetails,
     purchases,
     trackers,
+    budgetMoves,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4965,6 +5520,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName('entries', limitUpdateKind: UpdateKind.delete),
       result: [TableUpdate('purchases', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName('categories', limitUpdateKind: UpdateKind.delete),
+      result: [TableUpdate('budget_moves', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName('categories', limitUpdateKind: UpdateKind.delete),
+      result: [TableUpdate('budget_moves', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -5769,6 +6332,8 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<bool> isFixed,
   Value<int?> dueDay,
   Value<int?> savingsFundId,
+  Value<int?> slotYear,
+  Value<int?> slotMonth,
   Value<int> sortOrder,
   Value<bool> archived,
 });
@@ -5780,6 +6345,8 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<bool> isFixed,
   Value<int?> dueDay,
   Value<int?> savingsFundId,
+  Value<int?> slotYear,
+  Value<int?> slotMonth,
   Value<int> sortOrder,
   Value<bool> archived,
 });
@@ -5869,6 +6436,12 @@ class $$CategoriesTableFilterComposer extends Composer<_$AppDatabase, $Categorie
 
   ColumnFilters<int> get dueDay =>
       $composableBuilder(column: $table.dueDay, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get slotYear =>
+      $composableBuilder(column: $table.slotYear, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get slotMonth =>
+      $composableBuilder(column: $table.slotMonth, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => ColumnFilters(column));
@@ -5972,6 +6545,12 @@ class $$CategoriesTableOrderingComposer extends Composer<_$AppDatabase, $Categor
   ColumnOrderings<int> get dueDay =>
       $composableBuilder(column: $table.dueDay, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get slotYear =>
+      $composableBuilder(column: $table.slotYear, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get slotMonth =>
+      $composableBuilder(column: $table.slotMonth, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => ColumnOrderings(column));
 
@@ -6036,6 +6615,12 @@ class $$CategoriesTableAnnotationComposer extends Composer<_$AppDatabase, $Categ
 
   GeneratedColumn<int> get dueDay =>
       $composableBuilder(column: $table.dueDay, builder: (column) => column);
+
+  GeneratedColumn<int> get slotYear =>
+      $composableBuilder(column: $table.slotYear, builder: (column) => column);
+
+  GeneratedColumn<int> get slotMonth =>
+      $composableBuilder(column: $table.slotMonth, builder: (column) => column);
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -6158,6 +6743,8 @@ class $$CategoriesTableTableManager
                 Value<bool> isFixed = const Value.absent(),
                 Value<int?> dueDay = const Value.absent(),
                 Value<int?> savingsFundId = const Value.absent(),
+                Value<int?> slotYear = const Value.absent(),
+                Value<int?> slotMonth = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> archived = const Value.absent(),
               }) => CategoriesCompanion(
@@ -6168,6 +6755,8 @@ class $$CategoriesTableTableManager
                 isFixed: isFixed,
                 dueDay: dueDay,
                 savingsFundId: savingsFundId,
+                slotYear: slotYear,
+                slotMonth: slotMonth,
                 sortOrder: sortOrder,
                 archived: archived,
               ),
@@ -6180,6 +6769,8 @@ class $$CategoriesTableTableManager
                 Value<bool> isFixed = const Value.absent(),
                 Value<int?> dueDay = const Value.absent(),
                 Value<int?> savingsFundId = const Value.absent(),
+                Value<int?> slotYear = const Value.absent(),
+                Value<int?> slotMonth = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> archived = const Value.absent(),
               }) => CategoriesCompanion.insert(
@@ -6190,6 +6781,8 @@ class $$CategoriesTableTableManager
                 isFixed: isFixed,
                 dueDay: dueDay,
                 savingsFundId: savingsFundId,
+                slotYear: slotYear,
+                slotMonth: slotMonth,
                 sortOrder: sortOrder,
                 archived: archived,
               ),
@@ -9134,6 +9727,384 @@ typedef $$TrackersTableProcessedTableManager =
       Tracker,
       PrefetchHooks Function()
     >;
+typedef $$BudgetMovesTableCreateCompanionBuilder = BudgetMovesCompanion Function({
+  Value<int> id,
+  required int year,
+  required int month,
+  required int fromCategoryId,
+  required int toCategoryId,
+  required int amount,
+  required DateTime date,
+  Value<String> note,
+});
+typedef $$BudgetMovesTableUpdateCompanionBuilder = BudgetMovesCompanion Function({
+  Value<int> id,
+  Value<int> year,
+  Value<int> month,
+  Value<int> fromCategoryId,
+  Value<int> toCategoryId,
+  Value<int> amount,
+  Value<DateTime> date,
+  Value<String> note,
+});
+
+final class $$BudgetMovesTableReferences
+    extends BaseReferences<_$AppDatabase, $BudgetMovesTable, BudgetMove> {
+  $$BudgetMovesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CategoriesTable _fromCategoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias('budget_moves__from_category_id__categories__id');
+
+  $$CategoriesTableProcessedTableManager get fromCategoryId {
+    final $_column = $_itemColumn<int>('from_category_id')!;
+
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fromCategoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $CategoriesTable _toCategoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias('budget_moves__to_category_id__categories__id');
+
+  $$CategoriesTableProcessedTableManager get toCategoryId {
+    final $_column = $_itemColumn<int>('to_category_id')!;
+
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toCategoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$BudgetMovesTableFilterComposer extends Composer<_$AppDatabase, $BudgetMovesTable> {
+  $$BudgetMovesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => ColumnFilters(column));
+
+  $$CategoriesTableFilterComposer get fromCategoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fromCategoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableFilterComposer get toCategoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toCategoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BudgetMovesTableOrderingComposer extends Composer<_$AppDatabase, $BudgetMovesTable> {
+  $$BudgetMovesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  $$CategoriesTableOrderingComposer get fromCategoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fromCategoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableOrderingComposer get toCategoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toCategoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BudgetMovesTableAnnotationComposer extends Composer<_$AppDatabase, $BudgetMovesTable> {
+  $$BudgetMovesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<int> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  $$CategoriesTableAnnotationComposer get fromCategoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fromCategoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableAnnotationComposer get toCategoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toCategoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BudgetMovesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BudgetMovesTable,
+          BudgetMove,
+          $$BudgetMovesTableFilterComposer,
+          $$BudgetMovesTableOrderingComposer,
+          $$BudgetMovesTableAnnotationComposer,
+          $$BudgetMovesTableCreateCompanionBuilder,
+          $$BudgetMovesTableUpdateCompanionBuilder,
+          (BudgetMove, $$BudgetMovesTableReferences),
+          BudgetMove,
+          PrefetchHooks Function({bool fromCategoryId, bool toCategoryId})
+        > {
+  $$BudgetMovesTableTableManager(_$AppDatabase db, $BudgetMovesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () => $$BudgetMovesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$BudgetMovesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BudgetMovesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> year = const Value.absent(),
+                Value<int> month = const Value.absent(),
+                Value<int> fromCategoryId = const Value.absent(),
+                Value<int> toCategoryId = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String> note = const Value.absent(),
+              }) => BudgetMovesCompanion(
+                id: id,
+                year: year,
+                month: month,
+                fromCategoryId: fromCategoryId,
+                toCategoryId: toCategoryId,
+                amount: amount,
+                date: date,
+                note: note,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int year,
+                required int month,
+                required int fromCategoryId,
+                required int toCategoryId,
+                required int amount,
+                required DateTime date,
+                Value<String> note = const Value.absent(),
+              }) => BudgetMovesCompanion.insert(
+                id: id,
+                year: year,
+                month: month,
+                fromCategoryId: fromCategoryId,
+                toCategoryId: toCategoryId,
+                amount: amount,
+                date: date,
+                note: note,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$BudgetMovesTable, BudgetMove>(table),
+                  $$BudgetMovesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({fromCategoryId = false, toCategoryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (fromCategoryId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.fromCategoryId,
+                        referencedTable: $$BudgetMovesTableReferences._fromCategoryIdTable(db),
+                        referencedColumn: $$BudgetMovesTableReferences._fromCategoryIdTable(db).id,
+                      ) as T;
+                    }
+                    if (toCategoryId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.toCategoryId,
+                        referencedTable: $$BudgetMovesTableReferences._toCategoryIdTable(db),
+                        referencedColumn: $$BudgetMovesTableReferences._toCategoryIdTable(db).id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BudgetMovesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BudgetMovesTable,
+      BudgetMove,
+      $$BudgetMovesTableFilterComposer,
+      $$BudgetMovesTableOrderingComposer,
+      $$BudgetMovesTableAnnotationComposer,
+      $$BudgetMovesTableCreateCompanionBuilder,
+      $$BudgetMovesTableUpdateCompanionBuilder,
+      (BudgetMove, $$BudgetMovesTableReferences),
+      BudgetMove,
+      PrefetchHooks Function({bool fromCategoryId, bool toCategoryId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9153,4 +10124,6 @@ class $AppDatabaseManager {
       $$InvestmentDetailsTableTableManager(_db, _db.investmentDetails);
   $$PurchasesTableTableManager get purchases => $$PurchasesTableTableManager(_db, _db.purchases);
   $$TrackersTableTableManager get trackers => $$TrackersTableTableManager(_db, _db.trackers);
+  $$BudgetMovesTableTableManager get budgetMoves =>
+      $$BudgetMovesTableTableManager(_db, _db.budgetMoves);
 }

@@ -164,7 +164,13 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
     final appBank = bank == null ? 0 : ledger.accountBalance(bank.id, before: p.end);
     final realBank = parseTaka(_bank.text);
     final status = StatusColors.of(context);
-    final toPots = ledger.unusedBudgetMoves(p);
+    // Slots are emptied first; their leftover goes back to where it came
+    // from, and may then be saved to a linked pot.
+    final slotLeftovers = [
+      for (final slot in ledger.slotsIn(p))
+        if (slot.left > 0) slot,
+    ];
+    final toPots = ledger.withSlotsReturned(p).unusedBudgetMoves(p);
     final toPotsTotal = toPots.fold<Poisha>(0, (t, m) => t + m.amount);
     final leftAfter = s.leftToSpend - toPotsTotal;
     final pots = [
@@ -191,6 +197,16 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
         AmountRow('Spent', s.expenses, detail: 'budget ${formatTaka(s.budget)}'),
         AmountRow('Set aside', s.setAside),
         AmountRow('Left over', s.leftToSpend, total: true),
+        if (slotLeftovers.isNotEmpty) ...[
+          const Label('Slots with money left'),
+          for (final slot in slotLeftovers)
+            AmountRow(
+              slot.category.name,
+              slot.left,
+              detail:
+                  'back to ${[for (final s in ledger.giveBackShares(slot, slot.left)) ledger.categories[s.category]?.name].join(', ')}',
+            ),
+        ],
         if (toPots.isNotEmpty) ...[
           const Label('Unused budget to savings'),
           for (final m in toPots)
@@ -303,6 +319,7 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
                   final db = ref.read(databaseProvider);
                   // Recalculate after a bank correction, then save unused budget
                   // of linked categories before deciding on the leftover.
+                  await repo.returnSlotLeftovers(p, await Ledger.load(db));
                   final afterBank = await Ledger.load(db);
                   await repo.moveUnusedBudgets(
                     p,
