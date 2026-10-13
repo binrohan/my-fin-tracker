@@ -91,6 +91,7 @@ String entryTitle(Ledger ledger, Entry e) {
     EntryType.lend => 'Lent',
     EntryType.collect => 'Received back',
     EntryType.charge => 'Loan charge',
+    EntryType.release => 'Income for this month',
   };
 }
 

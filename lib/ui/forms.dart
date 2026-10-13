@@ -156,6 +156,7 @@ Future<Pot?> pickPot(
             f.id == initial.fund ||
             (!f.archived &&
                 f.achievedAt == null &&
+                f.kind != FundKind.nextMonth &&
                 (includeInvestments || f.kind != FundKind.investment)),
       )
       .toList();

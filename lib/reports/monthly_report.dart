@@ -112,6 +112,7 @@ List<pw.Widget> _summary(Ledger ledger, Period p, DateTime generatedAt) {
 }
 
 pw.Widget _income(Ledger ledger, Period p) {
+  final s = ledger.summary(p);
   final lines = ledger.categoryLines(p, CategoryKind.income).where((l) => l.actual != 0).toList();
   final total = lines.fold<Poisha>(0, (t, l) => t + l.actual);
   final count = ledger.entries
@@ -128,6 +129,11 @@ pw.Widget _income(Ledger ledger, Period p) {
           ReportRow(['Total', amt(total)], style: RowStyle.total),
         ],
       ),
+      if (s.heldForNext > 0)
+        muted(
+          'Of this, ${amt(s.heldForNext)} was held for ${p.next.label} (received for next month).',
+        ),
+      if (s.released > 0) muted('Plus ${amt(s.released)} received last month for ${p.label}.'),
     ],
   );
 }
@@ -155,7 +161,10 @@ pw.Widget _openingBalances(Ledger ledger, Period p, PeriodSummary s) {
 }
 
 List<pw.Widget> _allocation(Ledger ledger, Period p, PeriodSummary s) {
-  if (s.income <= 0) return [];
+  // The month's own income: what arrived for it, plus last month's income
+  // released for it; income held for next month is left out.
+  final income = s.monthIncome;
+  if (income <= 0) return [];
   final byKind = ledger.setAsideByKind(p);
   final parts = <(String, Poisha)>[
     ('Expenses', s.expenses),
@@ -164,16 +173,16 @@ List<pw.Widget> _allocation(Ledger ledger, Period p, PeriodSummary s) {
     ('Investments', byKind[FundKind.investment] ?? 0),
   ];
   final used = parts.fold<Poisha>(0, (t, x) => t + x.$2);
-  final unspent = s.income - used;
+  final unspent = income - used;
   if (unspent > 0) parts.add(('Unspent', unspent));
   final shown = [
     for (final (i, x) in parts.indexed)
       if (x.$2 > 0) (i, x.$1, x.$2),
   ];
-  final base = used > s.income ? used : s.income;
+  final base = used > income ? used : income;
 
   return [
-    sectionTitle('Where the income went', note: '% of ${amt(s.income)}'),
+    sectionTitle('Where the income went', note: '% of ${amt(income)}'),
     pw.Container(
       height: 13,
       decoration: pw.BoxDecoration(border: pw.Border.all(color: ReportColors.line)),
@@ -199,16 +208,16 @@ List<pw.Widget> _allocation(Ledger ledger, Period p, PeriodSummary s) {
               pw.Container(width: 7, height: 7, color: ReportColors.allocation[i]),
               pw.SizedBox(width: 3),
               pw.Text(
-                '$name ${amt(value)} · ${pct(value / s.income * 100)}',
+                '$name ${amt(value)} · ${pct(value / income * 100)}',
                 style: pw.TextStyle(fontSize: 7.5, color: ReportColors.muted),
               ),
             ],
           ),
       ],
     ),
-    if (used > s.income)
+    if (used > income)
       muted(
-        'More went out than came in: ${amt(used - s.income)} came from money carried forward or borrowed.',
+        'More went out than came in: ${amt(used - income)} came from money carried forward or borrowed.',
       ),
   ];
 }
@@ -332,6 +341,7 @@ List<pw.Widget> _savingsAndAssets(Ledger ledger, Period p) {
     noteBox(
       pw.Text(
         'Carried forward to ${p.next.label}: Spending ${amt(s.carriedForward)} + income ${amt(s.spendingIncome)} '
+        '${s.released == 0 ? '' : '+ income for this month ${amt(s.released)} '}'
         '− set aside ${amt(s.setAside)} − spent ${amt(s.spendingExpenses)}'
         '${s.loanNet == 0 ? '' : ' ${s.loanNet > 0 ? '+' : '−'} loans ${amt(s.loanNet.abs())}'}'
         '${s.startingNet == 0 ? '' : ' + starting ${amt(s.startingNet)}'}'
@@ -625,6 +635,7 @@ pw.Widget _ledgerTable(Ledger ledger, List<Entry> entries) {
     EntryType.lend => 'Lend',
     EntryType.collect => 'Received',
     EntryType.charge => 'Charge',
+    EntryType.release => 'Released',
   };
   String where(Entry e) {
     final ps = ledger.postingsOf(e.id);

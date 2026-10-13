@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/money.dart';
+import '../../core/period.dart';
 import '../../ledger/allocation.dart';
 import '../../ledger/enums.dart';
 import '../../ui/forms.dart';
@@ -32,6 +34,7 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
   int? _account;
   late DateTime _date = ref.read(todayProvider);
   bool _setAside = true;
+  late bool _forNextMonth = widget.source.forNextMonth;
 
   @override
   void dispose() {
@@ -53,6 +56,8 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
     final plan = ledger.plan;
     final offersSplit = plan.categoryId == widget.source.categoryId && !plan.isEmpty;
     final amount = parseTaka(_amount.text) ?? 0;
+    final next = Period.of(_date).next;
+    final firstOfNext = DateFormat.MMMd().format(next.start);
 
     return SheetBody(
       title: 'Record $name',
@@ -88,10 +93,25 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
             if (picked != null) setState(() => _date = picked);
           },
         ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text('For ${next.label}'),
+          subtitle: Text(
+            _forNextMonth
+                ? 'Held until $firstOfNext, then it becomes ${next.label}\'s spending money'
+                : 'Counts as spending money now',
+          ),
+          value: _forNextMonth,
+          onChanged: (v) => setState(() => _forNextMonth = v),
+        ),
         if (offersSplit)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Set aside ${formatTaka(plan.total)} as planned'),
+            title: Text(
+              _forNextMonth
+                  ? 'Set aside ${formatTaka(plan.total)} on $firstOfNext as planned'
+                  : 'Set aside ${formatTaka(plan.total)} as planned',
+            ),
             subtitle: Text(
               [
                 for (final i in plan.items)
@@ -106,14 +126,26 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
               ? null
               : () async {
                   final repo = ref.read(repositoryProvider);
-                  final pot = (account: _account!, fund: ledger.spendingFund.id);
-                  await repo.income(_date, amount, categoryId: widget.source.categoryId, to: pot);
-                  if (offersSplit && _setAside) await repo.applyAllocation(plan, _date, pot);
+                  if (_forNextMonth) {
+                    await repo.incomeForNextMonth(
+                      _date,
+                      amount,
+                      categoryId: widget.source.categoryId,
+                      account: _account!,
+                      setAsideOnRelease: offersSplit && _setAside,
+                    );
+                  } else {
+                    final pot = (account: _account!, fund: ledger.spendingFund.id);
+                    await repo.income(_date, amount, categoryId: widget.source.categoryId, to: pot);
+                    if (offersSplit && _setAside) await repo.applyAllocation(plan, _date, pot);
+                  }
                   if (!context.mounted) return;
                   Navigator.pop(context);
                   showSnack(
                     context,
-                    offersSplit && _setAside
+                    _forNextMonth
+                        ? '$name held for ${next.label}'
+                        : offersSplit && _setAside
                         ? '$name recorded and ${formatTaka(plan.total)} set aside'
                         : '$name recorded',
                   );

@@ -24,13 +24,20 @@ class AllocationItem {
 /// A regular income: how much, around which day of the month, and where
 /// it usually arrives.
 class IncomeSource {
-  const IncomeSource({required this.categoryId, required this.amount, this.day, this.accountId});
+  const IncomeSource({
+    required this.categoryId,
+    required this.amount,
+    this.day,
+    this.accountId,
+    this.forNextMonth = false,
+  });
 
   factory IncomeSource.fromJson(Map<String, dynamic> json) => IncomeSource(
     categoryId: json['category'] as int,
     amount: json['amount'] as int,
     day: json['day'] as int?,
     accountId: json['account'] as int?,
+    forNextMonth: json['next'] == true,
   );
 
   final int categoryId;
@@ -42,11 +49,16 @@ class IncomeSource {
   /// Where it usually arrives: a bank account, or cash.
   final int? accountId;
 
+  /// Received this month to spend next month (e.g. salary on the 26th):
+  /// held apart, then released into Spending on the 1st.
+  final bool forNextMonth;
+
   Map<String, dynamic> toJson() => {
     'category': categoryId,
     'amount': amount,
     'day': ?day,
     'account': ?accountId,
+    if (forNextMonth) 'next': true,
   };
 }
 
@@ -94,6 +106,10 @@ class AllocationPlan {
   bool get isEmpty => items.isEmpty;
 
   Poisha get plannedIncome => incomes.fold(0, (t, i) => t + i.amount);
+
+  /// The planned source for an income category, if any.
+  IncomeSource? sourceFor(int? categoryId) =>
+      incomes.where((i) => i.categoryId == categoryId).firstOrNull;
 
   /// Income not yet given a purpose (negative: more planned than earned).
   Poisha get unassigned => plannedIncome - (expenseTarget ?? 0) - total;

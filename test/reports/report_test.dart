@@ -100,4 +100,32 @@ void main() {
     expect(text, contains('"Vegetables, Karwan Bazar"'));
     await keep('entries-2026.csv', bytes);
   });
+
+  test('a month with income held for next month still makes its report', () async {
+    final db = AppDatabase(
+      DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+    );
+    await loadSampleData(db);
+    final l = await Ledger.load(db);
+    final repo = LedgerRepository(db);
+    await repo.incomeForNextMonth(
+      DateTime(2026, 10, 26),
+      8500000,
+      categoryId: l.categories.values.firstWhere((c) => c.name == 'Salary').id,
+      account: l.accounts.values.firstWhere((a) => a.name == 'Bank').id,
+    );
+    await repo.releaseHeldIncome(DateTime(2026, 11, 2));
+    final after = await Ledger.load(db);
+    await db.close();
+    for (final p in [const Period(2026, 10), const Period(2026, 11)]) {
+      final bytes = await buildMonthlyReport(
+        after,
+        p,
+        fonts: fonts,
+        generatedAt: DateTime(2026, 11, 2),
+      );
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+      await keep('monthly-held-$p.pdf', bytes);
+    }
+  });
 }

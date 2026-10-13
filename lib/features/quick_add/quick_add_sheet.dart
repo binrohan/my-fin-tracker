@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/money.dart';
+import '../../core/period.dart';
 import '../../data/database.dart';
 import '../../data/ledger_repository.dart';
 import '../../ledger/allocation.dart';
@@ -54,6 +55,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
   /// Add to the Buying register.
   bool _major = false;
+
+  /// Income received now for next month; null: as the plan says for this
+  /// income type.
+  bool? _forNextMonth;
   int? _trackerId;
 
   /// The purchase record of the entry being edited, kept so shop and
@@ -158,6 +163,13 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         note: note,
         trackerId: _trackerId,
       ),
+      QuickAddMode.income when _holdForNextMonth(ledger) => repo.incomeForNextMonth(
+        _date,
+        amount,
+        categoryId: _categoryId!,
+        account: _to.account,
+        note: note,
+      ),
       QuickAddMode.income => repo.income(
         _date,
         amount,
@@ -194,7 +206,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     if (_mode == QuickAddMode.income) await repo.setSetting(_lastIncomePot, potSetting(_to));
 
     navigator.pop();
+    final held = _mode == QuickAddMode.income && _holdForNextMonth(ledger);
     final what = switch (_mode) {
+      _ when held =>
+        '${ledger.categories[_categoryId]?.name} ${formatTaka(amount)} held for '
+            '${Period.of(_date).next.label}',
       QuickAddMode.move => 'Moved ${formatTaka(amount)}',
       _ =>
         '${editing == null ? 'Saved' : 'Updated'} ${formatTaka(amount)} · '
@@ -202,8 +218,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     };
 
     final plan = AllocationPlan.parse(ledger.settings[AllocationPlan.settingKey]);
+    // Held income is split when it is released on the 1st, not now.
     final offerPlan =
         editing == null &&
+        !held &&
         _mode == QuickAddMode.income &&
         !plan.isEmpty &&
         plan.categoryId == _categoryId;
@@ -222,6 +240,11 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         ),
       );
   }
+
+  /// Hold this income for next month: the chip if touched, otherwise the
+  /// plan's setting for this income type.
+  bool _holdForNextMonth(Ledger ledger) =>
+      _forNextMonth ?? ledger.plan.sourceFor(_categoryId)?.forNextMonth ?? false;
 
   @override
   Widget build(BuildContext context) {
@@ -325,13 +348,21 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                     ChoiceChip(
                       label: Text(c.name),
                       selected: c.id == _categoryId,
-                      onSelected: (_) => setState(() => _categoryId = c.id),
+                      onSelected: (_) => setState(() {
+                        _categoryId = c.id;
+                        _forNextMonth = null;
+                      }),
                     ),
                   ActionChip(
                     label: const Text('All…'),
                     onPressed: () async {
                       final picked = await pickCategory(context, ledger, _kind);
-                      if (picked != null) setState(() => _categoryId = picked.id);
+                      if (picked != null) {
+                        setState(() {
+                          _categoryId = picked.id;
+                          _forNextMonth = null;
+                        });
+                      }
                     },
                   ),
                 ],
@@ -350,6 +381,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               ],
             ),
             if (_mode == QuickAddMode.move) potField('To', _to, (p) => _to = p),
+            if (_mode == QuickAddMode.income && _categoryId != null && widget.editing == null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilterChip(
+                  label: Text('For ${Period.of(_date).next.label}'),
+                  selected: _holdForNextMonth(ledger),
+                  onSelected: (v) => setState(() => _forNextMonth = v),
+                ),
+              ),
             // One scrolling line, so the number pad stays on screen.
             if (_mode == QuickAddMode.expense)
               SingleChildScrollView(

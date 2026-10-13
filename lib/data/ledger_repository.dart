@@ -536,6 +536,91 @@ class LedgerRepository {
         }
       });
 
+  // -------------------------------------------------- income for next month
+
+  /// The pot that holds income received for next month, created on first
+  /// use.
+  Future<int> nextMonthFund() async {
+    final existing = await (db.select(
+      db.funds,
+    )..where((f) => f.kind.equalsValue(FundKind.nextMonth))).getSingleOrNull();
+    if (existing != null) return existing.id;
+    return db
+        .into(db.funds)
+        .insert(
+          FundsCompanion.insert(
+            name: 'For next month',
+            kind: FundKind.nextMonth,
+            sortOrder: const Value(-1),
+          ),
+        );
+  }
+
+  static String splitOnReleaseKey(Period month) => 'split_on_release_$month';
+
+  /// Income received now to spend next month: held in "For next month" in
+  /// [account] until the 1st. [setAsideOnRelease] decides whether the
+  /// plan's split runs when it is released.
+  Future<int> incomeForNextMonth(
+    DateTime date,
+    Poisha amount, {
+    required int categoryId,
+    required int account,
+    bool setAsideOnRelease = true,
+    String note = '',
+  }) => db.transaction(() async {
+    final fund = await nextMonthFund();
+    final id = await income(
+      date,
+      amount,
+      categoryId: categoryId,
+      to: (account: account, fund: fund),
+      note: note,
+    );
+    await setSetting(splitOnReleaseKey(Period.of(date).next), '$setAsideOnRelease');
+    return id;
+  });
+
+  /// On or after the 1st: moves income held for this month into Spending,
+  /// dated the 1st, then sets money aside as the plan says if the plan's
+  /// main income was among it. Returns what was released and set aside.
+  ///
+  /// It reads the data afresh inside its transaction, so running it twice
+  /// (two quick app starts) never releases the same money twice.
+  Future<({Poisha released, Poisha setAside})> releaseHeldIncome(DateTime today) =>
+      db.transaction(() async {
+        final ledger = await Ledger.load(db);
+        final due = ledger.releaseDue(today);
+        final fund = ledger.nextMonthFund;
+        if (due.isEmpty || fund == null) return (released: 0, setAside: 0);
+        final month = Period.of(today);
+        final spending = ledger.spendingFund.id;
+        var released = 0;
+        for (final part in due) {
+          await _write(
+            date: month.start,
+            type: EntryType.release,
+            amount: part.amount,
+            postings: [
+              ((account: part.account, fund: fund.id), -part.amount),
+              ((account: part.account, fund: spending), part.amount),
+            ],
+            note: 'Income for ${month.label}',
+          );
+          released += part.amount;
+        }
+
+        final plan = ledger.plan;
+        final trigger = ledger
+            .heldIncomes(month.previous)
+            .where((e) => e.categoryId == plan.categoryId);
+        final wanted = ledger.settings[splitOnReleaseKey(month)] != 'false';
+        if (plan.isEmpty || trigger.isEmpty || !wanted) return (released: released, setAside: 0);
+        final account = ledger.postingsOf(trigger.first.id).first.accountId;
+        await applyAllocation(plan, month.start, (account: account, fund: spending));
+        return (released: released, setAside: plan.total);
+      });
+
   // ---------------------------------------------- slots and budget moves
 
   /// Moves [amount] of budget from one category to another for month

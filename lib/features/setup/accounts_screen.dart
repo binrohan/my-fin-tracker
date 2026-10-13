@@ -25,6 +25,7 @@ String fundKindLabel(FundKind k) => switch (k) {
   FundKind.savings => 'Savings pot',
   FundKind.goal => 'Goal',
   FundKind.investment => 'Investments',
+  FundKind.nextMonth => 'Income for next month',
 };
 
 /// Where money is (accounts) and what it is for (savings pots and goals).

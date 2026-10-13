@@ -220,6 +220,15 @@ class Ledger {
       setAside: -spendingFlow({EntryType.move}),
       loanNet: spendingFlow({EntryType.borrow, EntryType.repay, EntryType.lend, EntryType.collect}),
       startingNet: spendingFlow({EntryType.opening}),
+      released: spendingFlow({EntryType.release}),
+      heldForNext: _sum(
+        inPeriod.where(
+          (l) =>
+              l.type == EntryType.income &&
+              funds[l.fundId]?.kind == FundKind.nextMonth &&
+              isLiquid(l.accountId),
+        ),
+      ),
       adjustNet: spendingFlow({EntryType.adjust, EntryType.charge}),
       invested: _sum(
         inPeriod.where(
@@ -799,6 +808,47 @@ class Ledger {
     ];
   }
 
+  // ------------------------------------------------- income for next month
+
+  Fund? get nextMonthFund => funds.values.where((f) => f.kind == FundKind.nextMonth).firstOrNull;
+
+  /// Income held for next month now (all of it is released on the 1st).
+  Poisha get heldForNextMonth => nextMonthFund == null ? 0 : fundBalance(nextMonthFund!.id);
+
+  /// Held income that arrived before the 1st of [today]'s month and has
+  /// not been released yet, per account. Income held during this month is
+  /// for next month and is left alone.
+  List<({int account, Poisha amount})> releaseDue(DateTime today) {
+    final fund = nextMonthFund;
+    if (fund == null) return const [];
+    final month = Period.of(today);
+    final result = <({int account, Poisha amount})>[];
+    for (final a in accountsOfType((t) => t.isLiquid)) {
+      final heldBefore = cell(a.id, fund.id, before: month.start);
+      final releasedSince = _sum(
+        _between(
+          from: month.start,
+        ).where((l) => l.accountId == a.id && l.fundId == fund.id && l.type == EntryType.release),
+      );
+      final due = heldBefore + releasedSince; // releases are negative here
+      if (due > 0) result.add((account: a.id, amount: due));
+    }
+    return result;
+  }
+
+  /// Income entries of month [p] that were held for the month after.
+  List<Entry> heldIncomes(Period p) {
+    final fund = nextMonthFund;
+    if (fund == null) return const [];
+    return [
+      for (final e in entries)
+        if (e.type == EntryType.income &&
+            p.contains(e.date) &&
+            postingsOf(e.id).any((l) => l.fundId == fund.id))
+          e,
+    ];
+  }
+
   // --------------------------------------------------------- monthly plan
 
   AllocationPlan get plan => AllocationPlan.parse(settings[AllocationPlan.settingKey]);
@@ -841,6 +891,8 @@ class PeriodSummary {
     required this.setAside,
     required this.loanNet,
     required this.startingNet,
+    this.released = 0,
+    this.heldForNext = 0,
     required this.adjustNet,
     required this.invested,
     required this.budget,
@@ -880,6 +932,17 @@ class PeriodSummary {
   /// Corrections after matching a balance, and loan charges.
   final Poisha adjustNet;
 
+  /// Income received last month for this month, released into Spending on
+  /// the 1st.
+  final Poisha released;
+
+  /// Income received this month for next month, held apart.
+  final Poisha heldForNext;
+
+  /// Income meant for this month's spending: what arrived for it (minus
+  /// what is held for next month) plus what was released for it.
+  Poisha get monthIncome => spendingIncome + released;
+
   /// Net amount put into investment accounts.
   final Poisha invested;
 
@@ -899,6 +962,7 @@ class PeriodSummary {
           setAside +
           loanNet +
           startingNet +
+          released +
           adjustNet ==
       leftToSpend;
 

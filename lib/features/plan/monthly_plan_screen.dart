@@ -26,12 +26,15 @@ class MonthlyPlanScreen extends ConsumerStatefulWidget {
 }
 
 class _IncomeRow {
-  _IncomeRow(this.categoryId, Poisha amount, this.day, this.accountId)
+  _IncomeRow(this.categoryId, Poisha amount, this.day, this.accountId, {this.forNextMonth = false})
     : amount = TextEditingController(text: amountText(amount));
 
   int categoryId;
   int? day;
   int? accountId;
+
+  /// Received this month, spent next month (salary on the 26th).
+  bool forNextMonth;
   final TextEditingController amount;
 }
 
@@ -75,7 +78,9 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
     final plan = ledger.plan;
     for (final i in plan.incomes) {
       if (ledger.categories[i.categoryId] != null) {
-        _incomes.add(_IncomeRow(i.categoryId, i.amount, i.day, i.accountId));
+        _incomes.add(
+          _IncomeRow(i.categoryId, i.amount, i.day, i.accountId, forNextMonth: i.forNextMonth),
+        );
       }
     }
     if (_incomes.isEmpty) {
@@ -135,6 +140,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
             amount: _value(r.amount),
             day: r.day,
             accountId: r.accountId,
+            forNextMonth: r.forNextMonth,
           ),
       ],
       expenseTarget: _value(_expenseTarget),
@@ -309,6 +315,17 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
                       ),
                     ),
                   ],
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('For next month'),
+                  subtitle: Text(
+                    r.forNextMonth
+                        ? 'Held when it arrives; released into Spending on the 1st'
+                        : 'Spent in the month it arrives',
+                  ),
+                  value: r.forNextMonth,
+                  onChanged: (v) => setState(() => r.forNextMonth = v),
                 ),
               ],
             ),

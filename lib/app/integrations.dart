@@ -99,6 +99,8 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
     if (state == AppLifecycleState.paused) {
       _pausedAt = DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
+      final ledger = ref.read(ledgerProvider).value;
+      if (ledger != null) _releaseIfDue(ledger);
       final away = _pausedAt == null ? Duration.zero : DateTime.now().difference(_pausedAt!);
       _pausedAt = null;
       final lockOn = ref.read(ledgerProvider).value?.settings[appLockSetting] == 'true';
@@ -144,9 +146,40 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
       _openPending();
     }
     _updateWidget(ledger, hideAmount: lockOn);
+    _releaseIfDue(ledger);
     if (!_backupChecked) {
       _backupChecked = true;
       _autoBackup(ledger);
+    }
+  }
+
+  bool _releasing = false;
+
+  /// On or after the 1st, income held for this month is released into
+  /// Spending (and the plan's split runs). Safe to call often: the
+  /// repository checks again inside its transaction.
+  Future<void> _releaseIfDue(Ledger ledger) async {
+    final now = DateTime.now();
+    if (_releasing || ledger.releaseDue(now).isEmpty) return;
+    _releasing = true;
+    try {
+      final result = await ref.read(repositoryProvider).releaseHeldIncome(now);
+      final context = rootNavigatorKey.currentContext;
+      if (result.released > 0 && context != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 8),
+            content: Text(
+              '${Period.of(now).label}: ${formatTaka(result.released)} income released'
+              '${result.setAside > 0 ? ', ${formatTaka(result.setAside)} set aside as planned' : ''}',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      // Tried again on the next change or app start.
+    } finally {
+      _releasing = false;
     }
   }
 

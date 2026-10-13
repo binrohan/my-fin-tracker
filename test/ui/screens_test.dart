@@ -30,6 +30,8 @@ import 'package:my_fin_tracker/features/more/more_screen.dart';
 import 'package:my_fin_tracker/features/save/save_screen.dart';
 import 'package:my_fin_tracker/features/spend/spend_screen.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
+import 'package:my_fin_tracker/ledger/allocation.dart';
+import 'package:my_fin_tracker/features/plan/record_income_sheet.dart';
 
 /// Draws each tab at Galaxy S24 size (384 × 832 dp) with the example data.
 /// A layout overflow or exception fails the test.
@@ -67,8 +69,8 @@ void main() {
             (ref) async => PackageInfo(
               appName: 'My Fin Tracker',
               packageName: 'com.myfin.my_fin_tracker',
-              version: '1.0.5',
-              buildNumber: '12',
+              version: '1.0.6',
+              buildNumber: '13',
             ),
           ),
         ],
@@ -320,7 +322,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Ocean blue'), findsOneWidget);
       expect(find.text('Plum'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Version 1.0.5 (build 12)'), 300);
+      await tester.scrollUntilVisible(find.text('Version 1.0.6 (build 13)'), 300);
       expect(find.text('Open-source licences'), findsOneWidget);
     });
 
@@ -597,6 +599,72 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('SLOTS WITH MONEY LEFT'), findsOneWidget);
       expect(find.textContaining('back to Ration, Mine', findRichText: true), findsOneWidget);
+    });
+  });
+
+  group('Income for next month', () {
+    late Ledger held;
+    late IncomeSource salarySource;
+
+    setUpAll(() async {
+      final db = AppDatabase(
+        DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+      );
+      await loadSampleData(db);
+      var l = await Ledger.load(db);
+      final salary = l.categories.values.firstWhere((c) => c.name == 'Salary').id;
+      final bank = l.accounts.values.firstWhere((a) => a.name == 'Bank').id;
+      salarySource = IncomeSource(
+        categoryId: salary,
+        amount: taka(85000),
+        day: 26,
+        accountId: bank,
+        forNextMonth: true,
+      );
+      final repo = LedgerRepository(db);
+      await repo.setSetting(
+        AllocationPlan.settingKey,
+        AllocationPlan(categoryId: salary, incomes: [salarySource]).encode(),
+      );
+      await repo.incomeForNextMonth(
+        DateTime(2026, 10, 7),
+        taka(85000),
+        categoryId: salary,
+        account: bank,
+      );
+      held = await Ledger.load(db);
+      await db.close();
+    });
+
+    testWidgets('Home: ready for November, October unchanged', (tester) async {
+      await pump(tester, const HomeScreen(), held);
+      expect(find.text('READY FOR NOVEMBER 2026'), findsOneWidget);
+      expect(find.text('৳85,000'), findsWidgets);
+      expect(find.text('৳24,420'), findsWidgets, reason: 'left to spend unchanged');
+      await tester.scrollUntilVisible(find.text('For next month'), 300);
+      expect(find.text('For next month'), findsOneWidget);
+    });
+
+    testWidgets('recording it offers "For November", on by default', (tester) async {
+      await pump(
+        tester,
+        Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showRecordIncome(context, salarySource),
+              child: const Text('record'),
+            ),
+          ),
+        ),
+        held,
+      );
+      await tester.tap(find.text('record'));
+      await tester.pumpAndSettle();
+      expect(find.text('For November 2026'), findsOneWidget);
+      final toggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'For November 2026'),
+      );
+      expect(toggle.value, isTrue);
     });
   });
 

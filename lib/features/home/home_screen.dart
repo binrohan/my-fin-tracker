@@ -45,6 +45,21 @@ class HomeScreen extends ConsumerWidget {
             if (toClose != null) _CloseMonthBanner(period: toClose),
             if (remindersFor(ledger, today) case final list when list.isNotEmpty)
               _NeedsAttention(ledger: ledger, reminders: list),
+            if (ledger.heldForNextMonth > 0)
+              SectionCard(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                children: [
+                  Label('Ready for ${period.next.label}'),
+                  Money(
+                    ledger.heldForNextMonth,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    'Held apart; it becomes spending money on 1 ${period.next.label.split(' ').first}.',
+                    style: TextStyle(color: StatusColors.of(context).muted, fontSize: 13),
+                  ),
+                ],
+              ),
             _LeftToSpend(summary: s, today: today),
             _ThisMonth(ledger: ledger, summary: s),
             _WhereAndWhat(ledger: ledger),
@@ -113,12 +128,32 @@ class _ThisMonth extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = summary;
+    final heldByCategory = <int, Poisha>{};
+    for (final e in ledger.heldIncomes(summary.period)) {
+      if (e.categoryId != null) {
+        heldByCategory.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
+      }
+    }
     final income = ledger.categoryLines(s.period, CategoryKind.income).where((l) => l.actual != 0);
     return SectionCard(
       children: [
         const Label('This month'),
         AmountRow('Carried forward', s.carriedForward),
-        for (final line in income) AmountRow(line.category.name, line.actual, signed: true),
+        if (s.released != 0)
+          AmountRow(
+            'Income for ${s.period.label.split(' ').first}',
+            s.released,
+            detail: 'received last month',
+            signed: true,
+          ),
+        // Income held for next month is not part of this month's flow.
+        for (final line in income)
+          if (line.actual - (heldByCategory[line.category.id] ?? 0) != 0)
+            AmountRow(
+              line.category.name,
+              line.actual - (heldByCategory[line.category.id] ?? 0),
+              signed: true,
+            ),
         if (s.setAside != 0)
           AmountRow('Set aside', -s.setAside, detail: 'savings, goals, DPS', signed: true),
         AmountRow('Spent', -s.spendingExpenses, signed: true),
@@ -182,6 +217,7 @@ class _WhereAndWhat extends StatelessWidget {
             for (final f in ledger.fundsOfKind(FundKind.savings))
               AmountRow(f.name, ledger.fundBalance(f.id)),
             if (goals != 0) AmountRow('Goals', goals),
+            if (ledger.heldForNextMonth != 0) AmountRow('For next month', ledger.heldForNextMonth),
             AmountRow('Total', total, total: true),
           ],
         ),

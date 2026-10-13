@@ -14,7 +14,16 @@ enum AccountType {
 }
 
 /// What money is for.
-enum FundKind { spending, savings, goal, investment }
+enum FundKind {
+  spending,
+  savings,
+  goal,
+  investment,
+
+  /// Income received this month for next month (salary on the 26th), held
+  /// apart until the 1st, when it is released into Spending.
+  nextMonth,
+}
 
 enum CategoryKind { expense, income }
 
@@ -46,6 +55,9 @@ enum EntryType {
 
   /// Correction after matching a real balance, or an investment value update.
   adjust,
+
+  /// Income held for this month released into Spending on the 1st.
+  release,
 }
 
 enum LoanKind {
