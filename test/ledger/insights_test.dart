@@ -25,7 +25,9 @@ void main() {
   Future<void> reload() async => ledger = await Ledger.load(db);
   int category(String name) => ledger.categories.values.firstWhere((c) => c.name == name).id;
   Poisha spent(DateTime from, DateTime before) => ledger.entries
-      .where((e) => e.type == EntryType.expense && !e.date.isBefore(from) && e.date.isBefore(before))
+      .where(
+        (e) => e.type == EntryType.expense && !e.date.isBefore(from) && e.date.isBefore(before),
+      )
       .fold(0, (t, e) => t + e.amount);
 
   setUp(() async {

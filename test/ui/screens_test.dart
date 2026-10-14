@@ -32,6 +32,8 @@ import 'package:my_fin_tracker/features/spend/spend_screen.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
 import 'package:my_fin_tracker/ledger/allocation.dart';
 import 'package:my_fin_tracker/features/plan/record_income_sheet.dart';
+import 'package:my_fin_tracker/features/tools/afford_screen.dart';
+import 'package:my_fin_tracker/ledger/afford.dart';
 
 /// Draws each tab at Galaxy S24 size (384 × 832 dp) with the example data.
 /// A layout overflow or exception fails the test.
@@ -142,6 +144,31 @@ void main() {
       });
     });
   }
+
+  group('Tools', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('can I afford it, every verdict (${brightness.name})', (tester) async {
+        await pump(tester, const AffordScreen(), sample, brightness: brightness, fullScreen: true);
+        final base = Affordability.of(sample, 1, DateTime(2026, 10, 8));
+        for (final (amount, title) in [
+          (base.unplanned, 'Yes'),
+          (base.unplanned + taka(100), 'Yes, but it is tight'),
+          (base.leftToSpend + taka(2000), 'Not from this month alone'),
+          (base.leftToSpend + base.savings + taka(1), 'Not now'),
+        ]) {
+          await tester.enterText(find.byType(TextField), formatTaka(amount, symbol: false));
+          await tester.pumpAndSettle();
+          expect(find.text(title), findsOneWidget, reason: formatTaka(amount));
+        }
+        await tester.scrollUntilVisible(
+          find.text('Save up for it as a goal'),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.textContaining('months to save it up'), findsOneWidget);
+      });
+    }
+  });
 
   group('Phase 3 screens', () {
     int fund(String name) => sample.funds.values.firstWhere((f) => f.name == name).id;

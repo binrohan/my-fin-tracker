@@ -27,6 +27,7 @@ import '../plan/monthly_plan_screen.dart';
 import '../setup/accounts_screen.dart';
 import '../setup/categories_screen.dart';
 import '../setup/starting_balances_screen.dart';
+import '../tools/afford_screen.dart';
 import 'backup_screen.dart';
 
 const borrowChargeSetting = 'borrow_charge_bp';
@@ -166,6 +167,17 @@ class MoreScreen extends ConsumerWidget {
                   'All entries',
                   'See, edit or delete anything you entered',
                   () => openScreen(context, const EntriesScreen()),
+                ),
+              ],
+            ),
+            SectionCard(
+              children: [
+                const Label('Tools'),
+                item(
+                  Icons.shopping_cart_checkout,
+                  'Can I afford it?',
+                  'Check a price against this month and your savings',
+                  () => openScreen(context, const AffordScreen()),
                 ),
               ],
             ),
