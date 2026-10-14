@@ -28,6 +28,8 @@ import '../setup/accounts_screen.dart';
 import '../setup/categories_screen.dart';
 import '../setup/starting_balances_screen.dart';
 import '../tools/afford_screen.dart';
+import '../tools/tax_screen.dart';
+import '../tools/zakat_screen.dart';
 import 'backup_screen.dart';
 
 const borrowChargeSetting = 'borrow_charge_bp';
@@ -178,6 +180,18 @@ class MoreScreen extends ConsumerWidget {
                   'Can I afford it?',
                   'Check a price against this month and your savings',
                   () => openScreen(context, const AffordScreen()),
+                ),
+                item(
+                  Icons.volunteer_activism_outlined,
+                  'Zakat',
+                  'On your savings, investments, gold and silver',
+                  () => openScreen(context, const ZakatScreen()),
+                ),
+                item(
+                  Icons.account_balance_outlined,
+                  'Income tax',
+                  'Estimate for the July–June income year',
+                  () => openScreen(context, const TaxScreen()),
                 ),
               ],
             ),
