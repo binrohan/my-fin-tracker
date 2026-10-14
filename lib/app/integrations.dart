@@ -185,8 +185,10 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
 
   Future<void> _autoBackup(Ledger ledger) async {
     try {
-      await AutoBackup(ref.read(databaseProvider))
-          .runIfDue(ledger, folder: await AutoBackup.defaultFolder());
+      await AutoBackup(
+        ref.read(databaseProvider),
+        receipts: await ref.read(receiptStoreProvider.future),
+      ).runIfDue(ledger, folder: await AutoBackup.defaultFolder());
     } catch (_) {
       // A failed automatic backup must never stop the app; the backup
       // reminder on Home stays until one succeeds.

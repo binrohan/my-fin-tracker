@@ -2098,6 +2098,15 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _receiptMeta = const VerificationMeta('receipt');
+  @override
+  late final GeneratedColumn<String> receipt = GeneratedColumn<String>(
+    'receipt',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2109,6 +2118,7 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     trackerId,
     note,
     createdAt,
+    receipt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2156,6 +2166,9 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('receipt')) {
+      context.handle(_receiptMeta, receipt.isAcceptableOrUnknown(data['receipt']!, _receiptMeta));
+    }
     return context;
   }
 
@@ -2194,6 +2207,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      receipt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt'],
+      ),
     );
   }
 
@@ -2220,6 +2237,9 @@ class Entry extends DataClass implements Insertable<Entry> {
   final int? trackerId;
   final String note;
   final DateTime createdAt;
+
+  /// File name of a receipt photo in the app's receipts folder.
+  final String? receipt;
   const Entry({
     required this.id,
     required this.date,
@@ -2230,6 +2250,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     this.trackerId,
     required this.note,
     required this.createdAt,
+    this.receipt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2251,6 +2272,9 @@ class Entry extends DataClass implements Insertable<Entry> {
     }
     map['note'] = Variable<String>(note);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || receipt != null) {
+      map['receipt'] = Variable<String>(receipt);
+    }
     return map;
   }
 
@@ -2265,6 +2289,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       trackerId: trackerId == null && nullToAbsent ? const Value.absent() : Value(trackerId),
       note: Value(note),
       createdAt: Value(createdAt),
+      receipt: receipt == null && nullToAbsent ? const Value.absent() : Value(receipt),
     );
   }
 
@@ -2280,6 +2305,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       trackerId: serializer.fromJson<int?>(json['trackerId']),
       note: serializer.fromJson<String>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      receipt: serializer.fromJson<String?>(json['receipt']),
     );
   }
   @override
@@ -2295,6 +2321,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'trackerId': serializer.toJson<int?>(trackerId),
       'note': serializer.toJson<String>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'receipt': serializer.toJson<String?>(receipt),
     };
   }
 
@@ -2308,6 +2335,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     Value<int?> trackerId = const Value.absent(),
     String? note,
     DateTime? createdAt,
+    Value<String?> receipt = const Value.absent(),
   }) => Entry(
     id: id ?? this.id,
     date: date ?? this.date,
@@ -2318,6 +2346,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     trackerId: trackerId.present ? trackerId.value : this.trackerId,
     note: note ?? this.note,
     createdAt: createdAt ?? this.createdAt,
+    receipt: receipt.present ? receipt.value : this.receipt,
   );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -2330,6 +2359,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       trackerId: data.trackerId.present ? data.trackerId.value : this.trackerId,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      receipt: data.receipt.present ? data.receipt.value : this.receipt,
     );
   }
 
@@ -2344,14 +2374,15 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('loanId: $loanId, ')
           ..write('trackerId: $trackerId, ')
           ..write('note: $note, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('receipt: $receipt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, date, type, amount, categoryId, loanId, trackerId, note, createdAt);
+      Object.hash(id, date, type, amount, categoryId, loanId, trackerId, note, createdAt, receipt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2364,7 +2395,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.loanId == this.loanId &&
           other.trackerId == this.trackerId &&
           other.note == this.note &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.receipt == this.receipt);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -2377,6 +2409,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<int?> trackerId;
   final Value<String> note;
   final Value<DateTime> createdAt;
+  final Value<String?> receipt;
   const EntriesCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
@@ -2387,6 +2420,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.trackerId = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.receipt = const Value.absent(),
   });
   EntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -2398,6 +2432,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.trackerId = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.receipt = const Value.absent(),
   }) : date = Value(date),
        type = Value(type),
        amount = Value(amount);
@@ -2411,6 +2446,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<int>? trackerId,
     Expression<String>? note,
     Expression<DateTime>? createdAt,
+    Expression<String>? receipt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2422,6 +2458,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (trackerId != null) 'tracker_id': trackerId,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
+      if (receipt != null) 'receipt': receipt,
     });
   }
 
@@ -2435,6 +2472,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Value<int?>? trackerId,
     Value<String>? note,
     Value<DateTime>? createdAt,
+    Value<String?>? receipt,
   }) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -2446,6 +2484,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       trackerId: trackerId ?? this.trackerId,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
+      receipt: receipt ?? this.receipt,
     );
   }
 
@@ -2479,6 +2518,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (receipt.present) {
+      map['receipt'] = Variable<String>(receipt.value);
+    }
     return map;
   }
 
@@ -2493,7 +2535,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('loanId: $loanId, ')
           ..write('trackerId: $trackerId, ')
           ..write('note: $note, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('receipt: $receipt')
           ..write(')'))
         .toString();
   }
@@ -7403,6 +7446,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<int?> trackerId,
   Value<String> note,
   Value<DateTime> createdAt,
+  Value<String?> receipt,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<int> id,
@@ -7414,6 +7458,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<int?> trackerId,
   Value<String> note,
   Value<DateTime> createdAt,
+  Value<String?> receipt,
 });
 
 final class $$EntriesTableReferences extends BaseReferences<_$AppDatabase, $EntriesTable, Entry> {
@@ -7507,6 +7552,9 @@ class $$EntriesTableFilterComposer extends Composer<_$AppDatabase, $EntriesTable
 
   ColumnFilters<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get receipt =>
+      $composableBuilder(column: $table.receipt, builder: (column) => ColumnFilters(column));
 
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
@@ -7610,6 +7658,9 @@ class $$EntriesTableOrderingComposer extends Composer<_$AppDatabase, $EntriesTab
   ColumnOrderings<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get receipt =>
+      $composableBuilder(column: $table.receipt, builder: (column) => ColumnOrderings(column));
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7674,6 +7725,9 @@ class $$EntriesTableAnnotationComposer extends Composer<_$AppDatabase, $EntriesT
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get receipt =>
+      $composableBuilder(column: $table.receipt, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -7792,6 +7846,7 @@ class $$EntriesTableTableManager
                 Value<int?> trackerId = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> receipt = const Value.absent(),
               }) => EntriesCompanion(
                 id: id,
                 date: date,
@@ -7802,6 +7857,7 @@ class $$EntriesTableTableManager
                 trackerId: trackerId,
                 note: note,
                 createdAt: createdAt,
+                receipt: receipt,
               ),
           createCompanionCallback:
               ({
@@ -7814,6 +7870,7 @@ class $$EntriesTableTableManager
                 Value<int?> trackerId = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> receipt = const Value.absent(),
               }) => EntriesCompanion.insert(
                 id: id,
                 date: date,
@@ -7824,6 +7881,7 @@ class $$EntriesTableTableManager
                 trackerId: trackerId,
                 note: note,
                 createdAt: createdAt,
+                receipt: receipt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

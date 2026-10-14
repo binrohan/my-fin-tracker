@@ -42,7 +42,11 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
 
   Future<(String, Uint8List)> _export() async {
     final now = DateTime.now();
-    final bytes = await Backup.export(ref.read(databaseProvider), now: now);
+    final bytes = await Backup.export(
+      ref.read(databaseProvider),
+      now: now,
+      receipts: await ref.read(receiptStoreProvider.future),
+    );
     return (Backup.fileName(now), bytes);
   }
 
@@ -81,13 +85,18 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       body:
           'Backup from ${DateFormat.yMMMd().add_jm().format(m.createdAt)}\n'
           '${contents.count('entries')} entries · ${contents.count('accounts')} accounts · '
-          '${contents.count('loans')} loans\n\n'
+          '${contents.count('loans')} loans'
+          '${contents.receipts.isEmpty ? '' : ' · ${contents.receipts.length} receipt photos'}\n\n'
           'Everything now in the app will be replaced. Back up first if you are unsure.',
       action: 'Restore',
       destructive: true,
     );
     if (!ok) return;
-    await Backup.restore(ref.read(databaseProvider), contents);
+    await Backup.restore(
+      ref.read(databaseProvider),
+      contents,
+      receipts: await ref.read(receiptStoreProvider.future),
+    );
     if (mounted) showSnack(context, 'Backup restored');
   });
 
@@ -208,8 +217,10 @@ class _AutoBackupCard extends ConsumerWidget {
               icon: const Icon(Icons.backup_outlined),
               label: const Text('Back up now'),
               onPressed: () async {
-                final file = await AutoBackup(ref.read(databaseProvider))
-                    .run(folder: await AutoBackup.defaultFolder());
+                final file = await AutoBackup(
+                  ref.read(databaseProvider),
+                  receipts: await ref.read(receiptStoreProvider.future),
+                ).run(folder: await AutoBackup.defaultFolder());
                 if (context.mounted) showSnack(context, 'Saved ${file.uri.pathSegments.last}');
               },
             ),

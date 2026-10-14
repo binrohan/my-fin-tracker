@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/period.dart';
 import '../data/database.dart';
 import '../data/ledger_repository.dart';
+import '../data/receipts.dart';
 import '../data/setup_repository.dart';
 import '../ledger/ledger.dart';
 
@@ -25,3 +26,5 @@ final todayProvider = Provider<DateTime>((ref) => dateOnly(DateTime.now()));
 final setupRepositoryProvider = Provider<SetupRepository>(
   (ref) => SetupRepository(ref.watch(databaseProvider)),
 );
+
+final receiptStoreProvider = FutureProvider<ReceiptStore>((ref) => ReceiptStore.onDevice());

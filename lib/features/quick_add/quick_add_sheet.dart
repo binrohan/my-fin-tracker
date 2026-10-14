@@ -7,10 +7,12 @@ import '../../core/money.dart';
 import '../../core/period.dart';
 import '../../data/database.dart';
 import '../../data/ledger_repository.dart';
+import '../../data/receipts.dart';
 import '../../ledger/allocation.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
+import '../entries/receipt.dart';
 
 enum QuickAddMode { expense, income, move }
 
@@ -65,10 +67,38 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   /// warranty survive the edit.
   Purchase? _oldPurchase;
 
+  /// A receipt photo taken for a new expense; deleted again if the entry
+  /// isn't saved.
+  String? _receipt;
+  bool _receiptSaved = false;
+
   @override
   void dispose() {
     _note.dispose();
+    if (!_receiptSaved) _receiptStore?.remove(_receipt);
     super.dispose();
+  }
+
+  // Kept for dispose, where ref can no longer be used.
+  ReceiptStore? _receiptStore;
+
+  Future<void> _toggleReceipt() async {
+    final ReceiptStore store = _receiptStore ?? await ref.read(receiptStoreProvider.future);
+    _receiptStore = store;
+    final old = _receipt;
+    if (old != null) {
+      setState(() => _receipt = null);
+      await store.remove(old);
+      return;
+    }
+    if (!mounted) return;
+    final name = await takeReceiptPhoto(context, ref);
+    if (name == null) return;
+    if (mounted) {
+      setState(() => _receipt = name);
+    } else {
+      await store.remove(name);
+    }
   }
 
   void _init(Ledger ledger) {
@@ -182,6 +212,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
     Future<int> writeWithPurchase() async {
       final id = await write();
+      if (_mode == QuickAddMode.expense && _receipt != null) {
+        await repo.setReceipt(id, _receipt);
+        _receiptSaved = true;
+      }
       if (_mode == QuickAddMode.expense && _major) {
         await repo.addPurchase(
           item: note.isNotEmpty ? note : ledger.categories[_categoryId]!.name,
@@ -420,10 +454,23 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             TextField(
               controller: _note,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Note (optional)',
                 isDense: true,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                // An edited entry keeps its photo; change it in the details.
+                suffixIcon: _mode == QuickAddMode.expense && widget.editing == null
+                    ? IconButton(
+                        tooltip: _receipt == null ? 'Add receipt photo' : 'Remove receipt photo',
+                        onPressed: _toggleReceipt,
+                        icon: _receipt == null
+                            ? const Icon(Icons.add_a_photo_outlined)
+                            : Icon(
+                                Icons.receipt_long,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                      )
+                    : null,
               ),
             ),
             _Keypad(onKey: _key),

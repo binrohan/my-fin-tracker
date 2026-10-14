@@ -407,12 +407,23 @@ class LedgerRepository {
       (db.delete(db.entries)..where((e) => e.id.equals(entryId))).go();
 
   /// Edits an entry by replacing it in one transaction: the old version is
-  /// removed only if the new one is written.
+  /// removed only if the new one is written. A receipt photo stays with it.
   Future<int> replaceEntry(int oldEntryId, Future<int> Function() writeNew) =>
       db.transaction(() async {
+        final old = await (db.select(
+          db.entries,
+        )..where((e) => e.id.equals(oldEntryId))).getSingleOrNull();
         await deleteEntry(oldEntryId);
-        return writeNew();
+        final id = await writeNew();
+        if (old?.receipt != null) await setReceipt(id, old!.receipt);
+        return id;
       });
+
+  /// Attaches a receipt photo (a file name from ReceiptStore), or removes
+  /// it with null.
+  Future<void> setReceipt(int entryId, String? name) => (db.update(
+    db.entries,
+  )..where((e) => e.id.equals(entryId))).write(EntriesCompanion(receipt: Value(name)));
 
   // ------------------------------------------------------- monthly tasks
 

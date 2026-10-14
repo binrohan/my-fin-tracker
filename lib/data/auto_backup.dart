@@ -7,6 +7,7 @@ import '../ledger/reminders.dart';
 import 'backup.dart';
 import 'database.dart';
 import 'ledger_repository.dart';
+import 'receipts.dart';
 
 const autoBackupOffSetting = 'auto_backup_off';
 
@@ -14,9 +15,10 @@ const autoBackupOffSetting = 'auto_backup_off';
 /// phone (`Android/data/<app>/files/backups`). They survive app updates but
 /// not uninstalling, so share one off the phone now and then.
 class AutoBackup {
-  AutoBackup(this.db, {this.keep = 8, this.every = const Duration(days: 7)});
+  AutoBackup(this.db, {this.receipts, this.keep = 8, this.every = const Duration(days: 7)});
 
   final AppDatabase db;
+  final ReceiptStore? receipts;
   final int keep;
   final Duration every;
 
@@ -57,7 +59,7 @@ class AutoBackup {
     final file = File(
       '${folder.path}/${Backup.fileName(at).replaceFirst('myfin-', 'myfin-auto-')}',
     );
-    await file.writeAsBytes(await Backup.export(db, now: at), flush: true);
+    await file.writeAsBytes(await Backup.export(db, now: at, receipts: receipts), flush: true);
     await LedgerRepository(db).setSetting(autoBackupSetting, at.toIso8601String());
     final all = await list(folder);
     for (final old in all.skip(keep)) {

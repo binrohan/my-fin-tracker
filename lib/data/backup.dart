@@ -6,11 +6,13 @@ import 'package:drift/drift.dart';
 import 'package:intl/intl.dart';
 
 import 'database.dart';
+import 'receipts.dart';
 
 /// A backup is a zip (`.mft`) holding:
 /// - `data.json`: every row of every table
 /// - `manifest.json`: format and schema version, creation time, row counts
 ///   and the SHA-256 of `data.json`
+/// - `receipts/`: receipt photos of the entries (from schema version 5)
 ///
 /// Rows are stored as JSON rather than a copy of the SQLite file, so an
 /// older backup can be read by a newer app after the schema changes.
@@ -39,7 +41,10 @@ class Backup {
     db.budgetMoves,
   ];
 
-  static Future<Uint8List> export(AppDatabase db, {DateTime? now}) async {
+  static const _receiptsPrefix = 'receipts/';
+
+  /// Pass [receipts] to include the receipt photos.
+  static Future<Uint8List> export(AppDatabase db, {DateTime? now, ReceiptStore? receipts}) async {
     final data = <String, List<Map<String, dynamic>>>{};
     for (final table in _tables(db)) {
       final rows = await db.select(table).get();
@@ -57,6 +62,15 @@ class Backup {
     final archive = Archive()
       ..addFile(ArchiveFile.string('manifest.json', jsonEncode(manifest.toJson())))
       ..addFile(ArchiveFile.bytes('data.json', dataBytes));
+    if (receipts != null) {
+      final names = [
+        for (final row in data[db.entries.actualTableName]!)
+          if (row['receipt'] case final String name) name,
+      ];
+      for (final MapEntry(:key, :value) in (await receipts.read(names)).entries) {
+        archive.addFile(ArchiveFile.bytes('$_receiptsPrefix$key', value));
+      }
+    }
     return ZipEncoder().encodeBytes(archive);
   }
 
@@ -93,12 +107,22 @@ class Backup {
         throw const BackupException('This backup is damaged: record counts do not match.');
       }
     }
-    return BackupContents(manifest, data);
+    final photos = {
+      for (final f in archive.files)
+        if (f.isFile && f.name.startsWith(_receiptsPrefix))
+          f.name.substring(_receiptsPrefix.length): f.content,
+    };
+    return BackupContents(manifest, data, receipts: photos);
   }
 
   /// Replaces everything in the database with the backup. All or nothing:
   /// if any row fails, the database is left as it was.
-  static Future<void> restore(AppDatabase db, BackupContents backup) async {
+  /// Pass [receipts] to replace the receipt photos too.
+  static Future<void> restore(
+    AppDatabase db,
+    BackupContents backup, {
+    ReceiptStore? receipts,
+  }) async {
     final data = backup.data;
     List<Map<String, dynamic>> rows(TableInfo t) => data[t.actualTableName] ?? const [];
 
@@ -127,6 +151,7 @@ class Backup {
         b.insertAll(db.budgetMoves, rows(db.budgetMoves).map(BudgetMove.fromJson));
       });
     });
+    await receipts?.replaceAll(backup.receipts);
   }
 }
 
@@ -164,10 +189,13 @@ class BackupManifest {
 }
 
 class BackupContents {
-  const BackupContents(this.manifest, this.data);
+  const BackupContents(this.manifest, this.data, {this.receipts = const {}});
 
   final BackupManifest manifest;
   final Map<String, List<Map<String, dynamic>>> data;
+
+  /// Receipt photos by file name.
+  final Map<String, Uint8List> receipts;
 
   int count(String table) => manifest.counts[table] ?? 0;
 }

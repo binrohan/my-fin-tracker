@@ -204,7 +204,10 @@ void main() {
       l.categoryLines(const Period(2026, 10), CategoryKind.expense).single.budget,
       taka(14000),
     );
-    expect((await old.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
+    expect(
+      (await old.customSelect('PRAGMA user_version').getSingle()).data.values.single,
+      old.schemaVersion,
+    );
     await old.close();
   });
 }

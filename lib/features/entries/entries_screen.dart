@@ -14,6 +14,7 @@ import '../../ui/widgets.dart';
 import '../buying/buying_screen.dart';
 import '../loans/loans_screen.dart';
 import '../quick_add/quick_add_sheet.dart';
+import 'receipt.dart';
 
 /// Every entry in a month, newest first, grouped by day.
 class EntriesScreen extends ConsumerStatefulWidget {
@@ -142,7 +143,16 @@ class EntryTile extends StatelessWidget {
         foregroundColor: status.muted,
         child: Icon(icon, size: 20),
       ),
-      title: Text(entryTitle(ledger, entry), maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Row(
+        spacing: 4,
+        children: [
+          Flexible(
+            child: Text(entryTitle(ledger, entry), maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          if (entry.receipt != null)
+            Icon(Icons.receipt_outlined, size: 16, color: status.muted, semanticLabel: 'receipt'),
+        ],
+      ),
       subtitle: Text(entryDetail(ledger, entry), maxLines: 1, overflow: TextOverflow.ellipsis),
       // Moves, and loans between your own pots, change no total: show the
       // amount in grey rather than a net of zero.
@@ -162,14 +172,17 @@ bool _isLoanCreation(Entry e) =>
         e.type == EntryType.charge ||
         e.type == EntryType.opening);
 
-Future<void> showEntryDetails(BuildContext context, Entry entry) => showModalBottomSheet(
+Future<void> showEntryDetails(BuildContext context, Entry shown) => showModalBottomSheet(
   useRootNavigator: true,
   context: context,
+  isScrollControlled: true,
   showDragHandle: true,
   builder: (_) => Consumer(
     builder: (context, ref, _) {
       final ledger = ref.watch(ledgerProvider).value;
       if (ledger == null) return const SizedBox(height: 120);
+      // The latest version, so a receipt added here shows at once.
+      final entry = ledger.entries.where((e) => e.id == shown.id).firstOrNull ?? shown;
       final repo = ref.read(repositoryProvider);
       final status = StatusColors.of(context);
       return SheetBody(
@@ -234,6 +247,7 @@ Future<void> showEntryDetails(BuildContext context, Entry entry) => showModalBot
                 label: const Text('Add to the Buying list'),
               ),
           ],
+          if (entry.type == EntryType.expense || entry.receipt != null) EntryReceipt(entry: entry),
           if (entry.loanId != null)
             OutlinedButton.icon(
               onPressed: () {
@@ -270,6 +284,7 @@ Future<void> showEntryDetails(BuildContext context, Entry entry) => showModalBot
                       );
                       if (!ok || !context.mounted) return;
                       await repo.deleteEntry(entry.id);
+                      await (await ref.read(receiptStoreProvider.future)).remove(entry.receipt);
                       if (context.mounted) {
                         Navigator.pop(context);
                         showSnack(context, 'Entry deleted');

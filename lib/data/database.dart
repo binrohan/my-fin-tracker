@@ -91,6 +91,9 @@ class Entries extends Table {
   IntColumn get trackerId => integer().nullable()();
   TextColumn get note => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// File name of a receipt photo in the app's receipts folder.
+  TextColumn get receipt => text().nullable()();
 }
 
 /// A signed amount on one (account, fund) pair. Every balance in the app is
@@ -227,7 +230,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -251,6 +254,10 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(categories, categories.slotYear);
         await m.addColumn(categories, categories.slotMonth);
         await m.createTable(budgetMoves);
+      }
+      if (from < 5) {
+        // Receipt photos.
+        await m.addColumn(entries, entries.receipt);
       }
     },
     beforeOpen: (details) async {
