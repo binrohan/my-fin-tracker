@@ -8,6 +8,7 @@ import '../core/money.dart';
 import '../core/period.dart';
 import '../data/database.dart';
 import '../ledger/enums.dart';
+import '../ledger/insights.dart';
 import '../ledger/ledger.dart';
 import 'pdf_kit.dart';
 
@@ -108,6 +109,7 @@ List<pw.Widget> _summary(Ledger ledger, Period p, DateTime generatedAt) {
     twoColumns(_income(ledger, p), _openingBalances(ledger, p, s)),
     ..._allocation(ledger, p, s),
     ..._expenses(ledger, p, s),
+    ..._comparison(ledger, p, generatedAt),
   ];
 }
 
@@ -301,6 +303,58 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
       },
     ),
     for (final note in overNotes) muted(note),
+  ];
+}
+
+/// Category by category against last month (the same days, for a month
+/// still running), largest changes first.
+List<pw.Widget> _comparison(Ledger ledger, Period p, DateTime generatedAt) {
+  if (ledger.settings[insightsOffSetting] == 'true') return [];
+  final c = compareMonths(ledger, p, today: generatedAt);
+  if (c == null) return [];
+  final month = DateFormat.MMM();
+  final prev = c.previous;
+  final top = c.changes.values.where((x) => x.category.parentId == null).toList()
+    ..sort((a, b) => b.diff.abs().compareTo(a.diff.abs()));
+
+  String change(Poisha diff, double? share) => share == null
+      ? (diff == 0 ? '' : 'new')
+      : '${share >= 0 ? '+' : '−'}${pct(share.abs() * 100)}';
+  Map<int, PdfColor> colors(Poisha diff) => {
+    if (diff > 0) 3: ReportColors.bad,
+    if (diff < 0) 3: ReportColors.good,
+  };
+
+  return [
+    sectionTitle(
+      'Compared with ${DateFormat.MMMM().format(prev.start)}',
+      note: c.throughDay == null ? 'whole months' : '1–${c.throughDay} of each month',
+    ),
+    table(
+      headers: ['Category', month.format(p.start), month.format(prev.start), 'Change', ''],
+      widths: {
+        0: const pw.FlexColumnWidth(3),
+        1: const pw.FlexColumnWidth(1.4),
+        2: const pw.FlexColumnWidth(1.4),
+        3: const pw.FlexColumnWidth(1.4),
+        4: const pw.FlexColumnWidth(1.8),
+      },
+      rows: [
+        for (final x in top.where((x) => x.diff != 0))
+          ReportRow([
+            x.category.name,
+            amt(x.now),
+            amt(x.before),
+            signedAmt(x.diff),
+            change(x.diff, x.share),
+          ], colors: colors(x.diff)),
+        ReportRow(
+          ['Total', amt(c.now), amt(c.before), signedAmt(c.diff), change(c.diff, c.share)],
+          style: RowStyle.total,
+          colors: colors(c.diff),
+        ),
+      ],
+    ),
   ];
 }
 

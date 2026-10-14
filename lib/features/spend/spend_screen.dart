@@ -7,6 +7,7 @@ import '../../app/theme.dart';
 import '../../core/money.dart';
 import '../../core/period.dart';
 import '../../ledger/enums.dart';
+import '../../ledger/insights.dart';
 import '../../ledger/ledger.dart';
 import '../../data/ledger_repository.dart';
 import '../../ui/charts.dart';
@@ -21,10 +22,14 @@ class SpendScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final period = Period.of(ref.watch(todayProvider));
+    final today = ref.watch(todayProvider);
+    final period = Period.of(today);
     return LedgerBuilder(
       builder: (context, ledger) {
         final s = ledger.summary(period);
+        final compared = ledger.settings[insightsOffSetting] == 'true'
+            ? null
+            : compareMonths(ledger, period, today: today);
         final lines = ledger.categoryLines(period, CategoryKind.expense);
         final recent = ledger.entries
             .where((e) => e.type == EntryType.expense && period.contains(e.date))
@@ -93,10 +98,15 @@ class SpendScreen extends ConsumerWidget {
               children: [
                 for (final (i, line) in lines.indexed) ...[
                   if (i > 0) const Divider(),
-                  _CategoryTile(line: line, period: period),
+                  _CategoryTile(
+                    line: line,
+                    period: period,
+                    change: compared?.changes[line.category.id],
+                  ),
                 ],
               ],
             ),
+            if (compared != null) ComparisonCard(compared: compared),
             if (history.length > 1)
               SectionCard(
                 children: [
@@ -151,10 +161,11 @@ class SpendScreen extends ConsumerWidget {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.line, required this.period});
+  const _CategoryTile({required this.line, required this.period, this.change});
 
   final CategoryLine line;
   final Period period;
+  final CategoryChange? change;
 
   @override
   Widget build(BuildContext context) {
@@ -201,27 +212,92 @@ class _CategoryTile extends StatelessWidget {
       ],
     );
     final bar = Bar(line.usage, color: barColor(line));
+    final c = change;
+    final head = [
+      title,
+      bar,
+      if (c != null && c.isNotable)
+        Text(
+          '${changeLabel(c.diff, c.share)} vs ${DateFormat.MMM().format(period.previous.start)}',
+          style: TextStyle(fontSize: 12, color: c.diff > 0 ? status.warn : status.good),
+        ),
+    ];
 
     if (line.children.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 6,
-        children: [title, bar],
-      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: head);
     }
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(left: 12, bottom: 4),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: 6,
-          children: [title, bar],
-        ),
+        title: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: head),
         initiallyExpanded: true,
         children: [for (final child in line.children) _SubCategoryRow(line: child, period: period)],
       ),
+    );
+  }
+}
+
+/// This month's spending against last month's, so far.
+class ComparisonCard extends StatelessWidget {
+  const ComparisonCard({super.key, required this.compared});
+
+  final MonthComparison compared;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = StatusColors.of(context);
+    final c = compared;
+    final month = DateFormat.MMM();
+    final prev = c.previous;
+    final rises = c.rises();
+    final falls = c.falls();
+    Widget line(CategoryChange x) => Row(
+      spacing: 8,
+      children: [
+        Expanded(child: Text(x.category.name)),
+        Text(
+          '${formatTaka(x.diff, showPlus: true)}  ${changeLabel(x.diff, x.share)}',
+          style: TextStyle(color: x.diff > 0 ? status.warn : status.good),
+        ),
+      ],
+    );
+    return SectionCard(
+      children: [
+        Label('Compared with ${DateFormat.MMMM().format(prev.start)}'),
+        if (c.throughDay != null)
+          Text(
+            '1–${c.throughDay} ${month.format(c.period.start)} against '
+            '1–${c.throughDay! > prev.daysInMonth ? prev.daysInMonth : c.throughDay} '
+            '${month.format(prev.start)}',
+            style: TextStyle(color: status.muted, fontSize: 13),
+          ),
+        AmountRow('This month', c.now),
+        AmountRow('Last month', c.before),
+        Row(
+          children: [
+            const Expanded(
+              child: Text('Change', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+            Text(
+              '${formatTaka(c.diff, showPlus: true)}'
+              '${c.share == null ? '' : '  ${changeLabel(c.diff, c.share)}'}',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: c.diff > 0 ? status.warn : status.good,
+              ),
+            ),
+          ],
+        ),
+        if (rises.isNotEmpty || falls.isNotEmpty) const Divider(),
+        if (rises.isNotEmpty) Text('Spending more on', style: TextStyle(color: status.muted)),
+        for (final x in rises) line(x),
+        if (falls.isNotEmpty) Text('Spending less on', style: TextStyle(color: status.muted)),
+        for (final x in falls) line(x),
+        if (rises.isEmpty && falls.isEmpty)
+          Text('No category changed by much.', style: TextStyle(color: status.muted, fontSize: 13)),
+      ],
     );
   }
 }

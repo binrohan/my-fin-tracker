@@ -113,6 +113,13 @@ void main() {
         expect(find.text('Pay 2 remaining fixed bills · ৳4,000'), findsOneWidget);
       });
 
+      testWidgets('Spend compares with last month', (tester) async {
+        await pump(tester, const SpendScreen(), sample, brightness: brightness);
+        await tester.scrollUntilVisible(find.text('COMPARED WITH SEPTEMBER'), 300);
+        expect(find.text('1–8 Oct against 1–8 Sep'), findsOneWidget);
+        expect(find.text('This month'), findsOneWidget);
+      });
+
       testWidgets('Save shows goals and loans', (tester) async {
         await pump(tester, const SaveScreen(), sample, brightness: brightness);
         expect(find.text('৳68,000'), findsOneWidget);

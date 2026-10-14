@@ -7,8 +7,10 @@ import '../../app/integrations.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../data/default_data.dart';
+import '../../data/ledger_repository.dart';
 import '../../data/sample_data.dart';
 import '../../ledger/allocation.dart';
+import '../../ledger/insights.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
@@ -206,6 +208,15 @@ class MoreScreen extends ConsumerWidget {
                       : 'Carry forward to next month',
                   () => _editLeftover(context, ref, ledger),
                 ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.insights_outlined),
+                  title: const Text('Compare with last month'),
+                  subtitle: const Text('On the Expenses tab and in the monthly report'),
+                  value: ledger.settings[insightsOffSetting] != 'true',
+                  onChanged: (on) =>
+                      ref.read(repositoryProvider).setSetting(insightsOffSetting, '${!on}'),
+                ),
               ],
             ),
             const _AppearanceCard(),
@@ -332,7 +343,8 @@ class _AppearanceCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final look = ref.watch(appearanceProvider);
-    final repo = ref.read(repositoryProvider);
+    // Read when tapped, so drawing the card doesn't open the database.
+    LedgerRepository repo() => ref.read(repositoryProvider);
     final status = StatusColors.of(context);
     final darkNow = Theme.of(context).brightness == Brightness.dark;
 
@@ -359,7 +371,7 @@ class _AppearanceCard extends ConsumerWidget {
           ],
           selected: {look.mode},
           showSelectedIcon: false,
-          onSelectionChanged: (s) => repo.setSetting(Appearance.modeKey, s.single.name),
+          onSelectionChanged: (s) => repo().setSetting(Appearance.modeKey, s.single.name),
         ),
         const SizedBox(height: 4),
         Text('Colour', style: TextStyle(color: status.muted)),
@@ -374,7 +386,7 @@ class _AppearanceCard extends ConsumerWidget {
                 ),
                 label: Text(p.label),
                 selected: look.palette == p,
-                onSelected: (_) => repo.setSetting(Appearance.paletteKey, p.name),
+                onSelected: (_) => repo().setSetting(Appearance.paletteKey, p.name),
               ),
           ],
         ),
@@ -387,7 +399,7 @@ class _AppearanceCard extends ConsumerWidget {
                 : 'Black background in dark mode; saves battery on OLED screens.',
           ),
           value: look.pureBlack,
-          onChanged: (v) => repo.setSetting(Appearance.pureBlackKey, '$v'),
+          onChanged: (v) => repo().setSetting(Appearance.pureBlackKey, '$v'),
         ),
         if (look.pureBlack && !darkNow && look.mode != ThemeMode.light)
           Text(
