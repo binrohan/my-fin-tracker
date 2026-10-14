@@ -109,6 +109,32 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 
 - [ ] Install the app on the other phone → Backup & restore → **Restore from file** → all data is there.
 
+## 13. New in 1.0.7
+
+**Compare with last month**
+- [ ] Expenses tab: categories that changed a lot show **↑ 25% vs Sep** (orange) or **↓** (green) under their bar.
+- [ ] The **Compared with September** card says which days it compares (e.g. 1–14 Oct against 1–14 Sep) and lists what you spend more and less on.
+- [ ] The monthly PDF has a **Compared with …** table.
+- [ ] More → Rules → **Compare with last month** off hides all of it.
+
+**Receipt photos**
+- [ ] Quick add, expense: the camera icon in the note field → **Take a photo** → save. The entry shows a small receipt icon in All entries.
+- [ ] Open the entry: the photo shows; tap it to zoom; **Replace** and **Remove** work.
+- [ ] Back up, then look at the backup size: it includes the photos. (Restore on another phone shows them.)
+
+**Bank messages (SMS)**
+- [ ] More → Rules → **Suggest entries from SMS** → allow SMS access.
+- [ ] After a bKash payment or a City Bank debit, Home → Needs attention shows **1 bank message to add**.
+- [ ] **Add** opens Quick add with the amount, date, account and shop filled in. After saving it disappears from the list.
+- [ ] **Dismiss** removes a message for good.
+- [ ] A cash out / ATM withdrawal is offered as a move to Cash.
+- [ ] **Senders**: check bKash and City Bank point at the right accounts. If a message is missed or read wrongly, copy it into Issues below (hide account numbers).
+
+**Tools (More → Tools)**
+- [ ] **Can I afford it?**: type a price; the answer changes from **Yes** to **tight**, **from savings**, **Not now** as the price grows. **Save up for it as a goal** creates the goal.
+- [ ] **Zakat**: bank, investments and loans are filled in from the app; type over one, the ↺ button brings the app's figure back. Enter silver price a gram → the nisab and the zakat appear.
+- [ ] **Income tax**: salary comes from your entries + plan; the steps add up. The ⚙ button edits slabs and rates; Save keeps them.
+
 ---
 
 ## Issues
