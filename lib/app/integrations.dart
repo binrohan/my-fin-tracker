@@ -11,6 +11,7 @@ import '../core/period.dart';
 import '../data/auto_backup.dart';
 import '../features/quick_add/quick_add_sheet.dart';
 import '../ledger/ledger.dart';
+import '../ledger/sms.dart';
 import 'providers.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -101,6 +102,8 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
     } else if (state == AppLifecycleState.resumed) {
       final ledger = ref.read(ledgerProvider).value;
       if (ledger != null) _releaseIfDue(ledger);
+      // New bank or bKash messages may have arrived.
+      if (ledger?.settings[smsOnSetting] == 'true') ref.invalidate(smsInboxProvider);
       final away = _pausedAt == null ? Duration.zero : DateTime.now().difference(_pausedAt!);
       _pausedAt = null;
       final lockOn = ref.read(ledgerProvider).value?.settings[appLockSetting] == 'true';

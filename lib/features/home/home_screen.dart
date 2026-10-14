@@ -17,6 +17,7 @@ import '../loans/loans_screen.dart';
 import '../more/backup_screen.dart';
 import '../plan/record_income_sheet.dart';
 import '../setup/starting_balances_screen.dart';
+import '../sms/sms_screen.dart';
 import 'month_tasks.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -43,8 +44,9 @@ class HomeScreen extends ConsumerWidget {
           children: [
             header,
             if (toClose != null) _CloseMonthBanner(period: toClose),
-            if (remindersFor(ledger, today) case final list when list.isNotEmpty)
-              _NeedsAttention(ledger: ledger, reminders: list),
+            if ((remindersFor(ledger, today), ref.watch(smsSuggestionsProvider))
+                case (final list, final sms) when list.isNotEmpty || sms.isNotEmpty)
+              _NeedsAttention(ledger: ledger, reminders: list, messages: sms.length),
             if (ledger.heldForNextMonth > 0)
               SectionCard(
                 color: Theme.of(context).colorScheme.primaryContainer,
@@ -288,10 +290,13 @@ class _EmptyHome extends StatelessWidget {
 }
 
 class _NeedsAttention extends StatelessWidget {
-  const _NeedsAttention({required this.ledger, required this.reminders});
+  const _NeedsAttention({required this.ledger, required this.reminders, this.messages = 0});
 
   final Ledger ledger;
   final List<Reminder> reminders;
+
+  /// Bank and bKash messages waiting to be added.
+  final int messages;
 
   @override
   Widget build(BuildContext context) {
@@ -314,32 +319,54 @@ class _NeedsAttention extends StatelessWidget {
       ReminderKind.maturity => Icons.trending_up,
       ReminderKind.backup => Icons.backup_outlined,
     };
-    return SectionCard(
-      children: [
-        const Label('Needs attention'),
-        for (final r in reminders)
-          InkWell(
-            onTap: () => open(r),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                spacing: 12,
+    Widget row({
+      required IconData icon,
+      required Color color,
+      required String title,
+      required String detail,
+      required VoidCallback onTap,
+    }) => InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          spacing: 12,
+          children: [
+            Icon(icon, color: color),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon(r.kind), color: r.urgent ? status.bad : status.warn),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(r.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text(r.detail, style: TextStyle(color: status.muted, fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, size: 20),
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(detail, style: TextStyle(color: status.muted, fontSize: 13)),
                 ],
               ),
             ),
+            const Icon(Icons.chevron_right, size: 20),
+          ],
+        ),
+      ),
+    );
+
+    return SectionCard(
+      children: [
+        const Label('Needs attention'),
+        if (messages > 0)
+          row(
+            icon: Icons.sms_outlined,
+            color: status.warn,
+            title: messages == 1 ? '1 bank message to add' : '$messages bank messages to add',
+            detail: 'Check each one and save it as an entry',
+            onTap: () => openScreen(context, const SmsScreen()),
+          ),
+        for (final r in reminders)
+          row(
+            icon: icon(r.kind),
+            color: r.urgent ? status.bad : status.warn,
+            title: r.title,
+            detail: r.detail,
+            onTap: () => open(r),
           ),
       ],
     );

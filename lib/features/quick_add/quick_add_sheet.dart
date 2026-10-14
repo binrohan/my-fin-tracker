@@ -17,23 +17,46 @@ import '../entries/receipt.dart';
 enum QuickAddMode { expense, income, move }
 
 /// Opens quick add. Pass [editing] to change an existing income, expense
-/// or move.
-Future<void> showQuickAdd(BuildContext context, {Entry? editing}) => showModalBottomSheet(
-  useRootNavigator: true,
-  context: context,
-  isScrollControlled: true,
-  showDragHandle: true,
-  useSafeArea: true,
-  builder: (_) => QuickAddSheet(editing: editing),
-);
+/// or move, or [prefill] to start a new one filled in. True when saved.
+Future<bool> showQuickAdd(BuildContext context, {Entry? editing, QuickAddPrefill? prefill}) async =>
+    await showModalBottomSheet<bool>(
+      useRootNavigator: true,
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (_) => QuickAddSheet(editing: editing, prefill: prefill),
+    ) ==
+    true;
+
+/// A new entry filled in ahead, e.g. from a bank message.
+class QuickAddPrefill {
+  const QuickAddPrefill({
+    required this.mode,
+    required this.amount,
+    required this.date,
+    this.accountId,
+    this.note = '',
+  });
+
+  final QuickAddMode mode;
+  final Poisha amount;
+  final DateTime date;
+
+  /// Paid from (expense), received in (income), or moved from (move, to
+  /// cash).
+  final int? accountId;
+  final String note;
+}
 
 bool canEditInQuickAdd(Entry e) =>
     e.type == EntryType.expense || e.type == EntryType.income || e.type == EntryType.move;
 
 class QuickAddSheet extends ConsumerStatefulWidget {
-  const QuickAddSheet({super.key, this.editing});
+  const QuickAddSheet({super.key, this.editing, this.prefill});
 
   final Entry? editing;
+  final QuickAddPrefill? prefill;
 
   @override
   ConsumerState<QuickAddSheet> createState() => _QuickAddSheetState();
@@ -117,6 +140,26 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       _to =
           potFromSetting(ledger, ledger.settings[_lastIncomePot]) ??
           (account: bank, fund: spending);
+      if (widget.prefill case final p?) {
+        _mode = p.mode;
+        _typed = _amountText(p.amount);
+        _date = p.date;
+        _note.text = p.note;
+        final account = p.accountId != null && ledger.accounts.containsKey(p.accountId)
+            ? p.accountId!
+            : null;
+        if (account != null) {
+          switch (p.mode) {
+            case QuickAddMode.expense:
+              _from = (account: account, fund: spending);
+            case QuickAddMode.income:
+              _to = (account: account, fund: spending);
+            case QuickAddMode.move:
+              _from = (account: account, fund: spending);
+              _to = (account: cash, fund: spending);
+          }
+        }
+      }
       return;
     }
 
@@ -125,9 +168,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       EntryType.move => QuickAddMode.move,
       _ => QuickAddMode.expense,
     };
-    _typed = (e.amount % poishaPerTaka == 0)
-        ? '${e.amount ~/ poishaPerTaka}'
-        : (e.amount / poishaPerTaka).toStringAsFixed(2);
+    _typed = _amountText(e.amount);
     _categoryId = e.categoryId;
     _date = e.date;
     _note.text = e.note;
@@ -143,6 +184,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   }
 
   Poisha get _amount => parseTaka(_typed) ?? 0;
+
+  static String _amountText(Poisha amount) => amount % poishaPerTaka == 0
+      ? '${amount ~/ poishaPerTaka}'
+      : (amount / poishaPerTaka).toStringAsFixed(2);
 
   void _key(String key) {
     setState(() {
@@ -239,7 +284,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     if (_mode == QuickAddMode.expense) await repo.setSetting(_lastExpensePot, potSetting(_from));
     if (_mode == QuickAddMode.income) await repo.setSetting(_lastIncomePot, potSetting(_to));
 
-    navigator.pop();
+    navigator.pop(true);
     final held = _mode == QuickAddMode.income && _holdForNextMonth(ledger);
     final what = switch (_mode) {
       _ when held =>

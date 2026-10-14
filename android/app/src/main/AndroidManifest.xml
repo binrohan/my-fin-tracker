@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Fingerprint / face unlock for the app lock. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- SMS suggestions: reads bank and bKash messages, only when turned on. -->
+    <uses-permission android:name="android.permission.READ_SMS"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"

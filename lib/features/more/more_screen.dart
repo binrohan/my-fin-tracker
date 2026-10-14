@@ -11,6 +11,7 @@ import '../../data/ledger_repository.dart';
 import '../../data/sample_data.dart';
 import '../../ledger/allocation.dart';
 import '../../ledger/insights.dart';
+import '../../ledger/sms.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
@@ -27,6 +28,7 @@ import '../plan/monthly_plan_screen.dart';
 import '../setup/accounts_screen.dart';
 import '../setup/categories_screen.dart';
 import '../setup/starting_balances_screen.dart';
+import '../sms/sms_screen.dart';
 import '../tools/afford_screen.dart';
 import '../tools/tax_screen.dart';
 import '../tools/zakat_screen.dart';
@@ -234,6 +236,29 @@ class MoreScreen extends ConsumerWidget {
                       : 'Carry forward to next month',
                   () => _editLeftover(context, ref, ledger),
                 ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.sms_outlined),
+                  title: const Text('Suggest entries from SMS'),
+                  subtitle: const Text('Bank and bKash messages, read on this phone only'),
+                  value: ledger.settings[smsOnSetting] == 'true',
+                  onChanged: (on) async {
+                    if (!on) {
+                      await ref.read(repositoryProvider).setSetting(smsOnSetting, 'false');
+                      return;
+                    }
+                    if (!await turnOnSms(ref) && context.mounted) {
+                      showSnack(context, 'Allow SMS access to use suggestions');
+                    }
+                  },
+                ),
+                if (ledger.settings[smsOnSetting] == 'true')
+                  item(
+                    Icons.mark_chat_read_outlined,
+                    'Bank messages',
+                    'Review messages and choose senders',
+                    () => openScreen(context, const SmsScreen()),
+                  ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   secondary: const Icon(Icons.insights_outlined),
