@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Fin Tracker Manual</title>
+<meta name="description" content="How to use My Fin Tracker, version 1.0.7: setup, daily entries, budgets, savings, loans, month end, tools, reports and backup.">
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --sunk: #eef1ee;
+    --ink: #17201b;
+    --muted: #5d6a62;
+    --line: #dde3de;
+    --accent: #1d7a4b;
+    --accent-soft: #e2f2e9;
+    --warn: #9a5b00;
+    --warn-soft: #fff3df;
+    --bad: #b3261e;
+    --radius: 14px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0d0c;
+      --surface: #151917;
+      --sunk: #1d2320;
+      --ink: #e8eee9;
+      --muted: #9aa8a0;
+      --line: #2a322e;
+      --accent: #5bcb8a;
+      --accent-soft: #16301f;
+      --warn: #f0b04f;
+      --warn-soft: #2e2412;
+      --bad: #ff8a80;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0d0c;
+    --surface: #151917;
+    --sunk: #1d2320;
+    --ink: #e8eee9;
+    --muted: #9aa8a0;
+    --line: #2a322e;
+    --accent: #5bcb8a;
+    --accent-soft: #16301f;
+    --warn: #f0b04f;
+    --warn-soft: #2e2412;
+    --bad: #ff8a80;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Bengali", sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  a { color: var(--accent); }
+  .layout {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 16px 64px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  @media (min-width: 900px) {
+    .layout { grid-template-columns: 240px minmax(0, 1fr); padding: 0 24px 80px; }
+    nav.toc { position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow: auto; }
+    nav.toc details { display: contents; }
+    nav.toc summary { display: none; }
+  }
+
+  header.top {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 32px 16px 8px;
+  }
+  @media (min-width: 900px) { header.top { padding: 48px 24px 16px; } }
+  header.top h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 0 0 6px; letter-spacing: -.01em; }
+  header.top p { margin: 0; color: var(--muted); }
+  .badge {
+    display: inline-block; font-size: 13px; font-weight: 600; color: var(--accent);
+    background: var(--accent-soft); border-radius: 999px; padding: 2px 10px; margin-bottom: 12px;
+  }
+
+  nav.toc {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px; font-size: 14px;
+  }
+  nav.toc summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+  nav.toc ol { margin: 8px 0 0; padding-left: 20px; }
+  nav.toc li { margin: 3px 0; }
+  nav.toc a { color: var(--ink); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+
+  main { min-width: 0; }
+  section {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px 18px; margin-bottom: 16px;
+  }
+  @media (min-width: 600px) { section { padding: 24px 28px; } }
+  h2 { font-size: 22px; line-height: 1.25; margin: 0 0 12px; }
+  h2 .num { color: var(--muted); font-weight: 500; margin-right: 6px; }
+  h3 { font-size: 17px; margin: 22px 0 6px; }
+  p { margin: 8px 0; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  .path {
+    font-weight: 600; background: var(--sunk); border-radius: 6px; padding: 0 6px;
+    -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+  .note, .tip, .warn {
+    border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-size: 15px;
+  }
+  .tip { background: var(--accent-soft); }
+  .note { background: var(--sunk); }
+  .warn { background: var(--warn-soft); color: var(--ink); border-left: 4px solid var(--warn); }
+  .tip strong:first-child, .note strong:first-child, .warn strong:first-child { margin-right: 4px; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+  .tabs div { background: var(--sunk); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
+  .tabs b { display: block; }
+
+  dl.faq dt { font-weight: 600; margin-top: 14px; }
+  dl.faq dd { margin: 4px 0 0; color: var(--ink); }
+
+  footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 24px; }
+  @media print {
+    nav.toc { display: none; }
+    .layout { display: block; }
+    section { break-inside: avoid-page; border: none; padding: 0; }
+    body { background: #fff; color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <span class="badge">Version 1.0.7</span>
+  <h1>My Fin Tracker: how to use it</h1>
+  <p>Track spending, savings, loans and salary on your Android phone. Your data stays on the phone unless you share a backup.</p>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <details open>
+      <summary>Contents</summary>
+      <ol>
+        <li><a href="#ideas">The main ideas</a></li>
+        <li><a href="#setup">First-time setup</a></li>
+        <li><a href="#screens">Finding your way</a></li>
+        <li><a href="#daily">Adding entries every day</a></li>
+        <li><a href="#sms">Bank and bKash messages</a></li>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#expenses">Expenses and budgets</a></li>
+        <li><a href="#income">Salary and the monthly plan</a></li>
+        <li><a href="#save">Savings, goals and loans</a></li>
+        <li><a href="#cash">Cash and matching balances</a></li>
+        <li><a href="#more-lists">Investments, buying, trackers</a></li>
+        <li><a href="#monthend">Closing a month</a></li>
+        <li><a href="#tools">Tools: afford, zakat, tax</a></li>
+        <li><a href="#reports">Reports and export</a></li>
+        <li><a href="#backup">Backup and a new phone</a></li>
+        <li><a href="#settings">Settings and security</a></li>
+        <li><a href="#faq">Questions and problems</a></li>
+      </ol>
+    </details>
+  </nav>
+
+  <main>
+
+<section id="ideas">
+  <h2><span class="num">1</span>The main ideas</h2>
+  <p>The app answers two questions about every taka:</p>
+  <ul>
+    <li><strong>Where it is</strong>: your <em>accounts</em>, such as Bank, Cash and bKash.</li>
+    <li><strong>What it's for</strong>: your <em>pots</em>. <strong>Spending</strong> is this month's money. <strong>Monthly Savings</strong> is savings. <strong>Goals</strong> are things you are saving for, like a laptop.</li>
+  </ul>
+  <p>The same ৳10,000 in the bank can be split between Spending and Savings. Both cards on Home always add up to the same total.</p>
+  <div class="tabs">
+    <div><b>Left to spend</b>What is still in the Spending pot this month.</div>
+    <div><b>Budgeted</b>The part of it that your category budgets still need.</div>
+    <div><b>Unplanned</b>Money no budget is waiting for. You can use it freely.</div>
+    <div><b>Short</b>Budgets need more than you have left, usually because a category went over.</div>
+  </div>
+  <p>Months run from the 1st to the last day. Amounts are in taka with lakh grouping (৳1,23,456). Balances are never typed in. They are always worked out from your entries, so the app stays <strong>Balanced</strong>.</p>
+</section>
+
+<section id="setup">
+  <h2><span class="num">2</span>First-time setup</h2>
+  <ol>
+    <li><strong>Accounts &amp; pots</strong> (<span class="path">More → Accounts &amp; pots</span>): add your banks, cash and wallets. Add savings pots and goals. A goal can have a target amount and date.</li>
+    <li><strong>Categories</strong> (<span class="path">More → Categories</span>): expense sections with subsections, such as <em>Ration → Rice Bag</em>. Mark rent and bills as <em>fixed</em> and give them a due day. A category can also send its <em>unused budget</em> to a pot when the month closes.</li>
+    <li><strong>Starting balances</strong> (<span class="path">More → Starting balances</span>): enter what each account holds today. You can split it between Spending and Savings. Enter balances <em>before</em> any expenses. Entries dated earlier than the starting balances get counted twice.</li>
+    <li><strong>Monthly plan</strong> (<span class="path">More → Monthly plan</span>): your income, how it is split, and the budget for each category. Section 8 explains this.</li>
+  </ol>
+  <div class="tip"><strong>Want to look around first?</strong> <span class="path">More → Example data → Load example</span> fills the app with two sample months. It <em>replaces everything</em>, so only use it before you enter real data.</div>
+</section>
+
+<section id="screens">
+  <h2><span class="num">3</span>Finding your way</h2>
+  <div class="tabs">
+    <div><b>Home</b>This month at a glance, reminders, where the money is.</div>
+    <div><b>Spend</b>Budgets against actual spending, fixed bills, slots.</div>
+    <div><b>+</b>Quick add: expense, income or move.</div>
+    <div><b>Save</b>Savings pots, goals and loans.</div>
+    <div><b>More</b>Setup, tools, reports, backup, settings.</div>
+  </div>
+  <p>Tap any entry to see its details, edit it, add a receipt photo or delete it. <span class="path">More → All entries</span> lists everything by month.</p>
+</section>
+
+<section id="daily">
+  <h2><span class="num">4</span>Adding entries every day</h2>
+  <p>Tap <strong>+</strong>. Choose <strong>Expense</strong>, <strong>Income</strong> or <strong>Move</strong>, type the amount on the number pad, pick a category and save. The app remembers the last account you used.</p>
+  <h3>Expense</h3>
+  <ul>
+    <li><strong>Paid from</strong>: which account and pot it came out of (usually Cash or Bank · Spending).</li>
+    <li><strong>Receipt photo</strong>: tap the camera icon in the note field and take a photo or choose one. Tap it again to remove it before saving.</li>
+    <li><strong>Major purchase</strong>: also adds it to the Buying list, where you can keep the shop and warranty.</li>
+    <li><strong>Tracker chips</strong> count the expense towards a project or countdown, such as a trip.</li>
+  </ul>
+  <h3>Income</h3>
+  <p>Choose the income type and the account it arrived in. The <strong>For November</strong> chip holds money received now for next month (see <a href="#income">section 8</a>).</p>
+  <h3>Move</h3>
+  <p>Money changing place or purpose without being spent. Examples: <em>withdraw from bank</em> (Bank · Spending → Cash · Spending), or putting money into a goal.</p>
+  <div class="tip"><strong>Faster:</strong> long-press the app icon for <strong>Add expense</strong>, or add the home-screen widget. The widget shows what's left to spend and has its own + button.</div>
+</section>
+
+<section id="sms">
+  <h2><span class="num">5</span>Bank and bKash messages</h2>
+  <p>The app can read your City Bank and bKash text messages and offer each payment as an entry. It reads them on the phone only and never sends them anywhere.</p>
+  <ol>
+    <li>Turn it on in <span class="path">More → Rules → Suggest entries from SMS</span> and allow SMS access. Messages from the 1st of this month onward are read.</li>
+    <li>Home → <strong>Needs attention</strong> shows <em>"3 bank messages to add"</em>. Tap it.</li>
+    <li><strong>Add</strong> opens Quick add with the amount, date, account and shop filled in. Choose a category and save. <strong>Dismiss</strong> hides a message for good.</li>
+  </ol>
+  <ul>
+    <li>A bKash <strong>cash out</strong> or an <strong>ATM withdrawal</strong> is offered as a move to Cash, with the fee in the note.</li>
+    <li><strong>Maybe already added</strong> means an entry of the same amount already exists within a day.</li>
+    <li><strong>Senders</strong> (at the bottom of the messages screen) sets which senders to read and which account each one is. Add others, such as Nagad, by name or number.</li>
+  </ul>
+  <div class="note"><strong>Not read?</strong> OTPs, offers and failed transactions are skipped on purpose. If a real payment is missed or read wrongly, note the message with account numbers hidden so the reader can be improved.</div>
+</section>
+
+<section id="home">
+  <h2><span class="num">6</span>Home</h2>
+  <ul>
+    <li><strong>Close September</strong> appears after a month ends (see <a href="#monthend">section 12</a>).</li>
+    <li><strong>Needs attention</strong> lists bank messages to add, income that should have arrived, bills due in the next 3 days, overdue or long loans, investments maturing soon, and an overdue backup. Tap one to go to the right screen.</li>
+    <li><strong>Ready for November</strong> shows income held for next month.</li>
+    <li><strong>Left to spend</strong> is the big card, with about how much a day you can spend.</li>
+    <li><strong>This month</strong> shows how you got to that number: carried forward, income, set aside, spent, loans.</li>
+    <li><strong>Where it is / What it's for</strong> shows balances by account and by pot. <strong>Match balance</strong> and <strong>Cash drawer</strong> are here too.</li>
+    <li><strong>Net worth</strong> includes investments and loans.</li>
+  </ul>
+</section>
+
+<section id="expenses">
+  <h2><span class="num">7</span>Expenses and budgets</h2>
+  <p>The <strong>Spend</strong> tab shows each category's spending against its budget. Orange means close to the budget and red means over it. Fixed bills show <em>due 15 Oct</em> or <em>paid</em>. <strong>Pay remaining fixed bills</strong> records them all at once.</p>
+  <h3>Compared with last month</h3>
+  <p>Under a category that changed a lot you'll see <strong>↑ 25% vs Sep</strong> (spending more) or <strong>↓</strong> (spending less). The <strong>Compared with September</strong> card shows the totals and the biggest changes. During a month it compares the same days, for example 1–14 Oct against 1–14 Sep, so a half month isn't set against a full one. It needs a previous month with expenses. Turn it off in <span class="path">More → Rules → Compare with last month</span>.</p>
+  <h3>Slots and budget moves (this month only)</h3>
+  <ul>
+    <li><strong>New slot</strong>: set money aside for something coming this month, such as a medical test. The money is taken from other categories. Unused money can be given back.</li>
+    <li><strong>Move budget</strong>: move budget from one category to another for this month only.</li>
+  </ul>
+  <p>Neither changes your Monthly plan. Next month starts from the plan again.</p>
+</section>
+
+<section id="income">
+  <h2><span class="num">8</span>Salary and the monthly plan</h2>
+  <p><span class="path">More → Monthly plan</span> has three tabs:</p>
+  <ul>
+    <li><strong>Income</strong>: each regular income with its amount, usual day and account. The app reminds you if it hasn't arrived.</li>
+    <li><strong>Split</strong>: what to set aside when the salary arrives, to savings, goals or a DPS.</li>
+    <li><strong>Expenses</strong>: the budget for each category.</li>
+  </ul>
+  <h3>Salary on the 26th for next month</h3>
+  <p>If your salary arrives near the end of a month and you spend it the next month, turn on <strong>For next month</strong> for that income. When you record it, it's <em>held apart</em> and shown as <strong>Ready for November</strong>. On the 1st it becomes spending money, and your split runs then.</p>
+</section>
+
+<section id="save">
+  <h2><span class="num">9</span>Savings, goals and loans</h2>
+  <h3>Savings and goals</h3>
+  <p>A <strong>pot</strong> such as Monthly Savings holds money for a purpose. A <strong>goal</strong> is a pot with a target. The goal screen shows progress, whether you are <em>on track</em> and the monthly amount needed. <strong>Buy it</strong> records the purchase and closes the goal.</p>
+  <h3>Borrowing from your own savings</h3>
+  <p>When the month runs short you can borrow from your savings. The loan has a charge, <strong>5%</strong> by default (change it in <span class="path">More → Rules</span>), so borrowing has a cost and you pay it back.</p>
+  <h3>Loans with people</h3>
+  <p><span class="path">More → Loans → People</span>: money you lent or borrowed, with an optional charge and due date. Record repayments as they come. Overdue and long-open loans show on Home. For a loan that started before you used the app, use <strong>Started before I used the app</strong>.</p>
+</section>
+
+<section id="cash">
+  <h2><span class="num">10</span>Cash and matching balances</h2>
+  <ul>
+    <li><strong>Cash drawer</strong> (<span class="path">More → Cash drawer</span>): cash split by pot, plus <strong>Count cash</strong> by notes and coins.</li>
+    <li><strong>Match balance</strong> (Home): type what your bank app or wallet really shows. The app records the difference as an adjustment, so it matches reality.</li>
+  </ul>
+</section>
+
+<section id="more-lists">
+  <h2><span class="num">11</span>Investments, buying, trackers</h2>
+  <ul>
+    <li><strong>Investments</strong>: DPS, FDR, savings certificates and shares, with deposits, value updates and maturity reminders.</li>
+    <li><strong>Buying</strong>: major purchases with shop and warranty end date.</li>
+    <li><strong>Trackers</strong>: a <em>Project</em> (total spent on a house repair, say) or a <em>Countdown</em> (a set budget for a trip, showing what's left).</li>
+  </ul>
+</section>
+
+<section id="monthend">
+  <h2><span class="num">12</span>Closing a month</h2>
+  <p>After the 1st, Home shows <strong>Close September</strong>. The close screen:</p>
+  <ol>
+    <li>Asks you to check the bank balance against the app.</li>
+    <li>Offers to save each category's <strong>unused budget</strong> to the pot linked to it.</li>
+    <li>Lets you split the <strong>leftover</strong>: carry it forward, or send parts to savings, goals or pots.</li>
+    <li>Returns unused slot money.</li>
+  </ol>
+  <p>The default choice for the leftover is set in <span class="path">More → Rules → Leftover at month end</span>.</p>
+</section>
+
+<section id="tools">
+  <h2><span class="num">13</span>Tools: afford, zakat, tax</h2>
+  <p>All three are in <span class="path">More → Tools</span>.</p>
+  <h3>Can I afford it?</h3>
+  <p>Type a price. The answer is one of four:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Answer</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Yes</td><td>It fits in unplanned money.</td></tr>
+      <tr><td>Yes, but it is tight</td><td>It uses money your budgets still need.</td></tr>
+      <tr><td>Not from this month alone</td><td>Part must come from savings. The borrowing charge is shown.</td></tr>
+      <tr><td>Not now</td><td>It's more than this month's money and your savings together.</td></tr>
+    </tbody>
+  </table></div>
+  <p>You also see what's left a day afterwards and how many months saving up would take. <strong>Save up for it as a goal</strong> creates the goal.</p>
+  <h3>Zakat</h3>
+  <p>Bank, cash, wallets, investments and money owed to you come from the app. Debts you owe people are taken off. Add gold and silver by weight and today's price a gram (1 bhori ≈ 11.66 g). Then choose the <strong>silver</strong> or <strong>gold</strong> nisab. If your net wealth is over the nisab, zakat is <strong>2.5%</strong> of it.</p>
+  <p>Typing over a filled-in figure keeps your number. The <strong>↺</strong> button brings the app's figure back.</p>
+  <h3>Income tax (Bangladesh, simplified)</h3>
+  <p>An estimate for the income year <strong>July to June</strong>. Salary is what you received so far plus your monthly plan for the months still to come. Every step is shown:</p>
+  <ol>
+    <li>Total income minus the salary exemption (one third of salary, at most ৳5,00,000) gives taxable income.</li>
+    <li>The slabs are applied: first ৳4,00,000 at 0%, next ৳3,00,000 at 10%, next ৳4,00,000 at 15%, next ৳5,00,000 at 20%, next ৳20,00,000 at 25%, the rest at 30%.</li>
+    <li>The <strong>investment rebate</strong> is taken off (DPS, savings certificates, insurance, PF, listed shares).</li>
+    <li>The <strong>minimum tax</strong> (৳5,000) applies if your income is over the tax-free limit.</li>
+    <li>Tax already deducted is taken off, leaving <em>still to pay</em> or a <em>refund</em>.</li>
+  </ol>
+  <p>Choose your taxpayer type (general; woman or 65+; disability; freedom fighter) for the right tax-free limit. Tap the settings button at the top to change slabs and rates when a new Finance Act changes them.</p>
+  <div class="warn"><strong>Estimates only.</strong> Zakat depends on your circumstances, so ask a scholar. Tax rates change most years, so check with NBR or a tax adviser before filing.</div>
+</section>
+
+<section id="reports">
+  <h2><span class="num">14</span>Reports and export</h2>
+  <p><span class="path">More → Reports &amp; export</span>:</p>
+  <ul>
+    <li><strong>Monthly report</strong> (PDF): income, where it went, expenses against budget, comparison with last month, savings, goals, loans and every entry.</li>
+    <li><strong>Annual report</strong> (PDF): the year so far, month by month.</li>
+    <li><strong>Export for Excel</strong> (CSV): every entry. Opens in Excel with Bangla text intact.</li>
+  </ul>
+  <p>Each one can be shared, printed or saved to the phone.</p>
+</section>
+
+<section id="backup">
+  <h2><span class="num">15</span>Backup and a new phone</h2>
+  <ul>
+    <li><span class="path">More → Backup &amp; restore</span>: <strong>Save to phone</strong> or <strong>Share</strong> a <code>.mft</code> backup file, for example to Google Drive or email. It includes your receipt photos.</li>
+    <li><strong>Automatic backup</strong> makes one a week and keeps the last 8 in the app's folder. Those copies are lost if the app is uninstalled, so share one off the phone now and then.</li>
+    <li><strong>New phone</strong>: install the app, then <span class="path">Backup &amp; restore → Restore from file</span>. Restoring <em>replaces everything</em> in the app.</li>
+  </ul>
+  <div class="warn"><strong>Never uninstall the app</strong> to update it. Install the new version over the old one, and your data stays.</div>
+</section>
+
+<section id="settings">
+  <h2><span class="num">16</span>Settings and security</h2>
+  <ul>
+    <li><strong>App lock</strong> (<span class="path">More → Rules</span>): fingerprint or phone PIN. The app asks again after 1 minute away. The widget then shows <em>Locked</em>.</li>
+    <li><strong>Rules</strong>: borrowing charge, leftover at month end, SMS suggestions, compare with last month.</li>
+    <li><strong>Appearance</strong>: System, Light or Dark; three colours; <em>Pitch black</em> for OLED screens.</li>
+    <li><strong>About</strong>: version and open-source licences.</li>
+  </ul>
+</section>
+
+<section id="faq">
+  <h2><span class="num">17</span>Questions and problems</h2>
+  <dl class="faq">
+    <dt>Home says "Short ৳3,500". Am I out of money?</dt>
+    <dd>No. Your budgets need more than is left in Spending, usually because one category (such as Ration) went over. Lower a budget for this month with <strong>Move budget</strong>, or accept that less is left for the others.</dd>
+    <dt>A total looks too high or counted twice.</dt>
+    <dd>Check for expenses dated <em>before</em> your starting balances. The starting balance already includes them, so they count twice. Change their date or delete them.</dd>
+    <dt>The bank app shows a different balance.</dt>
+    <dd>Use <strong>Match balance</strong> on Home. If the difference is a payment you forgot, add that entry instead.</dd>
+    <dt>"Not balanced" appears at the top of Home.</dt>
+    <dd>This shouldn't happen. Make a backup and report it.</dd>
+    <dt>A receipt says "Photo not found".</dt>
+    <dd>The photo file is missing, for example after restoring a backup made before receipts existed. Use <strong>Replace</strong> to add it again.</dd>
+    <dt>I don't see the comparison with last month.</dt>
+    <dd>It appears once there's a previous month with expenses, and only when it's switched on in Rules.</dd>
+    <dt>Bank messages don't appear.</dt>
+    <dd>Check that SMS suggestions are on and SMS access is allowed in Android settings. Also check that the sender's name matches one in <strong>Senders</strong>. Only messages from the start date onward are read.</dd>
+  </dl>
+</section>
+
+  <footer>My Fin Tracker 1.0.7 · Works offline · Your data stays on your phone</footer>
+  </main>
+</div>
+</body>
+</html>
