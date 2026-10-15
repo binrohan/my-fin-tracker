@@ -28,6 +28,9 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
   late SettingSaver _saver;
   SavedTaxInputs? _saved;
 
+  /// Show the steps for income up to today instead of the whole year.
+  bool _soFar = false;
+
   @override
   void initState() {
     super.initState();
@@ -82,7 +85,21 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     final rules = TaxRules.parse(ledger.settings[TaxRules.settingKey]);
     final s = _saved ??= SavedTaxInputs.parse(ledger.settings[SavedTaxInputs.settingKey(_year)]);
     final app = TaxFromApp.of(ledger, _year, today);
-    final result = computeTax(rules, s.resolve(app));
+    final fullYear = computeTax(rules, s.resolve(app));
+    // As if the year ended today: only what your entries show so far.
+    final soFar = computeTax(
+      rules,
+      TaxInputs(
+        salary: app.salarySoFar,
+        otherIncome: app.otherSoFar,
+        investment: app.investedSoFar,
+        alreadyPaid: s.alreadyPaid,
+        kind: s.kind,
+      ),
+    );
+    final running = _year.contains(today);
+    final day = DateFormat.yMMMd();
+    final lastDay = _year.end.subtract(const Duration(days: 1));
     final current = IncomeYear.of(today);
     final month = DateFormat.yMMM();
 
@@ -195,7 +212,34 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
             ],
           ),
         ),
-        _Steps(result: result, rules: rules),
+        if (running)
+          SectionCard(
+            children: [
+              const Label('Tax for this income year'),
+              AmountRow(
+                'Full year',
+                fullYear.tax,
+                detail: 'to ${day.format(lastDay)}, with your plan',
+              ),
+              AmountRow('Up to today', soFar.tax, detail: 'income to ${day.format(today)}'),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Full year')),
+                  ButtonSegment(value: true, label: Text('Up to today')),
+                ],
+                selected: {_soFar},
+                showSelectedIcon: false,
+                onSelectionChanged: (v) => setState(() => _soFar = v.single),
+              ),
+              if (_soFar)
+                Text(
+                  'Tax on the income your entries show so far, as if the year ended today. '
+                  'Your own figures above are for the full year and are not used here.',
+                  style: muted,
+                ),
+            ],
+          ),
+        _Steps(result: running && _soFar ? soFar : fullYear, rules: rules),
         Text(
           'An estimate using ${rules.label}. Check the current rates with NBR or a tax '
           'adviser before you file. Change rates and slabs with the button at the top.',

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_fin_tracker/core/money.dart';
+import 'package:my_fin_tracker/data/metal_prices.dart';
 import 'package:my_fin_tracker/ledger/tax.dart';
 import 'package:my_fin_tracker/ledger/zakat.dart';
 
@@ -123,6 +124,68 @@ void main() {
       final back = ZakatInputs.parse(r.inputs.encode());
       expect(back.goldGrams, 11.664);
       expect(back.cash, isNull);
+    });
+  });
+
+  group('zakat date and projection', () {
+    final today = DateTime(2026, 10, 15);
+
+    test('the date you set, then the same date each year', () {
+      expect(const ZakatInputs().nextDate(today), isNull);
+      expect(ZakatInputs(zakatDate: DateTime(2027, 3, 12)).nextDate(today), DateTime(2027, 3, 12));
+      expect(
+        ZakatInputs(zakatDate: DateTime(2026, 10, 15)).nextDate(today),
+        DateTime(2026, 10, 15),
+      );
+      expect(ZakatInputs(zakatDate: DateTime(2025, 3, 12)).nextDate(today), DateTime(2027, 3, 12));
+      final back = ZakatInputs.parse(ZakatInputs(zakatDate: DateTime(2027, 3, 12)).encode());
+      expect(back.zakatDate, DateTime(2027, 3, 12));
+    });
+
+    test('wealth grows by the monthly amount until the date', () {
+      final r = ZakatResult(
+        ZakatInputs(silverPrice: taka(250), monthlyGrowth: taka(10000)),
+        const ZakatFromApp(cash: 50000000, investments: 0, owedToYou: 0, debts: 0),
+      );
+      final date = DateTime(2027, 4, 15); // 182 days, about 6 months
+      expect(r.zakat, taka(12500));
+      expect(r.projectedNet(today, date), closeTo(taka(559795), taka(10)));
+      expect(r.projectedZakat(today, date), closeTo(taka(13995), taka(1)));
+    });
+
+    test('a shrinking month can take it under the nisab', () {
+      final r = ZakatResult(
+        ZakatInputs(silverPrice: taka(250), monthlyGrowth: -taka(20000)),
+        const ZakatFromApp(cash: 20000000, investments: 0, owedToYou: 0, debts: 0),
+      );
+      expect(r.due, isTrue);
+      expect(r.projectedZakat(today, DateTime(2027, 1, 15)), 0);
+    });
+
+    test('the app falls back to its own growth figure', () {
+      final r = ZakatResult(
+        const ZakatInputs(),
+        const ZakatFromApp(cash: 0, investments: 0, owedToYou: 0, debts: 0, monthlyGrowth: 700),
+      );
+      expect(r.monthlyGrowth, 700);
+    });
+  });
+
+  group('metal prices', () {
+    test('taka a troy ounce becomes taka a gram', () {
+      final gold = MetalPrices.readBdt(
+        '{"date":"2026-10-15","xau":{"bdt":511677.87919926,"usd":4144.7}}',
+        'xau',
+      );
+      final silver = MetalPrices.readBdt('{"date":"2026-10-15","xag":{"bdt":6904.92}}', 'xag');
+      final p = MetalPrices.parse(gold.$1, silver.$1, gold.$2);
+      expect(p.gold, taka(16450.83));
+      expect(p.silver, taka(222.0));
+      expect(p.date, DateTime(2026, 10, 15));
+    });
+
+    test('an empty answer is refused', () {
+      expect(() => MetalPrices.parse(0, 1, DateTime(2026)), throwsA(isA<MetalPriceException>()));
     });
   });
 }

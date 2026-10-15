@@ -135,6 +135,14 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] **Zakat**: bank, investments and loans are filled in from the app; type over one, the ↺ button brings the app's figure back. Enter silver price a gram → the nisab and the zakat appear.
 - [ ] **Income tax**: salary comes from your entries + plan; the steps add up. The ⚙ button edits slabs and rates; Save keeps them.
 
+## 14. New in 1.0.8
+
+- [ ] Zakat → **Get today's price** fills both prices a gram and shows the date. With no internet it shows a message instead.
+- [ ] Zakat → **Next zakat date**: pick a date. **On <date>, in N days** shows the expected net and zakat.
+- [ ] Pick a date that has already passed: the same date next year is used.
+- [ ] Type a different **Wealth grows each month by**: the expected zakat changes. ↺ brings back the app's figure.
+- [ ] Income tax: **Full year** and **Up to today** both show; switching changes the steps.
+
 ---
 
 ## Issues

@@ -113,6 +113,15 @@ class _NumberFieldState extends State<NumberField> {
   late final _controller = TextEditingController(text: formatNumber(widget.value));
 
   @override
+  void didUpdateWidget(NumberField old) {
+    super.didUpdateWidget(old);
+    // A value set from outside (a fetched price), not by typing here.
+    if ((double.tryParse(_controller.text) ?? 0) != widget.value) {
+      _controller.text = formatNumber(widget.value);
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();

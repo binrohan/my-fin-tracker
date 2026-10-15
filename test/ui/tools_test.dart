@@ -54,8 +54,13 @@ void main() {
       await tester.ensureVisible(silverPrice);
       await tester.enterText(silverPrice, '250');
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('ZAKAT, 2.5% OF NET'), 300, scrollable: page());
-      expect(find.text('ZAKAT, 2.5% OF NET'), findsOneWidget);
+      expect(find.text('Get today\'s price'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('ZAKAT TODAY, 2.5% OF NET'),
+        300,
+        scrollable: page(),
+      );
+      expect(find.text('Not set'), findsOneWidget, reason: 'no zakat date yet');
       // Let the delayed save run.
       await tester.pump(const Duration(seconds: 1));
     });
@@ -64,8 +69,19 @@ void main() {
       await pump(tester, const TaxScreen(), brightness);
       expect(find.text('Income year Jul 2026 to Jun 2027'), findsOneWidget);
       expect(find.text('2026-27'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Up to today').last, 300, scrollable: page());
+      final segment = find.descendant(
+        of: find.byType(SegmentedButton<bool>),
+        matching: find.text('Up to today'),
+      );
+      await tester.ensureVisible(segment);
+      await tester.pumpAndSettle();
+      await tester.tap(segment);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('as if the year ended today'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Tax for the year'), 300, scrollable: page());
       expect(find.text('HOW IT IS WORKED OUT'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('2025-26'), -300, scrollable: page());
       await tester.tap(find.text('2025-26'));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 1));

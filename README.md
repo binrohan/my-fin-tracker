@@ -22,7 +22,10 @@ A personal finance app for Android, built with Flutter. It tracks spending, budg
 - **Insights.** The app compares each category with the same days of last month.
 - **Receipt photos.** Attach a receipt to any expense. Backups include the photos.
 - **SMS suggestions** (opt-in). The app reads City Bank and bKash messages on the phone and offers each payment as a prefilled entry.
-- **Tools.** *Can I afford it?*, a zakat calculator, and a simplified Bangladesh income tax estimate. The tax estimate covers the July–June year, its slabs are editable, and it shows every step.
+- **Tools.**
+  - *Can I afford it?*
+  - A zakat calculator with your own zakat date, a projection to that date, and today's gold and silver price on request.
+  - A simplified Bangladesh income tax estimate for the July–June year, both for the full year and for income up to today. Its slabs are editable, and it shows every step.
 - **Also included:**
   - Cash drawer with note counting
   - Match balance
@@ -115,7 +118,7 @@ android/      Android project; MainActivity.kt holds the SMS channel
 
 ## Privacy
 
-- The release build has no internet permission at all. Only debug builds add it, for Flutter's development tools.
+- The app goes online for one thing only: when you tap **Get today's price** on the Zakat screen. It then fetches the public gold and silver price list from [currency-api](https://github.com/fawazahmed0/exchange-api) and sends nothing about you. Nothing else uses the network.
 - Backups leave the phone only when you share them.
 - SMS access is off by default. When it is on, messages are read on the phone only, and only from the senders you choose.
 

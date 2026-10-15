@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/money.dart';
+import '../../data/metal_prices.dart';
 import '../../ledger/ledger.dart';
 import '../../ledger/zakat.dart';
+import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import 'tool_fields.dart';
 
@@ -21,6 +24,7 @@ class ZakatScreen extends ConsumerStatefulWidget {
 class _ZakatScreenState extends ConsumerState<ZakatScreen> {
   late final SettingSaver _saver;
   ZakatInputs? _inputs;
+  bool _fetching = false;
 
   @override
   void initState() {
@@ -41,31 +45,34 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
     _saver(inputs.encode());
   }
 
-  ZakatInputs _with({
-    Poisha? Function()? cash,
-    Poisha? Function()? investments,
-    Poisha? Function()? owedToYou,
-    Poisha? Function()? debts,
-    double? goldGrams,
-    double? silverGrams,
-    Poisha? goldPrice,
-    Poisha? silverPrice,
-    Poisha? other,
-    NisabBasis? basis,
-  }) {
-    final i = _inputs!;
-    return ZakatInputs(
-      cash: cash == null ? i.cash : cash(),
-      investments: investments == null ? i.investments : investments(),
-      owedToYou: owedToYou == null ? i.owedToYou : owedToYou(),
-      debts: debts == null ? i.debts : debts(),
-      goldGrams: goldGrams ?? i.goldGrams,
-      silverGrams: silverGrams ?? i.silverGrams,
-      goldPrice: goldPrice ?? i.goldPrice,
-      silverPrice: silverPrice ?? i.silverPrice,
-      other: other ?? i.other,
-      basis: basis ?? i.basis,
+  Future<void> _fetchPrices() async {
+    setState(() => _fetching = true);
+    try {
+      final prices = await MetalPrices.fetch();
+      if (!mounted) return;
+      _update(
+        _inputs!.copyWith(
+          goldPrice: prices.gold,
+          silverPrice: prices.silver,
+          pricesAt: () => prices.date,
+        ),
+      );
+    } on Exception catch (e) {
+      if (mounted) showSnack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _fetching = false);
+    }
+  }
+
+  Future<void> _pickDate(DateTime today) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _inputs!.nextDate(today) ?? today,
+      firstDate: DateTime(today.year - 2),
+      lastDate: DateTime(today.year + 3),
+      helpText: 'Zakat date',
     );
+    if (picked != null) _update(_inputs!.copyWith(zakatDate: () => picked));
   }
 
   @override
@@ -77,7 +84,9 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
   Widget _body(BuildContext context, Ledger ledger) {
     final status = StatusColors.of(context);
     final inputs = _inputs ??= ZakatInputs.parse(ledger.settings[ZakatInputs.settingKey]);
-    final app = ZakatFromApp.of(ledger);
+    final today = ref.watch(todayProvider);
+    final app = ZakatFromApp.of(ledger, today: today);
+    final next = inputs.nextDate(today);
     final r = ZakatResult(inputs, app);
     final muted = TextStyle(color: status.muted, fontSize: 13);
 
@@ -91,27 +100,27 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
               fromApp: app.cash,
               value: inputs.cash,
               helper: 'From your balances today',
-              onChanged: (v) => _update(_with(cash: () => v)),
+              onChanged: (v) => _update(_inputs!.copyWith(cash: () => v)),
             ),
             OverridableAmount(
               label: 'Investments',
               fromApp: app.investments,
               value: inputs.investments,
               helper: 'DPS, FDR, savings certificates, shares',
-              onChanged: (v) => _update(_with(investments: () => v)),
+              onChanged: (v) => _update(_inputs!.copyWith(investments: () => v)),
             ),
             OverridableAmount(
               label: 'Owed to you',
               fromApp: app.owedToYou,
               value: inputs.owedToYou,
               helper: 'Loans to people you expect back',
-              onChanged: (v) => _update(_with(owedToYou: () => v)),
+              onChanged: (v) => _update(_inputs!.copyWith(owedToYou: () => v)),
             ),
             OverridableAmount(
               label: 'Anything else',
               value: inputs.other,
               helper: 'Business stock, foreign currency, other savings',
-              onChanged: (v) => _update(_with(other: v ?? 0)),
+              onChanged: (v) => _update(_inputs!.copyWith(other: v ?? 0)),
             ),
           ],
         ),
@@ -126,7 +135,7 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
                     label: 'Gold',
                     suffix: 'g',
                     value: inputs.goldGrams,
-                    onChanged: (v) => _update(_with(goldGrams: v)),
+                    onChanged: (v) => _update(_inputs!.copyWith(goldGrams: v)),
                   ),
                 ),
                 Expanded(
@@ -134,7 +143,7 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
                     label: 'Price a gram',
                     prefix: '$takaSymbol ',
                     value: inputs.goldPrice / poishaPerTaka,
-                    onChanged: (v) => _update(_with(goldPrice: taka(v))),
+                    onChanged: (v) => _update(_inputs!.copyWith(goldPrice: taka(v))),
                   ),
                 ),
               ],
@@ -147,7 +156,7 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
                     label: 'Silver',
                     suffix: 'g',
                     value: inputs.silverGrams,
-                    onChanged: (v) => _update(_with(silverGrams: v)),
+                    onChanged: (v) => _update(_inputs!.copyWith(silverGrams: v)),
                   ),
                 ),
                 Expanded(
@@ -155,13 +164,32 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
                     label: 'Price a gram',
                     prefix: '$takaSymbol ',
                     value: inputs.silverPrice / poishaPerTaka,
-                    onChanged: (v) => _update(_with(silverPrice: taka(v))),
+                    onChanged: (v) => _update(_inputs!.copyWith(silverPrice: taka(v))),
                   ),
                 ),
               ],
             ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _fetching ? null : _fetchPrices,
+                icon: _fetching
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_download_outlined),
+                label: const Text('Get today\'s price'),
+              ),
+            ),
             Text(
-              'Use today\'s selling price (BAJUS publishes it). 1 bhori ≈ 11.66 g.',
+              inputs.pricesAt == null
+                  ? 'Fetches the international price of pure gold and silver. Jewellers\' '
+                        'prices (BAJUS) are usually higher; type them instead if you prefer. '
+                        '1 bhori ≈ 11.66 g.'
+                  : 'International price for ${DateFormat.yMMMd().format(inputs.pricesAt!)}, '
+                        'pure metal. Jewellers\' prices (BAJUS) are usually higher. '
+                        '1 bhori ≈ 11.66 g.',
               style: muted,
             ),
           ],
@@ -174,7 +202,7 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
               fromApp: app.debts,
               value: inputs.debts,
               helper: 'Money you owe people, from your loans',
-              onChanged: (v) => _update(_with(debts: () => v)),
+              onChanged: (v) => _update(_inputs!.copyWith(debts: () => v)),
             ),
           ],
         ),
@@ -188,7 +216,7 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
               ],
               selected: {inputs.basis},
               showSelectedIcon: false,
-              onSelectionChanged: (s) => _update(_with(basis: s.single)),
+              onSelectionChanged: (s) => _update(_inputs!.copyWith(basis: s.single)),
             ),
             Text(
               r.nisab == null
@@ -200,9 +228,33 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
             ),
           ],
         ),
-        _Result(r: r),
+        SectionCard(
+          children: [
+            const Label('Zakat date'),
+            PickerField(
+              label: 'Next zakat date',
+              value: next == null ? 'Not set' : DateFormat.yMMMEd().format(next),
+              onTap: () => _pickDate(today),
+            ),
+            Text(
+              'The date you choose. After it passes, the same date next year is used.',
+              style: muted,
+            ),
+            if (next != null)
+              OverridableAmount(
+                label: 'Wealth grows each month by',
+                fromApp: app.monthlyGrowth,
+                value: inputs.monthlyGrowth,
+                helper: app.monthlyGrowth == null
+                    ? 'Not enough history yet; type an amount'
+                    : 'Average of your last three months',
+                onChanged: (v) => _update(inputs.copyWith(monthlyGrowth: () => v)),
+              ),
+          ],
+        ),
+        _Result(r: r, today: today, next: next),
         Text(
-          'Zakat is due on wealth held for a full lunar year. This is an estimate; '
+          'Zakat is due on wealth held for a full year. This is an estimate; '
           'ask a scholar about your own situation.',
           style: muted,
         ),
@@ -212,9 +264,11 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
 }
 
 class _Result extends StatelessWidget {
-  const _Result({required this.r});
+  const _Result({required this.r, required this.today, required this.next});
 
   final ZakatResult r;
+  final DateTime today;
+  final DateTime? next;
 
   @override
   Widget build(BuildContext context) {
@@ -235,10 +289,42 @@ class _Result extends StatelessWidget {
             style: TextStyle(color: status.good, fontWeight: FontWeight.w600),
           )
         else ...[
-          const Label('Zakat, 2.5% of net'),
+          const Label('Zakat today, 2.5% of net'),
           Money(r.zakat, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
         ],
+        if (next case final date? when r.nisab != null) ..._projection(context, date, status),
       ],
     );
+  }
+
+  List<Widget> _projection(BuildContext context, DateTime date, StatusColors status) {
+    final days = date.difference(DateTime(today.year, today.month, today.day)).inDays;
+    final net = r.projectedNet(today, date);
+    final zakat = r.projectedZakat(today, date);
+    final when = DateFormat.yMMMd().format(date);
+    return [
+      const Divider(),
+      Label(days == 0 ? 'Zakat date is today' : 'On $when, in $days days'),
+      AmountRow(
+        'Expected net',
+        net,
+        detail: r.monthlyGrowth == 0
+            ? 'no change expected'
+            : '${formatTaka(r.monthlyGrowth, showPlus: true)} a month',
+      ),
+      if (zakat == 0)
+        Text(
+          'Expected to stay below the nisab: no zakat.',
+          style: TextStyle(color: status.good, fontWeight: FontWeight.w600),
+        )
+      else ...[
+        Text('Expected zakat', style: TextStyle(color: status.muted)),
+        Money(zakat, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+      ],
+      Text(
+        'At today\'s prices. Work it out again on the day.',
+        style: TextStyle(color: status.muted, fontSize: 12),
+      ),
+    ];
   }
 }

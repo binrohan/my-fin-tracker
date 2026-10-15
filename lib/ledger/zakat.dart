@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import '../core/money.dart';
+import '../core/period.dart';
 import 'enums.dart';
 import 'ledger.dart';
 
@@ -29,6 +30,9 @@ class ZakatInputs {
     this.silverPrice = 0,
     this.other = 0,
     this.basis = NisabBasis.silver,
+    this.zakatDate,
+    this.monthlyGrowth,
+    this.pricesAt,
   });
 
   static const settingKey = 'zakat_inputs';
@@ -48,6 +52,9 @@ class ZakatInputs {
         silverPrice: j['silverPrice'] as int? ?? 0,
         other: j['other'] as int? ?? 0,
         basis: j['basis'] == 'gold' ? NisabBasis.gold : NisabBasis.silver,
+        zakatDate: DateTime.tryParse(j['date'] as String? ?? ''),
+        monthlyGrowth: j['growth'] as int?,
+        pricesAt: DateTime.tryParse(j['pricesAt'] as String? ?? ''),
       );
     } catch (_) {
       return const ZakatInputs();
@@ -69,6 +76,60 @@ class ZakatInputs {
   final Poisha other;
   final NisabBasis basis;
 
+  /// The day zakat is due, as you set it. Once it has passed, the same
+  /// date next year is used.
+  final DateTime? zakatDate;
+
+  /// How much your wealth grows a month; null follows the app.
+  final Poisha? monthlyGrowth;
+
+  /// When the gold and silver prices were last fetched.
+  final DateTime? pricesAt;
+
+  /// The next zakat day on or after [today].
+  DateTime? nextDate(DateTime today) {
+    var d = zakatDate;
+    if (d == null) return null;
+    final day = DateTime(today.year, today.month, today.day);
+    var years = 1;
+    final first = d;
+    while (d!.isBefore(day)) {
+      d = DateTime(first.year + years, first.month, first.day);
+      years++;
+    }
+    return d;
+  }
+
+  ZakatInputs copyWith({
+    Poisha? Function()? cash,
+    Poisha? Function()? investments,
+    Poisha? Function()? owedToYou,
+    Poisha? Function()? debts,
+    double? goldGrams,
+    double? silverGrams,
+    Poisha? goldPrice,
+    Poisha? silverPrice,
+    Poisha? other,
+    NisabBasis? basis,
+    DateTime? Function()? zakatDate,
+    Poisha? Function()? monthlyGrowth,
+    DateTime? Function()? pricesAt,
+  }) => ZakatInputs(
+    cash: cash == null ? this.cash : cash(),
+    investments: investments == null ? this.investments : investments(),
+    owedToYou: owedToYou == null ? this.owedToYou : owedToYou(),
+    debts: debts == null ? this.debts : debts(),
+    goldGrams: goldGrams ?? this.goldGrams,
+    silverGrams: silverGrams ?? this.silverGrams,
+    goldPrice: goldPrice ?? this.goldPrice,
+    silverPrice: silverPrice ?? this.silverPrice,
+    other: other ?? this.other,
+    basis: basis ?? this.basis,
+    zakatDate: zakatDate == null ? this.zakatDate : zakatDate(),
+    monthlyGrowth: monthlyGrowth == null ? this.monthlyGrowth : monthlyGrowth(),
+    pricesAt: pricesAt == null ? this.pricesAt : pricesAt(),
+  );
+
   String encode() => jsonEncode({
     'cash': ?cash,
     'investments': ?investments,
@@ -80,6 +141,9 @@ class ZakatInputs {
     'silverPrice': silverPrice,
     'other': other,
     'basis': basis.name,
+    if (zakatDate != null) 'date': zakatDate!.toIso8601String(),
+    'growth': ?monthlyGrowth,
+    if (pricesAt != null) 'pricesAt': pricesAt!.toIso8601String(),
   });
 }
 
@@ -90,9 +154,10 @@ class ZakatFromApp {
     required this.investments,
     required this.owedToYou,
     required this.debts,
+    this.monthlyGrowth,
   });
 
-  factory ZakatFromApp.of(Ledger ledger) {
+  factory ZakatFromApp.of(Ledger ledger, {DateTime? today}) {
     Poisha owed = 0, debts = 0;
     for (final a in ledger.accountsOfType((t) => t == AccountType.person)) {
       final b = ledger.accountBalance(a.id);
@@ -104,6 +169,7 @@ class ZakatFromApp {
       investments: math.max(0, ledger.investmentTotal()),
       owedToYou: owed,
       debts: debts,
+      monthlyGrowth: today == null ? null : _monthlyGrowth(ledger, today),
     );
   }
 
@@ -118,6 +184,25 @@ class ZakatFromApp {
 
   /// Money you owe people.
   final Poisha debts;
+
+  /// How much everything you own grew a month, on average over the last
+  /// three finished months (starting balances left out). Null without
+  /// history.
+  final Poisha? monthlyGrowth;
+}
+
+Poisha? _monthlyGrowth(Ledger ledger, DateTime today) {
+  final changes = <Poisha>[];
+  for (var p = Period.of(today).previous; changes.length < 3; p = p.previous) {
+    if (!ledger.entries.any((e) => e.date.isBefore(p.end))) break;
+    final lines = ledger.lines.where((l) => p.contains(l.date));
+    if (!lines.any((l) => l.type != EntryType.opening)) continue;
+    changes.add(
+      lines.where((l) => l.type != EntryType.opening).fold<Poisha>(0, (t, l) => t + l.amount),
+    );
+  }
+  if (changes.isEmpty) return null;
+  return changes.fold<Poisha>(0, (t, v) => t + v) ~/ changes.length;
 }
 
 class ZakatResult {
@@ -144,4 +229,19 @@ class ZakatResult {
 
   bool get due => nisab != null && net >= nisab!;
   Poisha get zakat => due ? (net * zakatRateBp / 10000).round() : 0;
+
+  /// Expected growth a month: yours, or the app's average.
+  Poisha get monthlyGrowth => inputs.monthlyGrowth ?? app.monthlyGrowth ?? 0;
+
+  /// Net wealth expected on [date], growing by [monthlyGrowth] from
+  /// [today]. Prices stay as they are today.
+  Poisha projectedNet(DateTime today, DateTime date) {
+    final months = date.difference(today).inDays / (365.25 / 12);
+    return math.max(0, net + (monthlyGrowth * math.max(0, months)).round());
+  }
+
+  Poisha projectedZakat(DateTime today, DateTime date) {
+    final n = projectedNet(today, date);
+    return nisab != null && n >= nisab! ? (n * zakatRateBp / 10000).round() : 0;
+  }
 }
