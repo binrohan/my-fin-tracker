@@ -306,7 +306,7 @@ class _NeedsAttention extends StatelessWidget {
         context,
         ledger.plan.incomes.firstWhere((i) => i.categoryId == r.id),
       ),
-      ReminderKind.bill => context.go('/spend'),
+      ReminderKind.bill || ReminderKind.slot => context.go('/spend'),
       ReminderKind.loanOverdue ||
       ReminderKind.loanLong => openScreen(context, LoanScreen(loanId: r.id!)),
       ReminderKind.maturity => openScreen(context, InvestmentScreen(accountId: r.id!)),
@@ -315,6 +315,7 @@ class _NeedsAttention extends StatelessWidget {
     IconData icon(ReminderKind k) => switch (k) {
       ReminderKind.income => Icons.savings_outlined,
       ReminderKind.bill => Icons.receipt_long_outlined,
+      ReminderKind.slot => Icons.event_outlined,
       ReminderKind.loanOverdue || ReminderKind.loanLong => Icons.handshake_outlined,
       ReminderKind.maturity => Icons.trending_up,
       ReminderKind.backup => Icons.backup_outlined,

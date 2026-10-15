@@ -67,7 +67,7 @@ class SlotsCard extends StatelessWidget {
   }
 }
 
-class _SlotTile extends StatelessWidget {
+class _SlotTile extends ConsumerWidget {
   const _SlotTile({required this.ledger, required this.period, required this.slot});
 
   final Ledger ledger;
@@ -75,9 +75,17 @@ class _SlotTile extends StatelessWidget {
   final SlotStatus slot;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final status = StatusColors.of(context);
     final over = slot.left < 0;
+    final day = slot.category.dueDay;
+    Future<void> changeDay() async {
+      final picked = await _pickSpendDay(context, period, ref.read(todayProvider), day);
+      if (picked != null) {
+        await ref.read(repositoryProvider).setSlotDay(slot.category.id, picked.day);
+      }
+    }
+
     final from = [
       for (final MapEntry(:key, :value) in slot.sources.entries)
         '${ledger.categories[key]?.name} ${formatTaka(value)}',
@@ -109,6 +117,20 @@ class _SlotTile extends StatelessWidget {
           ),
           if (from.isNotEmpty)
             Text('From $from', style: TextStyle(color: status.muted, fontSize: 13)),
+          if (day != null)
+            Row(
+              spacing: 6,
+              children: [
+                Icon(Icons.event_outlined, size: 16, color: status.muted),
+                Expanded(
+                  child: Text(
+                    'Likely to spend on '
+                    '${DateFormat.MMMEd().format(DateTime(period.year, period.month, day.clamp(1, period.daysInMonth)))}',
+                    style: TextStyle(color: status.muted, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
           Wrap(
             spacing: 8,
             children: [
@@ -121,6 +143,11 @@ class _SlotTile extends StatelessWidget {
                   onPressed: () => showGiveBackSheet(context, period, slot),
                   child: const Text('Give back'),
                 ),
+              TextButton.icon(
+                onPressed: changeDay,
+                icon: const Icon(Icons.event_outlined, size: 18),
+                label: Text(day == null ? 'Set date' : 'Change date'),
+              ),
             ],
           ),
         ],
@@ -206,6 +233,21 @@ Widget _categoryAmountRow(
   );
 }
 
+/// Asks for the day in [period] the money is likely to be spent.
+Future<DateTime?> _pickSpendDay(BuildContext context, Period period, DateTime today, int? day) {
+  final last = period.end.subtract(const Duration(days: 1));
+  final initial = day != null
+      ? DateTime(period.year, period.month, day.clamp(1, period.daysInMonth))
+      : (period.contains(today) ? today : period.start);
+  return showDatePicker(
+    context: context,
+    initialDate: initial,
+    firstDate: period.start,
+    lastDate: last,
+    helpText: 'Likely to spend on',
+  );
+}
+
 /// New slot, or [slot] "Add more": move budget in from categories.
 Future<void> showSlotSheet(BuildContext context, Period period, {SlotStatus? slot}) =>
     showModalBottomSheet(
@@ -229,6 +271,9 @@ class _SlotSheet extends ConsumerStatefulWidget {
 class _SlotSheetState extends ConsumerState<_SlotSheet> {
   final _name = TextEditingController();
   final _rows = <_AmountRow>[];
+
+  /// Day of the month it's likely to be spent; shows on Home near then.
+  int? _spendDay;
 
   @override
   void dispose() {
@@ -271,6 +316,28 @@ class _SlotSheetState extends ConsumerState<_SlotSheet> {
             'For ${widget.period.label} only. Your Monthly plan does not change.',
             style: TextStyle(color: StatusColors.of(context).muted, fontSize: 13),
           ),
+          PickerField(
+            label: 'Likely to spend on (optional)',
+            value: _spendDay == null
+                ? 'No date'
+                : DateFormat.MMMEd().format(
+                    DateTime(widget.period.year, widget.period.month, _spendDay!),
+                  ),
+            onTap: () async {
+              final picked = await _pickSpendDay(
+                context,
+                widget.period,
+                ref.read(todayProvider),
+                _spendDay,
+              );
+              if (picked != null) setState(() => _spendDay = picked.day);
+            },
+          ),
+          if (_spendDay != null)
+            Text(
+              'It shows on Home under Needs attention from 3 days before.',
+              style: TextStyle(color: StatusColors.of(context).muted, fontSize: 13),
+            ),
         ],
         const Label('Take from'),
         for (final (i, r) in _rows.indexed)
@@ -310,7 +377,13 @@ class _SlotSheetState extends ConsumerState<_SlotSheet> {
                   ];
                   final today = ref.read(todayProvider);
                   if (isNew) {
-                    await repo.createSlot(widget.period, name: _name.text, from: from, date: today);
+                    await repo.createSlot(
+                      widget.period,
+                      name: _name.text,
+                      from: from,
+                      date: today,
+                      spendDay: _spendDay,
+                    );
                   } else {
                     await repo.fundSlot(
                       widget.period,

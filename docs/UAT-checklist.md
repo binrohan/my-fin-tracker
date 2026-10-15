@@ -143,6 +143,13 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Type a different **Wealth grows each month by**: the expected zakat changes. ↺ brings back the app's figure.
 - [ ] Income tax: **Full year** and **Up to today** both show; switching changes the steps.
 
+## 15. New in 1.0.9
+
+- [ ] Spend → **New slot**: set **Likely to spend on** to a day 2 days from now → create. The slot card shows the date, and the category list shows **slot · <day> <month>**.
+- [ ] Home → Needs attention shows **<slot> in 2 days** with the amount set aside. Tapping it opens Spend.
+- [ ] Spend all of the slot's money: the reminder goes away.
+- [ ] An older slot without a date: **Set date** adds one; **Change date** moves it.
+
 ---
 
 ## Issues

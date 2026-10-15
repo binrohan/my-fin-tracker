@@ -664,6 +664,7 @@ class LedgerRepository {
     required String name,
     required List<({int category, Poisha amount})> from,
     required DateTime date,
+    int? spendDay,
   }) => db.transaction(() async {
     final id = await db
         .into(db.categories)
@@ -673,12 +674,19 @@ class LedgerRepository {
             kind: CategoryKind.expense,
             slotYear: Value(period.year),
             slotMonth: Value(period.month),
+            dueDay: Value(spendDay),
             sortOrder: const Value(1000),
           ),
         );
     await fundSlot(period, slot: id, from: from, date: date);
     return id;
   });
+
+  /// The day of its month a slot's money is likely to be spent (kept in
+  /// dueDay, as for fixed bills); null clears it.
+  Future<void> setSlotDay(int slotId, int? day) => (db.update(
+    db.categories,
+  )..where((c) => c.id.equals(slotId))).write(CategoriesCompanion(dueDay: Value(day)));
 
   Future<void> fundSlot(
     Period period, {

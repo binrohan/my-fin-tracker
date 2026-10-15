@@ -187,7 +187,9 @@ class _CategoryTile extends StatelessWidget {
               children: [
                 if (line.category.slotYear != null)
                   TextSpan(
-                    text: '  slot',
+                    text: line.category.dueDay == null
+                        ? '  slot'
+                        : '  slot · ${line.category.dueDay} ${DateFormat.MMM().format(period.start)}',
                     style: TextStyle(
                       color: status.muted,
                       fontWeight: FontWeight.w400,

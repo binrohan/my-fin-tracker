@@ -3,7 +3,7 @@ import '../core/period.dart';
 import 'enums.dart';
 import 'ledger.dart';
 
-enum ReminderKind { income, bill, loanOverdue, loanLong, maturity, backup }
+enum ReminderKind { income, bill, slot, loanOverdue, loanLong, maturity, backup }
 
 /// Something that needs your attention, worst first.
 class Reminder {
@@ -29,7 +29,8 @@ class Reminder {
 const backupSetting = 'last_backup_at';
 const autoBackupSetting = 'last_auto_backup_at';
 
-/// Bills due within [billDays] (or overdue), loans past their due date,
+/// Bills due within [billDays] (or overdue), slots whose spending day is
+/// that close (until their money is spent), loans past their due date,
 /// own-savings loans open for 60+ days, investments maturing within 30
 /// days, and no backup for 7+ days.
 List<Reminder> remindersFor(Ledger ledger, DateTime today, {int billDays = 3}) {
@@ -70,6 +71,30 @@ List<Reminder> remindersFor(Ledger ledger, DateTime today, {int billDays = 3}) {
                 : 'due in $days ${days == 1 ? 'day' : 'days'}'}',
         detail: '${formatTaka(bill.remaining)} · due on the ${_ordinal(due)}',
         urgent: days <= 0,
+      ),
+    );
+  }
+
+  for (final slot in ledger.slotsIn(period)) {
+    final on = slot.category.dueDay;
+    if (on == null || slot.left <= 0) continue;
+    final date = DateTime(period.year, period.month, on.clamp(1, period.daysInMonth));
+    final days = date.difference(day).inDays;
+    if (days > billDays) continue;
+    list.add(
+      Reminder(
+        kind: ReminderKind.slot,
+        title:
+            '${slot.category.name} ${days < 0
+                ? 'was planned for ${_date(date)}'
+                : days == 0
+                ? 'today'
+                : 'in $days ${days == 1 ? 'day' : 'days'}'}',
+        detail: slot.spent == 0
+            ? '${formatTaka(slot.left)} set aside · ${_date(date)}'
+            : '${formatTaka(slot.left)} left of ${formatTaka(slot.budget)} · ${_date(date)}',
+        urgent: false,
+        id: slot.category.id,
       ),
     );
   }

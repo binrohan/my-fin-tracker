@@ -581,6 +581,7 @@ void main() {
           (category: cat('Ration'), amount: taka(6000)),
         ],
         date: DateTime(2026, 10, 8),
+        spendDay: 10,
       );
       withSlot = await Ledger.load(db);
       await db.close();
@@ -597,6 +598,14 @@ void main() {
         expect(find.text('Spent ৳0 · left ৳8,000'), findsOneWidget);
         expect(find.text('New slot'), findsOneWidget);
         expect(find.text('Move budget'), findsOneWidget);
+        expect(find.text('Likely to spend on Sat, Oct 10'), findsOneWidget);
+        expect(find.text('Change date'), findsOneWidget);
+      });
+
+      testWidgets('Home reminds about the slot (${brightness.name})', (tester) async {
+        await pump(tester, const HomeScreen(), withSlot, brightness: brightness);
+        expect(find.text('Medical Test in 2 days'), findsOneWidget);
+        expect(find.text('৳8,000 set aside · 10 Oct'), findsOneWidget);
       });
     }
 
@@ -614,6 +623,14 @@ void main() {
       expect(find.textContaining('Only ৳'), findsOneWidget);
       final create = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Create slot'));
       expect(create.onPressed, isNull);
+
+      await tester.tap(find.text('No date'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('20'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('Tue, Oct 20'), findsOneWidget);
+      expect(find.textContaining('Needs attention from 3 days before'), findsOneWidget);
     });
 
     testWidgets('closing the month returns what is left in a slot', (tester) async {

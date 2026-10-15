@@ -11,6 +11,7 @@ import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/ledger/enums.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
+import 'package:my_fin_tracker/ledger/reminders.dart';
 
 AppDatabase memoryDb() =>
     AppDatabase(DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true));
@@ -209,5 +210,60 @@ void main() {
       old.schemaVersion,
     );
     await old.close();
+  });
+
+  test('a slot with a date shows on Home from 3 days before until spent', () async {
+    final slot = await repo.createSlot(
+      nov,
+      name: 'Medical Test',
+      from: [(category: category('Ration'), amount: taka(6000))],
+      date: day,
+      spendDay: 12,
+    );
+    await reload();
+    List<String> slotReminders(DateTime d) => [
+      for (final r in remindersFor(ledger, d))
+        if (r.kind == ReminderKind.slot) '${r.title} | ${r.detail}',
+    ];
+
+    expect(slotReminders(DateTime(2026, 11, 8)), isEmpty);
+    expect(slotReminders(DateTime(2026, 11, 9)), [
+      'Medical Test in 3 days | ৳6,000 set aside · 12 Nov',
+    ]);
+    expect(slotReminders(DateTime(2026, 11, 12)), [
+      'Medical Test today | ৳6,000 set aside · 12 Nov',
+    ]);
+
+    final bank = ledger.accounts.values.firstWhere((a) => a.name == 'Bank').id;
+    final from = (account: bank, fund: ledger.spendingFund.id);
+    await repo.expense(DateTime(2026, 11, 12), taka(2500), categoryId: slot, from: from);
+    await reload();
+    expect(slotReminders(DateTime(2026, 11, 14)), [
+      'Medical Test was planned for 12 Nov | ৳3,500 left of ৳6,000 · 12 Nov',
+    ]);
+
+    await repo.expense(DateTime(2026, 11, 14), taka(3500), categoryId: slot, from: from);
+    await reload();
+    expect(slotReminders(DateTime(2026, 11, 14)), isEmpty, reason: 'all spent');
+  });
+
+  test('the date can be set later and changed', () async {
+    final slot = await createMedicalTest();
+    expect(ledger.categories[slot]!.dueDay, isNull);
+    await repo.setSlotDay(slot, 20);
+    await reload();
+    expect(ledger.categories[slot]!.dueDay, 20);
+    expect(
+      remindersFor(
+        ledger,
+        DateTime(2026, 11, 18),
+      ).where((r) => r.kind == ReminderKind.slot).single.title,
+      'Medical Test in 2 days',
+    );
+    // A slot lives in its own month only.
+    expect(
+      remindersFor(ledger, DateTime(2026, 12, 18)).where((r) => r.kind == ReminderKind.slot),
+      isEmpty,
+    );
   });
 }
