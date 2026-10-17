@@ -150,6 +150,20 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Spend all of the slot's money: the reminder goes away.
 - [ ] An older slot without a date: **Set date** adds one; **Change date** moves it.
 
+## 16. New in 1.1.0
+
+**Save to a pot during the month**
+- [ ] Link Rice Bag to the Rice Bag pot (More → Categories → Unused budget goes to).
+- [ ] Spend → tap **Rice Bag** (or **Save to pot**): the pot and the unspent amount are filled in. Save.
+- [ ] Rice Bag shows **saved ৳1,000**; the pot grows by ৳1,000; Left to spend and Budgeted both drop by ৳1,000, and nothing becomes **Short**.
+- [ ] If Rice Bag is a fixed bill, it's no longer "due" on Home or in Pay remaining bills.
+- [ ] **Undo** (Slots & budget moves card) puts it all back.
+
+**Home**
+- [ ] Tap **This month**, **Where it is**, **What it's for** and **Needs attention** headings: each folds and shows a total or count. Close and reopen the app: they stay folded.
+- [ ] More → Appearance → Home page → **After bills**: the main card shows **Free to spend** = Left to spend − Bills still to pay, with the sum. **Bills to pay** lists unpaid bills; **Pay all** works.
+- [ ] Switch back to **Standard**.
+
 ---
 
 ## Issues

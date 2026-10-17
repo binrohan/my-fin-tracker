@@ -120,7 +120,7 @@ class SpendScreen extends ConsumerWidget {
             SlotsCard(ledger: ledger, period: period),
             if (bills.isNotEmpty)
               FilledButton.tonal(
-                onPressed: () => _payBills(context, ref, ledger, bills),
+                onPressed: () => showPayBills(context, ref, ledger, bills),
                 child: Text(
                   'Pay ${bills.length} remaining fixed '
                   '${bills.length == 1 ? 'bill' : 'bills'} · ${formatTaka(billsTotal)}',
@@ -386,7 +386,8 @@ class _SubCategoryRow extends StatelessWidget {
   }
 }
 
-Future<void> _payBills(
+/// Pays the given fixed bills at once, from a pot you choose.
+Future<void> showPayBills(
   BuildContext context,
   WidgetRef ref,
   Ledger ledger,
