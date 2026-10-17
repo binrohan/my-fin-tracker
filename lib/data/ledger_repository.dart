@@ -26,6 +26,7 @@ class LedgerRepository {
     int? loanId,
     int? trackerId,
     String note = '',
+    bool? budgetSave,
   }) {
     assert(amount >= 0, 'Entry amounts are positive; postings carry the sign');
     return db.transaction(() async {
@@ -40,6 +41,7 @@ class LedgerRepository {
               loanId: Value(loanId),
               trackerId: Value(trackerId),
               note: Value(note),
+              budgetSave: Value(budgetSave),
             ),
           );
       for (final (pot, value) in postings) {
@@ -546,6 +548,30 @@ class LedgerRepository {
           }
         }
       });
+
+  /// Saves [amount] of a category's budget to a pot now, during the month:
+  /// this month's budget for it drops by that much and the money moves from
+  /// Spending to [fundId], staying in [account]. Delete the entry to undo.
+  Future<int> saveBudgetToPot({
+    required int categoryId,
+    required String categoryName,
+    required int account,
+    required int spendingFund,
+    required int fundId,
+    required Poisha amount,
+    required DateTime date,
+  }) => _write(
+    date: date,
+    type: EntryType.move,
+    amount: amount,
+    categoryId: categoryId,
+    budgetSave: true,
+    postings: [
+      ((account: account, fund: spendingFund), -amount),
+      ((account: account, fund: fundId), amount),
+    ],
+    note: 'Saved from $categoryName budget',
+  );
 
   // -------------------------------------------------- income for next month
 

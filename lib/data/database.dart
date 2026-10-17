@@ -94,6 +94,10 @@ class Entries extends Table {
 
   /// File name of a receipt photo in the app's receipts folder.
   TextColumn get receipt => text().nullable()();
+
+  /// A move that saves part of [categoryId]'s budget to a pot during the
+  /// month: it lowers that month's budget. (Month-close moves don't.)
+  BoolColumn get budgetSave => boolean().nullable()();
 }
 
 /// A signed amount on one (account, fund) pair. Every balance in the app is
@@ -230,7 +234,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -258,6 +262,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         // Receipt photos.
         await m.addColumn(entries, entries.receipt);
+      }
+      if (from < 6) {
+        // Budget saved to a pot during the month.
+        await m.addColumn(entries, entries.budgetSave);
       }
     },
     beforeOpen: (details) async {

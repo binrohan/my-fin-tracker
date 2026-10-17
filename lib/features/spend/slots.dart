@@ -11,6 +11,7 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import 'save_budget_sheet.dart';
 
 /// Slots of the month: money for a coming expense, moved in from other
 /// categories' budgets, for this month only.
@@ -31,10 +32,11 @@ class SlotsCard extends StatelessWidget {
               !ledger.isSlot(ledger.categories[m.toCategoryId]!) &&
               !ledger.isSlot(ledger.categories[m.fromCategoryId]!),
         );
+    final saved = ledger.savedDuring(period).isNotEmpty;
     return SectionCard(
       children: [
         const Label('Slots & budget moves'),
-        if (slots.isEmpty && moves.isEmpty)
+        if (slots.isEmpty && moves.isEmpty && !saved)
           Text(
             'Set money aside for something coming this month, taken from other categories. '
             'Only this month changes; your Monthly plan stays as it is.',
@@ -47,6 +49,7 @@ class SlotsCard extends StatelessWidget {
             '${ledger.categories[m.fromCategoryId]!.name} → ${ledger.categories[m.toCategoryId]!.name}',
             style: TextStyle(color: status.muted, fontSize: 13),
           ),
+        if (saved) SavedThisMonth(ledger: ledger, period: period),
         Wrap(
           spacing: 8,
           children: [
@@ -59,6 +62,11 @@ class SlotsCard extends StatelessWidget {
               icon: const Icon(Icons.swap_horiz),
               label: const Text('Move budget'),
               onPressed: () => showMoveBudgetSheet(context, period),
+            ),
+            TextButton.icon(
+              icon: const Icon(Icons.savings_outlined),
+              label: const Text('Save to pot'),
+              onPressed: () => showSaveBudgetSheet(context, period),
             ),
           ],
         ),

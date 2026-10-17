@@ -13,6 +13,7 @@ import '../../data/ledger_repository.dart';
 import '../../ui/charts.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import 'save_budget_sheet.dart';
 import 'slots.dart';
 import '../entries/entries_screen.dart';
 import '../plan/monthly_plan_screen.dart';
@@ -27,6 +28,7 @@ class SpendScreen extends ConsumerWidget {
     return LedgerBuilder(
       builder: (context, ledger) {
         final s = ledger.summary(period);
+        final saved = ledger.savedDuring(period);
         final compared = ledger.settings[insightsOffSetting] == 'true'
             ? null
             : compareMonths(ledger, period, today: today);
@@ -102,6 +104,7 @@ class SpendScreen extends ConsumerWidget {
                     line: line,
                     period: period,
                     change: compared?.changes[line.category.id],
+                    saved: saved,
                   ),
                 ],
               ],
@@ -161,11 +164,19 @@ class SpendScreen extends ConsumerWidget {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.line, required this.period, this.change});
+  const _CategoryTile({
+    required this.line,
+    required this.period,
+    this.change,
+    this.saved = const {},
+  });
 
   final CategoryLine line;
   final Period period;
   final CategoryChange? change;
+
+  /// Budget saved to pots this month, by category.
+  final Map<int, Poisha> saved;
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +237,25 @@ class _CategoryTile extends StatelessWidget {
     ];
 
     if (line.children.isEmpty) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: head);
+      final own = saved[line.category.id] ?? 0;
+      final tile = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 6,
+        children: [
+          ...head,
+          if (own > 0)
+            Text(
+              '${formatTaka(own)} saved to a pot this month',
+              style: TextStyle(fontSize: 12, color: status.good),
+            ),
+        ],
+      );
+      // Linked to a pot: tap to save its budget there now.
+      if (line.category.savingsFundId == null || line.remaining <= 0) return tile;
+      return InkWell(
+        onTap: () => showSaveBudgetSheet(context, period, categoryId: line.category.id),
+        child: tile,
+      );
     }
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -235,7 +264,10 @@ class _CategoryTile extends StatelessWidget {
         childrenPadding: const EdgeInsets.only(left: 12, bottom: 4),
         title: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: head),
         initiallyExpanded: true,
-        children: [for (final child in line.children) _SubCategoryRow(line: child, period: period)],
+        children: [
+          for (final child in line.children)
+            _SubCategoryRow(line: child, period: period, saved: saved[child.category.id] ?? 0),
+        ],
       ),
     );
   }
@@ -305,10 +337,13 @@ class ComparisonCard extends StatelessWidget {
 }
 
 class _SubCategoryRow extends StatelessWidget {
-  const _SubCategoryRow({required this.line, required this.period});
+  const _SubCategoryRow({required this.line, required this.period, this.saved = 0});
 
   final CategoryLine line;
   final Period period;
+
+  /// Saved to a pot this month.
+  final Poisha saved;
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +351,9 @@ class _SubCategoryRow extends StatelessWidget {
     final c = line.category;
     final paid = line.budget > 0 && line.actual >= line.budget;
     Widget? chip;
-    if (c.isFixed && line.budget > 0) {
+    if (saved > 0 && line.remaining <= 0) {
+      chip = StatusChip('saved ${formatTaka(saved)}', tone: ChipTone.good);
+    } else if (c.isFixed && line.budget > 0) {
       chip = paid
           ? const StatusChip('paid', tone: ChipTone.good)
           : c.dueDay != null
@@ -326,7 +363,7 @@ class _SubCategoryRow extends StatelessWidget {
             )
           : null;
     }
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         spacing: 8,
@@ -339,6 +376,12 @@ class _SubCategoryRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+    // Linked to a pot: tap to save its budget there now.
+    if (c.savingsFundId == null || line.remaining <= 0) return row;
+    return InkWell(
+      onTap: () => showSaveBudgetSheet(context, period, categoryId: c.id),
+      child: row,
     );
   }
 }

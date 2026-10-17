@@ -2107,6 +2107,16 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _budgetSaveMeta = const VerificationMeta('budgetSave');
+  @override
+  late final GeneratedColumn<bool> budgetSave = GeneratedColumn<bool>(
+    'budget_save',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("budget_save" IN (0, 1))'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2119,6 +2129,7 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     note,
     createdAt,
     receipt,
+    budgetSave,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2169,6 +2180,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     if (data.containsKey('receipt')) {
       context.handle(_receiptMeta, receipt.isAcceptableOrUnknown(data['receipt']!, _receiptMeta));
     }
+    if (data.containsKey('budget_save')) {
+      context.handle(
+        _budgetSaveMeta,
+        budgetSave.isAcceptableOrUnknown(data['budget_save']!, _budgetSaveMeta),
+      );
+    }
     return context;
   }
 
@@ -2211,6 +2228,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         DriftSqlType.string,
         data['${effectivePrefix}receipt'],
       ),
+      budgetSave: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}budget_save'],
+      ),
     );
   }
 
@@ -2240,6 +2261,10 @@ class Entry extends DataClass implements Insertable<Entry> {
 
   /// File name of a receipt photo in the app's receipts folder.
   final String? receipt;
+
+  /// A move that saves part of [categoryId]'s budget to a pot during the
+  /// month: it lowers that month's budget. (Month-close moves don't.)
+  final bool? budgetSave;
   const Entry({
     required this.id,
     required this.date,
@@ -2251,6 +2276,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     required this.note,
     required this.createdAt,
     this.receipt,
+    this.budgetSave,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2275,6 +2301,9 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || receipt != null) {
       map['receipt'] = Variable<String>(receipt);
     }
+    if (!nullToAbsent || budgetSave != null) {
+      map['budget_save'] = Variable<bool>(budgetSave);
+    }
     return map;
   }
 
@@ -2290,6 +2319,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       note: Value(note),
       createdAt: Value(createdAt),
       receipt: receipt == null && nullToAbsent ? const Value.absent() : Value(receipt),
+      budgetSave: budgetSave == null && nullToAbsent ? const Value.absent() : Value(budgetSave),
     );
   }
 
@@ -2306,6 +2336,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       note: serializer.fromJson<String>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       receipt: serializer.fromJson<String?>(json['receipt']),
+      budgetSave: serializer.fromJson<bool?>(json['budgetSave']),
     );
   }
   @override
@@ -2322,6 +2353,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'note': serializer.toJson<String>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'receipt': serializer.toJson<String?>(receipt),
+      'budgetSave': serializer.toJson<bool?>(budgetSave),
     };
   }
 
@@ -2336,6 +2368,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     String? note,
     DateTime? createdAt,
     Value<String?> receipt = const Value.absent(),
+    Value<bool?> budgetSave = const Value.absent(),
   }) => Entry(
     id: id ?? this.id,
     date: date ?? this.date,
@@ -2347,6 +2380,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     note: note ?? this.note,
     createdAt: createdAt ?? this.createdAt,
     receipt: receipt.present ? receipt.value : this.receipt,
+    budgetSave: budgetSave.present ? budgetSave.value : this.budgetSave,
   );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -2360,6 +2394,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       receipt: data.receipt.present ? data.receipt.value : this.receipt,
+      budgetSave: data.budgetSave.present ? data.budgetSave.value : this.budgetSave,
     );
   }
 
@@ -2375,14 +2410,26 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('trackerId: $trackerId, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
-          ..write('receipt: $receipt')
+          ..write('receipt: $receipt, ')
+          ..write('budgetSave: $budgetSave')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, date, type, amount, categoryId, loanId, trackerId, note, createdAt, receipt);
+  int get hashCode => Object.hash(
+    id,
+    date,
+    type,
+    amount,
+    categoryId,
+    loanId,
+    trackerId,
+    note,
+    createdAt,
+    receipt,
+    budgetSave,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2396,7 +2443,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.trackerId == this.trackerId &&
           other.note == this.note &&
           other.createdAt == this.createdAt &&
-          other.receipt == this.receipt);
+          other.receipt == this.receipt &&
+          other.budgetSave == this.budgetSave);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -2410,6 +2458,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<String> note;
   final Value<DateTime> createdAt;
   final Value<String?> receipt;
+  final Value<bool?> budgetSave;
   const EntriesCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
@@ -2421,6 +2470,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.receipt = const Value.absent(),
+    this.budgetSave = const Value.absent(),
   });
   EntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -2433,6 +2483,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.receipt = const Value.absent(),
+    this.budgetSave = const Value.absent(),
   }) : date = Value(date),
        type = Value(type),
        amount = Value(amount);
@@ -2447,6 +2498,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<String>? note,
     Expression<DateTime>? createdAt,
     Expression<String>? receipt,
+    Expression<bool>? budgetSave,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2459,6 +2511,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
       if (receipt != null) 'receipt': receipt,
+      if (budgetSave != null) 'budget_save': budgetSave,
     });
   }
 
@@ -2473,6 +2526,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Value<String>? note,
     Value<DateTime>? createdAt,
     Value<String?>? receipt,
+    Value<bool?>? budgetSave,
   }) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -2485,6 +2539,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
       receipt: receipt ?? this.receipt,
+      budgetSave: budgetSave ?? this.budgetSave,
     );
   }
 
@@ -2521,6 +2576,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (receipt.present) {
       map['receipt'] = Variable<String>(receipt.value);
     }
+    if (budgetSave.present) {
+      map['budget_save'] = Variable<bool>(budgetSave.value);
+    }
     return map;
   }
 
@@ -2536,7 +2594,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('trackerId: $trackerId, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
-          ..write('receipt: $receipt')
+          ..write('receipt: $receipt, ')
+          ..write('budgetSave: $budgetSave')
           ..write(')'))
         .toString();
   }
@@ -7447,6 +7506,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<String> note,
   Value<DateTime> createdAt,
   Value<String?> receipt,
+  Value<bool?> budgetSave,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<int> id,
@@ -7459,6 +7519,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<String> note,
   Value<DateTime> createdAt,
   Value<String?> receipt,
+  Value<bool?> budgetSave,
 });
 
 final class $$EntriesTableReferences extends BaseReferences<_$AppDatabase, $EntriesTable, Entry> {
@@ -7555,6 +7616,9 @@ class $$EntriesTableFilterComposer extends Composer<_$AppDatabase, $EntriesTable
 
   ColumnFilters<String> get receipt =>
       $composableBuilder(column: $table.receipt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get budgetSave =>
+      $composableBuilder(column: $table.budgetSave, builder: (column) => ColumnFilters(column));
 
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
@@ -7661,6 +7725,9 @@ class $$EntriesTableOrderingComposer extends Composer<_$AppDatabase, $EntriesTab
   ColumnOrderings<String> get receipt =>
       $composableBuilder(column: $table.receipt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get budgetSave =>
+      $composableBuilder(column: $table.budgetSave, builder: (column) => ColumnOrderings(column));
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7728,6 +7795,9 @@ class $$EntriesTableAnnotationComposer extends Composer<_$AppDatabase, $EntriesT
 
   GeneratedColumn<String> get receipt =>
       $composableBuilder(column: $table.receipt, builder: (column) => column);
+
+  GeneratedColumn<bool> get budgetSave =>
+      $composableBuilder(column: $table.budgetSave, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -7847,6 +7917,7 @@ class $$EntriesTableTableManager
                 Value<String> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> receipt = const Value.absent(),
+                Value<bool?> budgetSave = const Value.absent(),
               }) => EntriesCompanion(
                 id: id,
                 date: date,
@@ -7858,6 +7929,7 @@ class $$EntriesTableTableManager
                 note: note,
                 createdAt: createdAt,
                 receipt: receipt,
+                budgetSave: budgetSave,
               ),
           createCompanionCallback:
               ({
@@ -7871,6 +7943,7 @@ class $$EntriesTableTableManager
                 Value<String> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> receipt = const Value.absent(),
+                Value<bool?> budgetSave = const Value.absent(),
               }) => EntriesCompanion.insert(
                 id: id,
                 date: date,
@@ -7882,6 +7955,7 @@ class $$EntriesTableTableManager
                 note: note,
                 createdAt: createdAt,
                 receipt: receipt,
+                budgetSave: budgetSave,
               ),
           withReferenceMapper: (p0) => p0
               .map(

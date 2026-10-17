@@ -625,10 +625,32 @@ class Ledger {
     return [for (final c in cells) (account: c.account, amount: c.amount)];
   }
 
-  /// Unused budget of a category already saved to its pot for month [p].
+  /// Unused budget of a category already saved to its pot when month [p]
+  /// was closed. Saves during the month lower the budget instead (see
+  /// [savedDuring]), so they are not counted here.
   Poisha savedFromBudget(int categoryId, Period p) => entries
-      .where((e) => e.type == EntryType.move && e.categoryId == categoryId && p.contains(e.date))
+      .where(
+        (e) =>
+            e.type == EntryType.move &&
+            e.categoryId == categoryId &&
+            e.budgetSave != true &&
+            p.contains(e.date),
+      )
       .fold(0, (t, e) => t + e.amount);
+
+  /// Budget saved to pots during month [p], by category.
+  Map<int, Poisha> savedDuring(Period p) {
+    final saved = <int, Poisha>{};
+    for (final e in entries) {
+      if (e.type == EntryType.move &&
+          e.budgetSave == true &&
+          e.categoryId != null &&
+          p.contains(e.date)) {
+        saved.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
+      }
+    }
+    return saved;
+  }
 
   /// What closing [p] saves from categories linked to a pot: each linked
   /// category's unused budget (nothing if it went over). A linked section
@@ -690,13 +712,17 @@ class Ledger {
       if (m.year == p.year && m.month == p.month) m,
   ];
 
-  /// Net budget moved into (+) or out of (−) each category in month [p].
+  /// Net budget moved into (+) or out of (−) each category in month [p],
+  /// including budget saved to a pot during the month.
   Map<int, Poisha> budgetDeltas(Period p) {
     final d = <int, Poisha>{};
     for (final m in movesIn(p)) {
       d.update(m.toCategoryId, (v) => v + m.amount, ifAbsent: () => m.amount);
       d.update(m.fromCategoryId, (v) => v - m.amount, ifAbsent: () => -m.amount);
     }
+    savedDuring(p).forEach((category, amount) {
+      d.update(category, (v) => v - amount, ifAbsent: () => -amount);
+    });
     return d;
   }
 
