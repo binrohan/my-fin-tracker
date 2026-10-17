@@ -8,6 +8,7 @@ import '../../app/theme.dart';
 import '../../data/database.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
+import '../../ledger/tax.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 
@@ -107,6 +108,7 @@ class CategoriesScreen extends ConsumerWidget {
     var fixed = existing?.isFixed ?? false;
     var archived = existing?.archived ?? false;
     int? savingsFund = existing?.savingsFundId;
+    var taxType = existing == null ? IncomeTaxType.taxable : incomeTaxType(ledger, existing.id);
     final pots = [
       for (final f in ledger.funds.values)
         if ((f.kind == FundKind.savings || (f.kind == FundKind.goal && f.achievedAt == null)) &&
@@ -189,7 +191,9 @@ class CategoriesScreen extends ConsumerWidget {
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Unused budget goes to (optional)',
-                    helperText: 'When you close a month, what you did not spend is saved here',
+                    helperText:
+                        'What you did not spend is saved here when you close the month, '
+                        'or any time with Save to pot on the Spend tab',
                     helperMaxLines: 2,
                     border: OutlineInputBorder(),
                   ),
@@ -198,6 +202,22 @@ class CategoriesScreen extends ConsumerWidget {
                     for (final f in pots) DropdownMenuItem(value: f.id, child: Text(f.name)),
                   ],
                   onChanged: (v) => setState(() => savingsFund = v),
+                ),
+              if (kind == CategoryKind.income)
+                DropdownButtonFormField<IncomeTaxType>(
+                  initialValue: taxType,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'For income tax',
+                    helperText: 'Salary gets the salary exemption; not taxable is left out',
+                    helperMaxLines: 2,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final t in IncomeTaxType.values)
+                      DropdownMenuItem(value: t, child: Text(t.label)),
+                  ],
+                  onChanged: (v) => setState(() => taxType = v ?? taxType),
                 ),
               if (existing != null)
                 SwitchListTile(
@@ -223,8 +243,9 @@ class CategoriesScreen extends ConsumerWidget {
     }
     final dueDay = int.tryParse(due.text);
     final validDue = (dueDay != null && dueDay >= 1 && dueDay <= 31 && fixed) ? dueDay : null;
+    final int id;
     if (existing == null) {
-      await setup.addCategory(
+      id = await setup.addCategory(
         name.text,
         kind,
         parentId: parentId,
@@ -233,6 +254,7 @@ class CategoriesScreen extends ConsumerWidget {
         savingsFundId: kind == CategoryKind.expense ? savingsFund : null,
       );
     } else {
+      id = existing.id;
       await setup.updateCategory(
         existing.id,
         name: name.text,
@@ -241,6 +263,11 @@ class CategoriesScreen extends ConsumerWidget {
         savingsFundId: Value(kind == CategoryKind.expense ? savingsFund : null),
         archived: archived,
       );
+    }
+    if (kind == CategoryKind.income && taxType != incomeTaxType(ledger, id)) {
+      await ref
+          .read(repositoryProvider)
+          .setSetting(incomeTaxTypesSetting, encodeIncomeTaxType(ledger, id, taxType));
     }
   }
 }

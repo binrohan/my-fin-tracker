@@ -267,8 +267,50 @@ class IncomeYear {
   }
 }
 
-/// What the app can tell about an income year: income and investments
-/// recorded so far, plus the monthly plan for the months still to come.
+/// How an income type counts for income tax.
+enum IncomeTaxType {
+  /// Employment income: the salary exemption applies.
+  salary('Salary'),
+
+  /// Taxed in full: rent, business, interest and the like.
+  taxable('Other taxable'),
+
+  /// Not income tax counts: gifts, loans repaid to you, tax-free income.
+  exempt('Not taxable');
+
+  const IncomeTaxType(this.label);
+  final String label;
+}
+
+const incomeTaxTypesSetting = 'income_tax_types';
+
+/// Each income category's tax type. Unless set, the plan's main income is
+/// salary and the others are taxable.
+IncomeTaxType incomeTaxType(Ledger ledger, int categoryId) {
+  final saved = _savedTaxTypes(ledger)[categoryId];
+  if (saved != null) return saved;
+  return categoryId == ledger.plan.categoryId ? IncomeTaxType.salary : IncomeTaxType.taxable;
+}
+
+Map<int, IncomeTaxType> _savedTaxTypes(Ledger ledger) {
+  try {
+    final json = jsonDecode(ledger.settings[incomeTaxTypesSetting] ?? '{}') as Map<String, dynamic>;
+    return {
+      for (final e in json.entries) int.parse(e.key): ?IncomeTaxType.values.asNameMap()[e.value],
+    };
+  } catch (_) {
+    return {};
+  }
+}
+
+/// The setting with [categoryId] set to [type].
+String encodeIncomeTaxType(Ledger ledger, int categoryId, IncomeTaxType type) => jsonEncode({
+  for (final e in {..._savedTaxTypes(ledger), categoryId: type}.entries) '${e.key}': e.value.name,
+});
+
+/// What the app can tell about an income year, month by month: what your
+/// entries show, and the Monthly plan for months without entries, both
+/// earlier ones (before you used the app) and those still to come.
 class TaxFromApp {
   const TaxFromApp({
     required this.salarySoFar,
@@ -277,55 +319,116 @@ class TaxFromApp {
     required this.investedSoFar,
     required this.investPlanned,
     required this.monthsToCome,
+    this.salaryEstimated = 0,
+    this.otherEstimated = 0,
+    this.otherPlanned = 0,
+    this.investEstimated = 0,
+    this.monthsEstimated = 0,
   });
 
   factory TaxFromApp.of(Ledger ledger, IncomeYear year, DateTime today) {
     final plan = ledger.plan;
-    final mainId = plan.categoryId;
-    final inYear = ledger.entries.where((e) => year.contains(e.date) && !e.date.isAfter(today));
-    Poisha salary = 0, other = 0;
-    for (final e in inYear.where((e) => e.type == EntryType.income)) {
-      if (e.categoryId == mainId) {
-        salary += e.amount;
-      } else {
-        other += e.amount;
+    final thisMonth = Period.of(today);
+    final recorded = <(int, Period), Poisha>{};
+    for (final e in ledger.entries) {
+      if (e.type == EntryType.income &&
+          e.categoryId != null &&
+          year.contains(e.date) &&
+          !e.date.isAfter(today)) {
+        final key = (e.categoryId!, Period.of(e.date));
+        recorded.update(key, (v) => v + e.amount, ifAbsent: () => e.amount);
       }
     }
-    Poisha invested = 0;
-    for (var p = Period.of(year.start); p.compareTo(Period.of(today)) <= 0; p = p.next) {
-      invested += ledger.summary(p).invested;
+    final incomeIds = {
+      for (final k in recorded.keys) k.$1,
+      for (final s in plan.incomes) s.categoryId,
+    };
+
+    // [actual, earlier months estimated, months to come planned] by type.
+    final sums = {
+      for (final t in IncomeTaxType.values) t: [0, 0, 0],
+    };
+    final mainId = plan.categoryId;
+    var monthsEstimated = 0, monthsToCome = 0;
+    for (var p = Period.of(year.start); p.start.isBefore(year.end); p = p.next) {
+      for (final id in incomeIds) {
+        final type = incomeTaxType(ledger, id);
+        final actual = recorded[(id, p)] ?? 0;
+        final planned = plan.sourceFor(id)?.amount ?? 0;
+        // This month counts as still to come until its income arrives.
+        final slot = actual > 0 ? 0 : (p.compareTo(thisMonth) < 0 ? 1 : 2);
+        sums[type]![slot] += actual > 0 ? actual : planned;
+        if (id == mainId && actual == 0 && planned > 0) {
+          if (slot == 1) monthsEstimated++;
+          if (slot == 2) monthsToCome++;
+        }
+      }
     }
-    final monthly = plan.sourceFor(mainId)?.amount ?? 0;
+
+    // Investments: recorded months, and the plan's DPS-type lines for the rest.
     final investMonthly = plan.items
         .where((i) => ledger.accounts[i.accountId]?.type == AccountType.investment)
         .fold<Poisha>(0, (t, i) => t + i.amount);
-    // Months still to come, counting this one if its salary hasn't arrived.
-    final thisMonth = Period.of(today);
-    final paidThisMonth = inYear.any(
-      (e) => e.type == EntryType.income && e.categoryId == mainId && thisMonth.contains(e.date),
-    );
-    final months = year.contains(today) ? year.monthsAfter(today) + (paidThisMonth ? 0 : 1) : 0;
+    Poisha invested = 0, investEstimated = 0, investPlanned = 0;
+    for (var p = Period.of(year.start); p.start.isBefore(year.end); p = p.next) {
+      final actual = p.compareTo(thisMonth) <= 0 ? ledger.summary(p).invested : 0;
+      if (actual > 0) {
+        invested += actual;
+      } else if (p.compareTo(thisMonth) < 0) {
+        investEstimated += investMonthly;
+      } else {
+        investPlanned += investMonthly;
+      }
+    }
+
+    final salary = sums[IncomeTaxType.salary]!;
+    final other = sums[IncomeTaxType.taxable]!;
     return TaxFromApp(
-      salarySoFar: salary,
-      salaryPlanned: monthly * months,
-      otherSoFar: other,
-      investedSoFar: math.max(0, invested),
-      investPlanned: investMonthly * months,
-      monthsToCome: months,
+      salarySoFar: salary[0],
+      salaryEstimated: salary[1],
+      salaryPlanned: salary[2],
+      otherSoFar: other[0],
+      otherEstimated: other[1],
+      otherPlanned: other[2],
+      investedSoFar: invested,
+      investEstimated: investEstimated,
+      investPlanned: investPlanned,
+      monthsEstimated: monthsEstimated,
+      monthsToCome: monthsToCome,
     );
   }
 
+  /// Salary your entries show in the year so far.
   final Poisha salarySoFar;
+
+  /// Salary for earlier months without entries, from the plan.
+  final Poisha salaryEstimated;
+
+  /// Salary for the months still to come, from the plan.
   final Poisha salaryPlanned;
+
   final Poisha otherSoFar;
+  final Poisha otherEstimated;
+  final Poisha otherPlanned;
+
   final Poisha investedSoFar;
+  final Poisha investEstimated;
   final Poisha investPlanned;
 
-  /// Months whose salary is still to come, this one included if unpaid.
+  /// Months of the main income estimated before your entries start.
+  final int monthsEstimated;
+
+  /// Months whose main income is still to come, this one included if unpaid.
   final int monthsToCome;
 
-  Poisha get salary => salarySoFar + salaryPlanned;
-  Poisha get investment => investedSoFar + investPlanned;
+  Poisha get salary => salarySoFar + salaryEstimated + salaryPlanned;
+  Poisha get other => otherSoFar + otherEstimated + otherPlanned;
+  Poisha get investment => investedSoFar + investEstimated + investPlanned;
+
+  /// Up to today: entries plus the earlier months' estimates.
+  Poisha get salaryToDate => salarySoFar + salaryEstimated;
+  Poisha get otherToDate => otherSoFar + otherEstimated;
+  Poisha get investmentToDate => investedSoFar + investEstimated;
 }
 
 /// What you typed on the Tax screen for one income year. Amounts left null
@@ -365,7 +468,7 @@ class SavedTaxInputs {
 
   TaxInputs resolve(TaxFromApp app) => TaxInputs(
     salary: salary ?? app.salary,
-    otherIncome: otherIncome ?? app.otherSoFar,
+    otherIncome: otherIncome ?? app.other,
     investment: investment ?? app.investment,
     alreadyPaid: alreadyPaid,
     kind: kind,

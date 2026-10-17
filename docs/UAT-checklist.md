@@ -164,6 +164,13 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] More → Appearance → Home page → **After bills**: the main card shows **Free to spend** = Left to spend − Bills still to pay, with the sum. **Bills to pay** lists unpaid bills; **Pay all** works.
 - [ ] Switch back to **Standard**.
 
+## 17. New in 1.1.1
+
+- [ ] Income tax → Salary note reads like "Recorded ৳… + estimated ৳… for 3 months before your entries + plan ৳… for 8 months to come". July–September (before the app) are included.
+- [ ] **Up to today** includes the estimated earlier months.
+- [ ] **Which incomes are taxable**: set Bonus to **Not taxable** → it leaves Other taxable income. Set it back.
+- [ ] More → Categories → edit an income category: **For income tax** shows the same choice.
+
 ---
 
 ## Issues

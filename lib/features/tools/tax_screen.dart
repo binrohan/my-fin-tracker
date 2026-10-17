@@ -6,6 +6,7 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/money.dart';
 import '../../data/ledger_repository.dart';
+import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ledger/tax.dart';
 import '../../ui/forms.dart';
@@ -90,9 +91,9 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     final soFar = computeTax(
       rules,
       TaxInputs(
-        salary: app.salarySoFar,
-        otherIncome: app.otherSoFar,
-        investment: app.investedSoFar,
+        salary: app.salaryToDate,
+        otherIncome: app.otherToDate,
+        investment: app.investmentToDate,
         alreadyPaid: s.alreadyPaid,
         kind: s.kind,
       ),
@@ -117,14 +118,23 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
       kind: kind ?? s.kind,
     );
 
-    final salaryHelp = app.monthsToCome == 0
-        ? 'Received ${formatTaka(app.salarySoFar)}'
-        : 'Received ${formatTaka(app.salarySoFar)} so far + plan '
-              '${formatTaka(app.salaryPlanned)} for ${app.monthsToCome} more months';
-    final investHelp = app.monthsToCome == 0 || app.investPlanned == 0
-        ? 'Put into investments: ${formatTaka(app.investedSoFar)}'
-        : 'Invested ${formatTaka(app.investedSoFar)} so far + plan '
-              '${formatTaka(app.investPlanned)}';
+    String months(int n) => n == 1 ? '1 month' : '$n months';
+    String parts(Poisha actual, Poisha estimated, Poisha planned, {int? before, int? after}) => [
+      'Recorded ${formatTaka(actual)}',
+      if (estimated > 0)
+        'estimated ${formatTaka(estimated)}${before == null || before == 0 ? '' : ' for ${months(before)} before your entries'}',
+      if (planned > 0)
+        'plan ${formatTaka(planned)}${after == null || after == 0 ? '' : ' for ${months(after)} to come'}',
+    ].join(' + ');
+    final salaryHelp = parts(
+      app.salarySoFar,
+      app.salaryEstimated,
+      app.salaryPlanned,
+      before: app.monthsEstimated,
+      after: app.monthsToCome,
+    );
+    final otherHelp = parts(app.otherSoFar, app.otherEstimated, app.otherPlanned);
+    final investHelp = parts(app.investedSoFar, app.investEstimated, app.investPlanned);
 
     return PageList(
       children: [
@@ -161,9 +171,9 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                   ),
                   OverridableAmount(
                     label: 'Other taxable income',
-                    fromApp: app.otherSoFar,
+                    fromApp: app.other,
                     value: s.otherIncome,
-                    helper: 'Other income recorded this year',
+                    helper: otherHelp,
                     onChanged: (v) => _update(edit(other: () => v)),
                   ),
                   PickerField(
@@ -188,6 +198,15 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                       );
                       if (kind != null) _update(edit(kind: kind));
                     },
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: () => showIncomeTaxTypes(context),
+                      icon: const Icon(Icons.rule, size: 18),
+                      label: const Text('Which incomes are taxable'),
+                    ),
                   ),
                 ],
               ),
@@ -233,8 +252,9 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
               ),
               if (_soFar)
                 Text(
-                  'Tax on the income your entries show so far, as if the year ended today. '
-                  'Your own figures above are for the full year and are not used here.',
+                  'Tax on income up to today (entries, and the plan for earlier months without '
+                  'entries), as if the year ended today. Your own figures above are for the full '
+                  'year and are not used here.',
                   style: muted,
                 ),
             ],
@@ -306,3 +326,41 @@ class _Steps extends StatelessWidget {
     );
   }
 }
+
+/// Salary, other taxable or not taxable, for each income category.
+Future<void> showIncomeTaxTypes(BuildContext context) => showModalBottomSheet(
+  context: context,
+  useRootNavigator: true,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (_) => Consumer(
+    builder: (context, ref, _) {
+      final ledger = ref.watch(ledgerProvider).value;
+      if (ledger == null) return const SizedBox(height: 200);
+      final incomes = ledger.leafCategories(CategoryKind.income);
+      return SheetBody(
+        title: 'Which incomes are taxable',
+        children: [
+          Text(
+            'Salary gets the salary exemption. Other taxable income is taxed in full. '
+            'Not taxable is left out (gifts, money paid back to you).',
+            style: TextStyle(color: StatusColors.of(context).muted, fontSize: 13),
+          ),
+          for (final c in incomes) ...[
+            Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+            SegmentedButton<IncomeTaxType>(
+              segments: [
+                for (final t in IncomeTaxType.values) ButtonSegment(value: t, label: Text(t.label)),
+              ],
+              selected: {incomeTaxType(ledger, c.id)},
+              showSelectedIcon: false,
+              onSelectionChanged: (v) => ref
+                  .read(repositoryProvider)
+                  .setSetting(incomeTaxTypesSetting, encodeIncomeTaxType(ledger, c.id, v.single)),
+            ),
+          ],
+        ],
+      );
+    },
+  ),
+);

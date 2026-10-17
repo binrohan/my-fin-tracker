@@ -69,6 +69,20 @@ void main() {
       await pump(tester, const TaxScreen(), brightness);
       expect(find.text('Income year Jul 2026 to Jun 2027'), findsOneWidget);
       expect(find.text('2026-27'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Which incomes are taxable'),
+        300,
+        scrollable: page(),
+      );
+      await tester.ensureVisible(find.text('Which incomes are taxable'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Which incomes are taxable'));
+      await tester.pumpAndSettle();
+      expect(find.text('Not taxable'), findsWidgets);
+      expect(find.text('Bonus'), findsOneWidget);
+      await tester.tapAt(const Offset(20, 40));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('2026-27'), -300, scrollable: page());
       await tester.scrollUntilVisible(find.text('Up to today').last, 300, scrollable: page());
       final segment = find.descendant(
         of: find.byType(SegmentedButton<bool>),
@@ -82,6 +96,8 @@ void main() {
       await tester.scrollUntilVisible(find.text('Tax for the year'), 300, scrollable: page());
       expect(find.text('HOW IT IS WORKED OUT'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('2025-26'), -300, scrollable: page());
+      await tester.ensureVisible(find.text('2025-26'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('2025-26'));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 1));
