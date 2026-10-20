@@ -53,7 +53,7 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
         ? widget.source.accountId
         : defaultAccount(ledger, AccountType.bank).id;
     final name = ledger.categories[widget.source.categoryId]?.name ?? 'Income';
-    final plan = ledger.plan;
+    final plan = ledger.planFor(Period.of(_date));
     final offersSplit = plan.categoryId == widget.source.categoryId && !plan.isEmpty;
     final amount = parseTaka(_amount.text) ?? 0;
     final next = Period.of(_date).next;

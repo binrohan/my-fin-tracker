@@ -49,7 +49,10 @@ class _SplitRow {
 
 class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
   bool _loaded = false;
-  late final Period _period = Period.of(ref.read(todayProvider));
+  late final Period _thisMonth = Period.of(ref.read(todayProvider));
+
+  /// The month the changes apply from: this one, or the next.
+  late Period _period = _thisMonth;
   final _incomes = <_IncomeRow>[];
   final _splits = <_SplitRow>[];
   final _expenseTarget = TextEditingController();
@@ -75,7 +78,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
   void _load(Ledger ledger) {
     if (_loaded) return;
     _loaded = true;
-    final plan = ledger.plan;
+    final plan = ledger.planFor(_period);
     for (final i in plan.incomes) {
       if (ledger.categories[i.categoryId] != null) {
         _incomes.add(
@@ -150,13 +153,104 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
             AllocationItem(fundId: r.fundId, accountId: r.accountId, amount: _value(r.amount)),
       ],
     );
-    await repo.setSetting(AllocationPlan.settingKey, plan.encode());
+    await repo.setSetting(Ledger.planKeyFrom(_period), plan.encode());
     for (final MapEntry(key: id, value: c) in _budgets.entries) {
       if (_value(c) != (_originalBudgets[id] ?? 0)) await repo.setBudget(_period, id, _value(c));
     }
     if (!mounted) return;
     Navigator.pop(context);
-    showSnack(context, 'Monthly plan saved');
+    showSnack(
+      context,
+      _period == _thisMonth
+          ? 'Monthly plan saved'
+          : 'Saved. It applies from ${_period.label}; ${_thisMonth.label} stays as it was.',
+    );
+  }
+
+  /// Start again with the plan of [month] (unsaved changes are dropped).
+  void _switchTo(Period month) {
+    for (final c in [
+      ..._incomes.map((r) => r.amount),
+      ..._splits.map((r) => r.amount),
+      ..._budgets.values,
+    ]) {
+      c.dispose();
+    }
+    setState(() {
+      _period = month;
+      _incomes.clear();
+      _splits.clear();
+      _budgets.clear();
+      _loaded = false;
+    });
+  }
+
+  /// Removes the changes waiting for next month: its plan and budgets.
+  Future<void> _cancelNext(Period next) async {
+    if (!await confirm(
+      context,
+      title: 'Cancel the changes from ${next.label}?',
+      body: '${next.label} will use the same plan and budgets as ${_thisMonth.label}.',
+      action: 'Cancel changes',
+      destructive: true,
+    )) {
+      return;
+    }
+    final repo = ref.read(repositoryProvider);
+    await repo.deleteSetting(Ledger.planKeyFrom(next));
+    await repo.deleteBudgetsOf(next);
+    if (mounted) _switchTo(_thisMonth);
+  }
+
+  /// This month or next, and what is waiting.
+  Widget _appliesFrom(Ledger ledger) {
+    final status = StatusColors.of(context);
+    final next = _thisMonth.next;
+    final pending =
+        ledger.planChanges.contains(next) ||
+        ledger.budgets.any((b) => b.year == next.year && b.month == next.month);
+    String monthName(Period p) => p.label.split(' ').first;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 4,
+        children: [
+          SegmentedButton<Period>(
+            segments: [
+              ButtonSegment(value: _thisMonth, label: Text('From ${monthName(_thisMonth)}')),
+              ButtonSegment(value: next, label: Text('From ${monthName(next)}')),
+            ],
+            selected: {_period},
+            showSelectedIcon: false,
+            onSelectionChanged: (v) => _switchTo(v.single),
+          ),
+          if (_period == _thisMonth && pending)
+            Text(
+              'Changes are set to start in ${next.label}. Choose From ${monthName(next)} to '
+              'see or edit them.',
+              style: TextStyle(color: status.warn, fontSize: 12),
+            )
+          else if (_period == next)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_thisMonth.label} keeps its plan; these apply from ${next.label} on.',
+                    style: TextStyle(color: status.muted, fontSize: 12),
+                  ),
+                ),
+                if (pending)
+                  TextButton(
+                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                    onPressed: () => _cancelNext(next),
+                    child: const Text('Cancel changes'),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 
   Future<String?> _askName(String title, {String? hint}) async {
@@ -204,7 +298,18 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
             ],
           ),
         ),
-        body: TabBarView(children: [_incomeTab(ledger), _splitTab(ledger), _expensesTab(ledger)]),
+        body: Column(
+          children: [
+            _appliesFrom(ledger),
+            Expanded(
+              child: TabBarView(
+                // A new key per month so the tabs start again with its figures.
+                key: ValueKey(_period),
+                children: [_incomeTab(ledger), _splitTab(ledger), _expensesTab(ledger)],
+              ),
+            ),
+          ],
+        ),
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),

@@ -86,6 +86,7 @@ class HomeScreen extends ConsumerWidget {
                 reminders: reminders,
                 messages: sms.length,
                 fold: fold,
+                today: today,
               )
             : null;
         final ready = ledger.heldForNextMonth > 0
@@ -496,10 +497,12 @@ class _NeedsAttention extends StatelessWidget {
     required this.ledger,
     required this.reminders,
     required this.fold,
+    required this.today,
     this.messages = 0,
   });
 
   final Ledger ledger;
+  final DateTime today;
   final List<Reminder> reminders;
   final _Fold fold;
 
@@ -512,7 +515,7 @@ class _NeedsAttention extends StatelessWidget {
     void open(Reminder r) => switch (r.kind) {
       ReminderKind.income => showRecordIncome(
         context,
-        ledger.plan.incomes.firstWhere((i) => i.categoryId == r.id),
+        ledger.planFor(Period.of(today)).incomes.firstWhere((i) => i.categoryId == r.id),
       ),
       ReminderKind.bill || ReminderKind.slot => context.go('/spend'),
       ReminderKind.loanOverdue ||

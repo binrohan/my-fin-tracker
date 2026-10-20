@@ -877,7 +877,39 @@ class Ledger {
 
   // --------------------------------------------------------- monthly plan
 
-  AllocationPlan get plan => AllocationPlan.parse(settings[AllocationPlan.settingKey]);
+  /// The setting holding the plan that applies from [p] on.
+  static String planKeyFrom(Period p) => '${AllocationPlan.settingKey}@$p';
+
+  /// Months from which a changed plan applies, oldest first.
+  List<Period> get planChanges {
+    final prefix = '${AllocationPlan.settingKey}@';
+    return [
+      for (final key in settings.keys)
+        if (key.startsWith(prefix))
+          if (RegExp(r'^(\d{4})-(\d{2})$').firstMatch(key.substring(prefix.length)) case final m?)
+            Period(int.parse(m.group(1)!), int.parse(m.group(2)!)),
+    ]..sort();
+  }
+
+  /// The Monthly plan in force in month [p]: the latest change made to apply
+  /// from [p] or earlier, otherwise the plan as first set up (or, if there
+  /// is none, the earliest change: a plan made in October is the best guess
+  /// for July too).
+  AllocationPlan planFor(Period p) {
+    final changes = planChanges;
+    final from = changes.where((c) => c.compareTo(p) <= 0).lastOrNull;
+    if (from != null) return AllocationPlan.parse(settings[planKeyFrom(from)]);
+    final base = settings[AllocationPlan.settingKey];
+    if ((base == null || base.isEmpty) && changes.isNotEmpty) {
+      return AllocationPlan.parse(settings[planKeyFrom(changes.first)]);
+    }
+    return AllocationPlan.parse(base);
+  }
+
+  /// The newest plan, including changes that start in a later month.
+  AllocationPlan get latestPlan => planChanges.isEmpty
+      ? AllocationPlan.parse(settings[AllocationPlan.settingKey])
+      : AllocationPlan.parse(settings[planKeyFrom(planChanges.last)]);
 
   /// Planned incomes whose day has come this month but which have not been
   /// recorded yet.
@@ -888,7 +920,7 @@ class Ledger {
         if (e.type == EntryType.income && p.contains(e.date)) e.categoryId,
     };
     return [
-      for (final i in plan.incomes)
+      for (final i in planFor(p).incomes)
         if (i.day != null &&
             today.day >= i.day!.clamp(1, p.daysInMonth) &&
             !received.contains(i.categoryId) &&

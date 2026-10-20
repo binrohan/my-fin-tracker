@@ -59,8 +59,8 @@ void main() {
   tearDown(() => db.close());
 
   test('the plan remembers which income is for next month', () {
-    expect(ledger.plan.sourceFor(category('Salary'))!.forNextMonth, isTrue);
-    expect(AllocationPlan.parse(ledger.plan.encode()).incomes.single.forNextMonth, isTrue);
+    expect(ledger.latestPlan.sourceFor(category('Salary'))!.forNextMonth, isTrue);
+    expect(AllocationPlan.parse(ledger.latestPlan.encode()).incomes.single.forNextMonth, isTrue);
   });
 
   test('held on 26 October: in the bank, not in the October spending', () {

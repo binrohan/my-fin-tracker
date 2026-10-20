@@ -8,7 +8,6 @@ import '../../core/period.dart';
 import '../../data/database.dart';
 import '../../data/ledger_repository.dart';
 import '../../data/receipts.dart';
-import '../../ledger/allocation.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
@@ -296,7 +295,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
             '${ledger.categories[_categoryId]?.name}',
     };
 
-    final plan = AllocationPlan.parse(ledger.settings[AllocationPlan.settingKey]);
+    final plan = ledger.planFor(Period.of(_date));
     // Held income is split when it is released on the 1st, not now.
     final offerPlan =
         editing == null &&
@@ -323,7 +322,9 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   /// Hold this income for next month: the chip if touched, otherwise the
   /// plan's setting for this income type.
   bool _holdForNextMonth(Ledger ledger) =>
-      _forNextMonth ?? ledger.plan.sourceFor(_categoryId)?.forNextMonth ?? false;
+      _forNextMonth ??
+      ledger.planFor(Period.of(_date)).sourceFor(_categoryId)?.forNextMonth ??
+      false;
 
   @override
   Widget build(BuildContext context) {

@@ -9,13 +9,13 @@ import '../../app/theme.dart';
 import '../../data/default_data.dart';
 import '../../data/ledger_repository.dart';
 import '../../data/sample_data.dart';
-import '../../ledger/allocation.dart';
 import '../../ledger/insights.dart';
 import '../../ledger/sms.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
 import '../../core/money.dart';
+import '../../core/period.dart';
 import '../buying/buying_screen.dart';
 import '../cash/cash_screen.dart';
 import '../investments/investments_screen.dart';
@@ -50,7 +50,7 @@ class MoreScreen extends ConsumerWidget {
         final chargeBp =
             int.tryParse(ledger.setting(borrowChargeSetting, '$defaultBorrowChargeBp')) ??
             defaultBorrowChargeBp;
-        final plan = AllocationPlan.parse(ledger.settings[AllocationPlan.settingKey]);
+        final plan = ledger.planFor(Period.of(ref.watch(todayProvider)));
 
         Widget item(IconData icon, String title, String? subtitle, VoidCallback onTap) => ListTile(
           contentPadding: EdgeInsets.zero,

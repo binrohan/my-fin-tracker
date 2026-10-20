@@ -48,8 +48,8 @@ void main() {
       .fold(0, (t, e) => t + e.amount);
 
   test('every month of the year: recorded, else the plan', () {
-    final main = ledger.plan.categoryId!;
-    final monthly = ledger.plan.sourceFor(main)!.amount;
+    final main = ledger.latestPlan.categoryId!;
+    final monthly = ledger.latestPlan.sourceFor(main)!.amount;
     var expected = 0, before = 0, after = 0, actual = 0;
     for (var p = Period.of(year.start); p.start.isBefore(year.end); p = p.next) {
       final r = recorded(main, p);
@@ -77,14 +77,14 @@ void main() {
 
   test('a past year without entries is all estimate', () {
     final app = TaxFromApp.of(ledger, const IncomeYear(2024), today);
-    final monthly = ledger.plan.sourceFor(ledger.plan.categoryId!)!.amount;
+    final monthly = ledger.latestPlan.sourceFor(ledger.latestPlan.categoryId!)!.amount;
     expect(app.salary, monthly * 12);
     expect(app.monthsEstimated, 12);
     expect(app.monthsToCome, 0);
   });
 
   test('income types decide what counts', () async {
-    final main = ledger.plan.categoryId!;
+    final main = ledger.latestPlan.categoryId!;
     expect(incomeTaxType(ledger, main), IncomeTaxType.salary);
     final before = TaxFromApp.of(ledger, year, today);
 

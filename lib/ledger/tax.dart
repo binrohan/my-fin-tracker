@@ -289,7 +289,7 @@ const incomeTaxTypesSetting = 'income_tax_types';
 IncomeTaxType incomeTaxType(Ledger ledger, int categoryId) {
   final saved = _savedTaxTypes(ledger)[categoryId];
   if (saved != null) return saved;
-  return categoryId == ledger.plan.categoryId ? IncomeTaxType.salary : IncomeTaxType.taxable;
+  return categoryId == ledger.latestPlan.categoryId ? IncomeTaxType.salary : IncomeTaxType.taxable;
 }
 
 Map<int, IncomeTaxType> _savedTaxTypes(Ledger ledger) {
@@ -327,7 +327,10 @@ class TaxFromApp {
   });
 
   factory TaxFromApp.of(Ledger ledger, IncomeYear year, DateTime today) {
-    final plan = ledger.plan;
+    // Each month uses the plan in force then (a raise from November leaves
+    // July–October as they were).
+    final months = [for (var p = Period.of(year.start); p.start.isBefore(year.end); p = p.next) p];
+    final plans = {for (final p in months) p: ledger.planFor(p)};
     final thisMonth = Period.of(today);
     final recorded = <(int, Period), Poisha>{};
     for (final e in ledger.entries) {
@@ -341,16 +344,18 @@ class TaxFromApp {
     }
     final incomeIds = {
       for (final k in recorded.keys) k.$1,
-      for (final s in plan.incomes) s.categoryId,
+      for (final plan in plans.values)
+        for (final s in plan.incomes) s.categoryId,
     };
 
     // [actual, earlier months estimated, months to come planned] by type.
     final sums = {
       for (final t in IncomeTaxType.values) t: [0, 0, 0],
     };
-    final mainId = plan.categoryId;
     var monthsEstimated = 0, monthsToCome = 0;
-    for (var p = Period.of(year.start); p.start.isBefore(year.end); p = p.next) {
+    for (final p in months) {
+      final plan = plans[p]!;
+      final mainId = plan.categoryId;
       for (final id in incomeIds) {
         final type = incomeTaxType(ledger, id);
         final actual = recorded[(id, p)] ?? 0;
@@ -366,18 +371,18 @@ class TaxFromApp {
     }
 
     // Investments: recorded months, and the plan's DPS-type lines for the rest.
-    final investMonthly = plan.items
+    Poisha investMonthly(Period p) => plans[p]!.items
         .where((i) => ledger.accounts[i.accountId]?.type == AccountType.investment)
         .fold<Poisha>(0, (t, i) => t + i.amount);
     Poisha invested = 0, investEstimated = 0, investPlanned = 0;
-    for (var p = Period.of(year.start); p.start.isBefore(year.end); p = p.next) {
+    for (final p in months) {
       final actual = p.compareTo(thisMonth) <= 0 ? ledger.summary(p).invested : 0;
       if (actual > 0) {
         invested += actual;
       } else if (p.compareTo(thisMonth) < 0) {
-        investEstimated += investMonthly;
+        investEstimated += investMonthly(p);
       } else {
-        investPlanned += investMonthly;
+        investPlanned += investMonthly(p);
       }
     }
 

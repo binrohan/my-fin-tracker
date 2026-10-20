@@ -647,7 +647,7 @@ class LedgerRepository {
           released += part.amount;
         }
 
-        final plan = ledger.plan;
+        final plan = ledger.planFor(month);
         final trigger = ledger
             .heldIncomes(month.previous)
             .where((e) => e.categoryId == plan.categoryId);
@@ -980,6 +980,13 @@ class LedgerRepository {
   )..where((e) => e.id.equals(entryId))).write(EntriesCompanion(trackerId: Value(trackerId)));
 
   // ------------------------------------------------------------ settings
+
+  Future<void> deleteSetting(String key) =>
+      (db.delete(db.settings)..where((s) => s.key.equals(key))).go();
+
+  /// Removes the budgets set to start in month [p], so earlier ones apply.
+  Future<void> deleteBudgetsOf(Period p) =>
+      (db.delete(db.budgets)..where((b) => b.year.equals(p.year) & b.month.equals(p.month))).go();
 
   Future<void> setSetting(String key, String value) =>
       db.into(db.settings).insertOnConflictUpdate(SettingsCompanion.insert(key: key, value: value));
