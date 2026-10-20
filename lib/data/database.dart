@@ -187,6 +187,16 @@ class Trackers extends Table {
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
 }
 
+/// Money spent on a tracker that did not come from your accounts: paid by
+/// someone else, or cash the app doesn't track. Counts on the tracker only.
+class TrackerAmounts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get trackerId => integer().references(Trackers, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get amount => integer()();
+  TextColumn get note => text().withDefault(const Constant(''))();
+}
+
 /// Budget moved from one category to another for one month only (for a
 /// slot, or to cover an overspent category). The month's total budget
 /// never changes; the Monthly plan is not touched.
@@ -226,6 +236,7 @@ class Settings extends Table {
     Purchases,
     Trackers,
     BudgetMoves,
+    TrackerAmounts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -234,7 +245,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -267,6 +278,10 @@ class AppDatabase extends _$AppDatabase {
         // Budget saved to a pot during the month.
         await m.addColumn(entries, entries.budgetSave);
       }
+      if (from < 7) {
+        // Tracker amounts from outside your accounts.
+        await m.createTable(trackerAmounts);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -285,6 +300,7 @@ class AppDatabase extends _$AppDatabase {
     // Children before parents so foreign keys stay valid.
     for (final TableInfo table in [
       budgetMoves,
+      trackerAmounts,
       purchases,
       investmentDetails,
       trackers,

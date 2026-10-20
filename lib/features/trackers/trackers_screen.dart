@@ -209,9 +209,41 @@ class TrackerScreen extends ConsumerWidget {
                 children: [
                   const Label('By category'),
                   if (t.openingSpent > 0) AmountRow('Before the app', t.openingSpent),
+                  if (s.outsideTotal > 0) AmountRow('Outside your accounts', s.outsideTotal),
                   for (final e in byCategory)
                     AmountRow(ledger.categories[e.key]?.name ?? 'No category', e.value),
                   AmountRow('Total', s.spent, total: true),
+                ],
+              ),
+              SectionCard(
+                children: [
+                  const Label('Outside your accounts'),
+                  Text(
+                    'Money for this tracker that did not come from your accounts, such as '
+                    'something paid by family. It counts here only: no balance, budget or '
+                    'report changes.',
+                    style: TextStyle(color: colors.muted, fontSize: 13),
+                  ),
+                  for (final a in s.outside)
+                    InkWell(
+                      onTap: () => editTrackerAmount(context, ref, t, a),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: AmountRow(
+                          a.note.isEmpty ? 'Outside amount' : a.note,
+                          a.amount,
+                          detail: DateFormat.yMMMd().format(a.date),
+                        ),
+                      ),
+                    ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => editTrackerAmount(context, ref, t, null),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add amount'),
+                    ),
+                  ),
                 ],
               ),
               SectionCard(
@@ -351,5 +383,78 @@ Future<void> editTracker(BuildContext context, WidgetRef ref, Tracker? t) async 
         archived: Value(archived),
       ),
     );
+  }
+}
+
+/// Add an amount from outside your accounts to [tracker], or change or
+/// delete [existing].
+Future<void> editTrackerAmount(
+  BuildContext context,
+  WidgetRef ref,
+  Tracker tracker,
+  TrackerAmount? existing,
+) async {
+  final amount = TextEditingController(text: amountText(existing?.amount ?? 0));
+  final note = TextEditingController(text: existing?.note);
+  DateTime date = existing?.date ?? ref.read(todayProvider);
+  final repo = ref.read(repositoryProvider);
+
+  final result = await showModalBottomSheet<String>(
+    useRootNavigator: true,
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => SheetBody(
+        title: existing == null ? 'Add amount · ${tracker.name}' : 'Edit amount',
+        children: [
+          Text(
+            'From outside your accounts. It adds to ${tracker.name} only.',
+            style: TextStyle(color: StatusColors.of(context).muted, fontSize: 13),
+          ),
+          AmountField(controller: amount, label: 'Amount', autofocus: existing == null),
+          TextField(
+            controller: note,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Note (optional)',
+              hintText: 'e.g. Paid by Abbu',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          PickerField(
+            label: 'Date',
+            value: DateFormat.yMMMEd().format(date),
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: date,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(date.year + 5),
+              );
+              if (picked != null) setState(() => date = picked);
+            },
+          ),
+          FilledButton(onPressed: () => Navigator.pop(context, 'save'), child: const Text('Save')),
+          if (existing != null)
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(foregroundColor: StatusColors.of(context).bad),
+              onPressed: () => Navigator.pop(context, 'delete'),
+              child: const Text('Delete'),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (result == 'delete' && existing != null) {
+    await repo.deleteTrackerAmount(existing.id);
+    return;
+  }
+  final value = parseTaka(amount.text) ?? 0;
+  if (result != 'save' || value <= 0) return;
+  if (existing == null) {
+    await repo.addTrackerAmount(tracker.id, date, value, note: note.text);
+  } else {
+    await repo.updateTrackerAmount(existing.id, date, value, note: note.text);
   }
 }

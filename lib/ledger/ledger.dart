@@ -49,6 +49,7 @@ class Ledger {
     this.purchases = const [],
     this.budgetMoves = const [],
     List<Tracker> trackers = const [],
+    this.trackerAmounts = const [],
   }) : accounts = {for (final a in accounts) a.id: a},
        funds = {for (final f in funds) f.id: f},
        categories = {for (final c in categories) c.id: c},
@@ -72,6 +73,9 @@ class Ledger {
   /// Month-only budget moves between categories, oldest first.
   final List<BudgetMove> budgetMoves;
   final Map<int, Tracker> trackers;
+
+  /// Tracker money from outside your accounts, newest first.
+  final List<TrackerAmount> trackerAmounts;
 
   static Future<Ledger> load(AppDatabase db) async {
     final rows = await (db.select(db.postings).join([
@@ -99,6 +103,9 @@ class Ledger {
         db.purchases,
       )..orderBy([(p) => OrderingTerm.desc(p.date), (p) => OrderingTerm.desc(p.id)])).get(),
       trackers: await (db.select(db.trackers)..orderBy([(t) => OrderingTerm.asc(t.id)])).get(),
+      trackerAmounts: await (db.select(
+        db.trackerAmounts,
+      )..orderBy([(a) => OrderingTerm.desc(a.date), (a) => OrderingTerm.desc(a.id)])).get(),
       budgetMoves: await (db.select(
         db.budgetMoves,
       )..orderBy([(m) => OrderingTerm.asc(m.date), (m) => OrderingTerm.asc(m.id)])).get(),
@@ -513,7 +520,15 @@ class Ledger {
       final top = _topCategory(e.categoryId);
       byCategory.update(top, (v) => v + e.amount, ifAbsent: () => e.amount);
     }
-    return TrackerStatus(tracker: tracker, entries: tagged, byCategory: byCategory);
+    return TrackerStatus(
+      tracker: tracker,
+      entries: tagged,
+      byCategory: byCategory,
+      outside: [
+        for (final a in trackerAmounts)
+          if (a.trackerId == tracker.id) a,
+      ],
+    );
   }
 
   int? _topCategory(int? id) {
@@ -814,6 +829,7 @@ class Ledger {
       purchases: purchases,
       budgetMoves: [...budgetMoves, ...extra],
       trackers: trackers.values.toList(),
+      trackerAmounts: trackerAmounts,
     );
   }
 
@@ -1142,17 +1158,28 @@ class InvestmentStatus {
 }
 
 class TrackerStatus {
-  const TrackerStatus({required this.tracker, required this.entries, required this.byCategory});
+  const TrackerStatus({
+    required this.tracker,
+    required this.entries,
+    required this.byCategory,
+    this.outside = const [],
+  });
 
   final Tracker tracker;
 
   /// Tagged expenses, newest first.
   final List<Entry> entries;
 
+  /// Amounts from outside your accounts, newest first.
+  final List<TrackerAmount> outside;
+
+  Poisha get outsideTotal => outside.fold(0, (t, a) => t + a.amount);
+
   /// Spent per top-level category (null: no category).
   final Map<int?, Poisha> byCategory;
 
-  Poisha get spent => tracker.openingSpent + entries.fold<Poisha>(0, (t, e) => t + e.amount);
+  Poisha get spent =>
+      tracker.openingSpent + outsideTotal + entries.fold<Poisha>(0, (t, e) => t + e.amount);
   Poisha? get left => tracker.budget == null ? null : tracker.budget! - spent;
   double get progress =>
       (tracker.budget ?? 0) <= 0 ? 0 : (spent / tracker.budget!).clamp(0, 1).toDouble();

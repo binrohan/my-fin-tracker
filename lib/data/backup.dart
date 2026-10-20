@@ -39,6 +39,7 @@ class Backup {
     db.purchases,
     db.trackers,
     db.budgetMoves,
+    db.trackerAmounts,
   ];
 
   static const _receiptsPrefix = 'receipts/';
@@ -149,6 +150,7 @@ class Backup {
         b.insertAll(db.purchases, rows(db.purchases).map(Purchase.fromJson));
         b.insertAll(db.trackers, rows(db.trackers).map(Tracker.fromJson));
         b.insertAll(db.budgetMoves, rows(db.budgetMoves).map(BudgetMove.fromJson));
+        b.insertAll(db.trackerAmounts, rows(db.trackerAmounts).map(TrackerAmount.fromJson));
       });
     });
     await receipts?.replaceAll(backup.receipts);

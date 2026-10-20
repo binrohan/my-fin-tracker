@@ -171,6 +171,21 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] **Which incomes are taxable**: set Bonus to **Not taxable** → it leaves Other taxable income. Set it back.
 - [ ] More → Categories → edit an income category: **For income tax** shows the same choice.
 
+## 18. New in 1.2.0
+
+**Raise from next month**
+- [ ] More → Monthly plan → **From November** → new salary amount, new split, new budgets → Save. The message says October stays as it was.
+- [ ] Back on **From October**: everything is as before, with a note that changes are waiting.
+- [ ] Spend tab (October): budgets and Short/Unplanned unchanged.
+- [ ] Income tax: July–October at the old salary, November–June at the new one.
+- [ ] After 26 Oct salary (For November) → on 1 Nov the release uses the **new split**.
+- [ ] **Cancel changes** (on From November) brings November back to October's plan.
+
+**Tracker: Add amount**
+- [ ] More → Trackers → a tracker → **Add amount** (e.g. ৳3,000, "Paid by Abbu") → it shows under **Outside your accounts** and in the total.
+- [ ] Left to spend, balances and the monthly report don't change.
+- [ ] Tap it to edit or delete.
+
 ---
 
 ## Issues

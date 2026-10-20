@@ -5574,6 +5574,320 @@ class BudgetMovesCompanion extends UpdateCompanion<BudgetMove> {
   }
 }
 
+class $TrackerAmountsTable extends TrackerAmounts
+    with TableInfo<$TrackerAmountsTable, TrackerAmount> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TrackerAmountsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'),
+  );
+  static const VerificationMeta _trackerIdMeta = const VerificationMeta('trackerId');
+  @override
+  late final GeneratedColumn<int> trackerId = GeneratedColumn<int>(
+    'tracker_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES trackers (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, trackerId, date, amount, note];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tracker_amounts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TrackerAmount> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('tracker_id')) {
+      context.handle(
+        _trackerIdMeta,
+        trackerId.isAcceptableOrUnknown(data['tracker_id']!, _trackerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_trackerIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(_dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta, amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(_noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TrackerAmount map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TrackerAmount(
+      id: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      trackerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tracker_id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      note: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}note'])!,
+    );
+  }
+
+  @override
+  $TrackerAmountsTable createAlias(String alias) {
+    return $TrackerAmountsTable(attachedDatabase, alias);
+  }
+}
+
+class TrackerAmount extends DataClass implements Insertable<TrackerAmount> {
+  final int id;
+  final int trackerId;
+  final DateTime date;
+  final int amount;
+  final String note;
+  const TrackerAmount({
+    required this.id,
+    required this.trackerId,
+    required this.date,
+    required this.amount,
+    required this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['tracker_id'] = Variable<int>(trackerId);
+    map['date'] = Variable<DateTime>(date);
+    map['amount'] = Variable<int>(amount);
+    map['note'] = Variable<String>(note);
+    return map;
+  }
+
+  TrackerAmountsCompanion toCompanion(bool nullToAbsent) {
+    return TrackerAmountsCompanion(
+      id: Value(id),
+      trackerId: Value(trackerId),
+      date: Value(date),
+      amount: Value(amount),
+      note: Value(note),
+    );
+  }
+
+  factory TrackerAmount.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TrackerAmount(
+      id: serializer.fromJson<int>(json['id']),
+      trackerId: serializer.fromJson<int>(json['trackerId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      amount: serializer.fromJson<int>(json['amount']),
+      note: serializer.fromJson<String>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'trackerId': serializer.toJson<int>(trackerId),
+      'date': serializer.toJson<DateTime>(date),
+      'amount': serializer.toJson<int>(amount),
+      'note': serializer.toJson<String>(note),
+    };
+  }
+
+  TrackerAmount copyWith({int? id, int? trackerId, DateTime? date, int? amount, String? note}) =>
+      TrackerAmount(
+        id: id ?? this.id,
+        trackerId: trackerId ?? this.trackerId,
+        date: date ?? this.date,
+        amount: amount ?? this.amount,
+        note: note ?? this.note,
+      );
+  TrackerAmount copyWithCompanion(TrackerAmountsCompanion data) {
+    return TrackerAmount(
+      id: data.id.present ? data.id.value : this.id,
+      trackerId: data.trackerId.present ? data.trackerId.value : this.trackerId,
+      date: data.date.present ? data.date.value : this.date,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TrackerAmount(')
+          ..write('id: $id, ')
+          ..write('trackerId: $trackerId, ')
+          ..write('date: $date, ')
+          ..write('amount: $amount, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, trackerId, date, amount, note);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TrackerAmount &&
+          other.id == this.id &&
+          other.trackerId == this.trackerId &&
+          other.date == this.date &&
+          other.amount == this.amount &&
+          other.note == this.note);
+}
+
+class TrackerAmountsCompanion extends UpdateCompanion<TrackerAmount> {
+  final Value<int> id;
+  final Value<int> trackerId;
+  final Value<DateTime> date;
+  final Value<int> amount;
+  final Value<String> note;
+  const TrackerAmountsCompanion({
+    this.id = const Value.absent(),
+    this.trackerId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.note = const Value.absent(),
+  });
+  TrackerAmountsCompanion.insert({
+    this.id = const Value.absent(),
+    required int trackerId,
+    required DateTime date,
+    required int amount,
+    this.note = const Value.absent(),
+  }) : trackerId = Value(trackerId),
+       date = Value(date),
+       amount = Value(amount);
+  static Insertable<TrackerAmount> custom({
+    Expression<int>? id,
+    Expression<int>? trackerId,
+    Expression<DateTime>? date,
+    Expression<int>? amount,
+    Expression<String>? note,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (trackerId != null) 'tracker_id': trackerId,
+      if (date != null) 'date': date,
+      if (amount != null) 'amount': amount,
+      if (note != null) 'note': note,
+    });
+  }
+
+  TrackerAmountsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? trackerId,
+    Value<DateTime>? date,
+    Value<int>? amount,
+    Value<String>? note,
+  }) {
+    return TrackerAmountsCompanion(
+      id: id ?? this.id,
+      trackerId: trackerId ?? this.trackerId,
+      date: date ?? this.date,
+      amount: amount ?? this.amount,
+      note: note ?? this.note,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (trackerId.present) {
+      map['tracker_id'] = Variable<int>(trackerId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TrackerAmountsCompanion(')
+          ..write('id: $id, ')
+          ..write('trackerId: $trackerId, ')
+          ..write('date: $date, ')
+          ..write('amount: $amount, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5590,6 +5904,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PurchasesTable purchases = $PurchasesTable(this);
   late final $TrackersTable trackers = $TrackersTable(this);
   late final $BudgetMovesTable budgetMoves = $BudgetMovesTable(this);
+  late final $TrackerAmountsTable trackerAmounts = $TrackerAmountsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5608,6 +5923,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     purchases,
     trackers,
     budgetMoves,
+    trackerAmounts,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5630,6 +5946,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName('categories', limitUpdateKind: UpdateKind.delete),
       result: [TableUpdate('budget_moves', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName('trackers', limitUpdateKind: UpdateKind.delete),
+      result: [TableUpdate('tracker_amounts', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -9668,6 +9988,28 @@ typedef $$TrackersTableUpdateCompanionBuilder = TrackersCompanion Function({
   Value<bool> archived,
 });
 
+final class $$TrackersTableReferences
+    extends BaseReferences<_$AppDatabase, $TrackersTable, Tracker> {
+  $$TrackersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TrackerAmountsTable, List<TrackerAmount>> _trackerAmountsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.trackerAmounts,
+    aliasName: 'trackers__id__tracker_amounts__tracker_id',
+  );
+
+  $$TrackerAmountsTableProcessedTableManager get trackerAmountsRefs {
+    final manager = $$TrackerAmountsTableTableManager(
+      $_db,
+      $_db.trackerAmounts,
+    ).filter((f) => f.trackerId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_trackerAmountsRefsTable($_db));
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
 class $$TrackersTableFilterComposer extends Composer<_$AppDatabase, $TrackersTable> {
   $$TrackersTableFilterComposer({
     required super.$db,
@@ -9701,6 +10043,26 @@ class $$TrackersTableFilterComposer extends Composer<_$AppDatabase, $TrackersTab
 
   ColumnFilters<bool> get archived =>
       $composableBuilder(column: $table.archived, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> trackerAmountsRefs(
+    Expression<bool> Function($$TrackerAmountsTableFilterComposer f) f,
+  ) {
+    final $$TrackerAmountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.trackerAmounts,
+      getReferencedColumn: (t) => t.trackerId,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TrackerAmountsTableFilterComposer(
+            $db: $db,
+            $table: $db.trackerAmounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TrackersTableOrderingComposer extends Composer<_$AppDatabase, $TrackersTable> {
@@ -9766,6 +10128,26 @@ class $$TrackersTableAnnotationComposer extends Composer<_$AppDatabase, $Tracker
 
   GeneratedColumn<bool> get archived =>
       $composableBuilder(column: $table.archived, builder: (column) => column);
+
+  Expression<T> trackerAmountsRefs<T extends Object>(
+    Expression<T> Function($$TrackerAmountsTableAnnotationComposer a) f,
+  ) {
+    final $$TrackerAmountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.trackerAmounts,
+      getReferencedColumn: (t) => t.trackerId,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TrackerAmountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.trackerAmounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TrackersTableTableManager
@@ -9779,9 +10161,9 @@ class $$TrackersTableTableManager
           $$TrackersTableAnnotationComposer,
           $$TrackersTableCreateCompanionBuilder,
           $$TrackersTableUpdateCompanionBuilder,
-          (Tracker, BaseReferences<_$AppDatabase, $TrackersTable, Tracker>),
+          (Tracker, $$TrackersTableReferences),
           Tracker,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool trackerAmountsRefs})
         > {
   $$TrackersTableTableManager(_$AppDatabase db, $TrackersTable table)
     : super(
@@ -9836,11 +10218,31 @@ class $$TrackersTableTableManager
               .map(
                 (e) => (
                   e.readTable<$TrackersTable, Tracker>(table),
-                  BaseReferences<_$AppDatabase, $TrackersTable, Tracker>(db, table, e),
+                  $$TrackersTableReferences(db, table, e),
                 ),
               )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({trackerAmountsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (trackerAmountsRefs) db.trackerAmounts],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (trackerAmountsRefs)
+                    await $_getPrefetchedData<Tracker, $TrackersTable, TrackerAmount>(
+                      currentTable: table,
+                      referencedTable: $$TrackersTableReferences._trackerAmountsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TrackersTableReferences(db, table, p0).trackerAmountsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.trackerId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -9855,9 +10257,9 @@ typedef $$TrackersTableProcessedTableManager =
       $$TrackersTableAnnotationComposer,
       $$TrackersTableCreateCompanionBuilder,
       $$TrackersTableUpdateCompanionBuilder,
-      (Tracker, BaseReferences<_$AppDatabase, $TrackersTable, Tracker>),
+      (Tracker, $$TrackersTableReferences),
       Tracker,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool trackerAmountsRefs})
     >;
 typedef $$BudgetMovesTableCreateCompanionBuilder = BudgetMovesCompanion Function({
   Value<int> id,
@@ -10237,6 +10639,274 @@ typedef $$BudgetMovesTableProcessedTableManager =
       BudgetMove,
       PrefetchHooks Function({bool fromCategoryId, bool toCategoryId})
     >;
+typedef $$TrackerAmountsTableCreateCompanionBuilder = TrackerAmountsCompanion Function({
+  Value<int> id,
+  required int trackerId,
+  required DateTime date,
+  required int amount,
+  Value<String> note,
+});
+typedef $$TrackerAmountsTableUpdateCompanionBuilder = TrackerAmountsCompanion Function({
+  Value<int> id,
+  Value<int> trackerId,
+  Value<DateTime> date,
+  Value<int> amount,
+  Value<String> note,
+});
+
+final class $$TrackerAmountsTableReferences
+    extends BaseReferences<_$AppDatabase, $TrackerAmountsTable, TrackerAmount> {
+  $$TrackerAmountsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TrackersTable _trackerIdTable(_$AppDatabase db) =>
+      db.trackers.createAlias('tracker_amounts__tracker_id__trackers__id');
+
+  $$TrackersTableProcessedTableManager get trackerId {
+    final $_column = $_itemColumn<int>('tracker_id')!;
+
+    final manager = $$TrackersTableTableManager(
+      $_db,
+      $_db.trackers,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_trackerIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$TrackerAmountsTableFilterComposer extends Composer<_$AppDatabase, $TrackerAmountsTable> {
+  $$TrackerAmountsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => ColumnFilters(column));
+
+  $$TrackersTableFilterComposer get trackerId {
+    final $$TrackersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.trackerId,
+      referencedTable: $db.trackers,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TrackersTableFilterComposer(
+            $db: $db,
+            $table: $db.trackers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TrackerAmountsTableOrderingComposer extends Composer<_$AppDatabase, $TrackerAmountsTable> {
+  $$TrackerAmountsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  $$TrackersTableOrderingComposer get trackerId {
+    final $$TrackersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.trackerId,
+      referencedTable: $db.trackers,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TrackersTableOrderingComposer(
+            $db: $db,
+            $table: $db.trackers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TrackerAmountsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TrackerAmountsTable> {
+  $$TrackerAmountsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  $$TrackersTableAnnotationComposer get trackerId {
+    final $$TrackersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.trackerId,
+      referencedTable: $db.trackers,
+      getReferencedColumn: (t) => t.id,
+      builder: (joinBuilder, {$addJoinBuilderToRootComposer, $removeJoinBuilderFromRootComposer}) =>
+          $$TrackersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.trackers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TrackerAmountsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TrackerAmountsTable,
+          TrackerAmount,
+          $$TrackerAmountsTableFilterComposer,
+          $$TrackerAmountsTableOrderingComposer,
+          $$TrackerAmountsTableAnnotationComposer,
+          $$TrackerAmountsTableCreateCompanionBuilder,
+          $$TrackerAmountsTableUpdateCompanionBuilder,
+          (TrackerAmount, $$TrackerAmountsTableReferences),
+          TrackerAmount,
+          PrefetchHooks Function({bool trackerId})
+        > {
+  $$TrackerAmountsTableTableManager(_$AppDatabase db, $TrackerAmountsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TrackerAmountsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TrackerAmountsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TrackerAmountsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> trackerId = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<String> note = const Value.absent(),
+              }) => TrackerAmountsCompanion(
+                id: id,
+                trackerId: trackerId,
+                date: date,
+                amount: amount,
+                note: note,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int trackerId,
+                required DateTime date,
+                required int amount,
+                Value<String> note = const Value.absent(),
+              }) => TrackerAmountsCompanion.insert(
+                id: id,
+                trackerId: trackerId,
+                date: date,
+                amount: amount,
+                note: note,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TrackerAmountsTable, TrackerAmount>(table),
+                  $$TrackerAmountsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({trackerId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (trackerId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.trackerId,
+                        referencedTable: $$TrackerAmountsTableReferences._trackerIdTable(db),
+                        referencedColumn: $$TrackerAmountsTableReferences._trackerIdTable(db).id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TrackerAmountsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TrackerAmountsTable,
+      TrackerAmount,
+      $$TrackerAmountsTableFilterComposer,
+      $$TrackerAmountsTableOrderingComposer,
+      $$TrackerAmountsTableAnnotationComposer,
+      $$TrackerAmountsTableCreateCompanionBuilder,
+      $$TrackerAmountsTableUpdateCompanionBuilder,
+      (TrackerAmount, $$TrackerAmountsTableReferences),
+      TrackerAmount,
+      PrefetchHooks Function({bool trackerId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10258,4 +10928,6 @@ class $AppDatabaseManager {
   $$TrackersTableTableManager get trackers => $$TrackersTableTableManager(_db, _db.trackers);
   $$BudgetMovesTableTableManager get budgetMoves =>
       $$BudgetMovesTableTableManager(_db, _db.budgetMoves);
+  $$TrackerAmountsTableTableManager get trackerAmounts =>
+      $$TrackerAmountsTableTableManager(_db, _db.trackerAmounts);
 }

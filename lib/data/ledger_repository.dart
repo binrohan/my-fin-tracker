@@ -975,6 +975,32 @@ class LedgerRepository {
       (db.update(db.trackers)..where((t) => t.id.equals(id))).write(changes);
 
   /// Tags (or untags, with null) an entry for a project or countdown.
+  /// Money for a tracker that didn't come from your accounts; it touches
+  /// no balance, budget or report.
+  Future<int> addTrackerAmount(int trackerId, DateTime date, Poisha amount, {String note = ''}) =>
+      db
+          .into(db.trackerAmounts)
+          .insert(
+            TrackerAmountsCompanion.insert(
+              trackerId: trackerId,
+              date: dateOnly(date),
+              amount: amount,
+              note: Value(note.trim()),
+            ),
+          );
+
+  Future<void> updateTrackerAmount(int id, DateTime date, Poisha amount, {String note = ''}) =>
+      (db.update(db.trackerAmounts)..where((a) => a.id.equals(id))).write(
+        TrackerAmountsCompanion(
+          date: Value(dateOnly(date)),
+          amount: Value(amount),
+          note: Value(note.trim()),
+        ),
+      );
+
+  Future<void> deleteTrackerAmount(int id) =>
+      (db.delete(db.trackerAmounts)..where((a) => a.id.equals(id))).go();
+
   Future<void> setEntryTracker(int entryId, int? trackerId) => (db.update(
     db.entries,
   )..where((e) => e.id.equals(entryId))).write(EntriesCompanion(trackerId: Value(trackerId)));
