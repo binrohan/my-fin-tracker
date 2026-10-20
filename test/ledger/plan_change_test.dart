@@ -92,6 +92,17 @@ void main() {
     expect(ledger.planFor(oct).sourceFor(category('Salary'))!.amount, taka(85000));
   });
 
+  test('the raised salary arriving on 26 October is expected at the new amount', () {
+    final october = ledger.planFor(oct).sourceFor(category('Salary'))!;
+    expect(october.amount, taka(85000));
+    // It is November's money, so November's plan says what to expect.
+    expect(ledger.expectedIncome(october, oct).amount, taka(100000));
+    expect(ledger.expectedIncome(october, oct).forNextMonth, isTrue);
+    // An income spent in the month it arrives keeps its own month's amount.
+    final sameMonth = IncomeSource(categoryId: category('Salary'), amount: taka(85000), day: 1);
+    expect(ledger.expectedIncome(sameMonth, oct).amount, taka(85000));
+  });
+
   test('tax: old salary until October, new from November', () {
     final app = TaxFromApp.of(ledger, const IncomeYear(2026), DateTime(2026, 10, 8));
     var expected = 0;

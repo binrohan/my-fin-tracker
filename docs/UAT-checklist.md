@@ -178,6 +178,7 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Back on **From October**: everything is as before, with a note that changes are waiting.
 - [ ] Spend tab (October): budgets and Short/Unplanned unchanged.
 - [ ] Income tax: July–October at the old salary, November–June at the new one.
+- [ ] On 26 Oct the reminder and the Record sheet expect the **new** salary (it is November's money).
 - [ ] After 26 Oct salary (For November) → on 1 Nov the release uses the **new split**.
 - [ ] **Cancel changes** (on From November) brings November back to October's plan.
 

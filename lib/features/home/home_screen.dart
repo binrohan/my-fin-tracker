@@ -515,7 +515,7 @@ class _NeedsAttention extends StatelessWidget {
     void open(Reminder r) => switch (r.kind) {
       ReminderKind.income => showRecordIncome(
         context,
-        ledger.planFor(Period.of(today)).incomes.firstWhere((i) => i.categoryId == r.id),
+        ledger.incomesDue(today).firstWhere((i) => i.categoryId == r.id),
       ),
       ReminderKind.bill || ReminderKind.slot => context.go('/spend'),
       ReminderKind.loanOverdue ||

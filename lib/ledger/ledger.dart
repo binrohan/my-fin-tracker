@@ -941,8 +941,25 @@ class Ledger {
             today.day >= i.day!.clamp(1, p.daysInMonth) &&
             !received.contains(i.categoryId) &&
             categories[i.categoryId] != null)
-          i,
+          expectedIncome(i, p),
     ];
+  }
+
+  /// [source] as expected when it arrives in month [p]. Income for next
+  /// month (salary on the 26th) is next month's money, so it expects next
+  /// month's planned amount: a raise planned from November is expected on
+  /// 26 October.
+  IncomeSource expectedIncome(IncomeSource source, Period p) {
+    if (!source.forNextMonth) return source;
+    final next = planFor(p.next).sourceFor(source.categoryId);
+    if (next == null || next.amount == source.amount) return source;
+    return IncomeSource(
+      categoryId: source.categoryId,
+      amount: next.amount,
+      day: source.day,
+      accountId: source.accountId,
+      forNextMonth: true,
+    );
   }
 
   /// Total still owed back to a fund by own-savings loans.
