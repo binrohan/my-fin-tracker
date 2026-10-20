@@ -187,6 +187,16 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Left to spend, balances and the monthly report don't change.
 - [ ] Tap it to edit or delete.
 
+## 19. New in 1.3.0: widgets
+
+- [ ] Long-press the home screen → Widgets → My Fin: three widgets are listed: **Left to spend**, **Free to spend**, **Month at a glance**.
+- [ ] **Left to spend** works as before.
+- [ ] **Free to spend** shows Left to spend minus bills still to pay, with "≈ ৳… a day · after ৳… bills". Same figure as the After bills Home.
+- [ ] **Month at a glance** (4×2): month and day, free to spend, the budget bar, "Spent ৳… of ৳…", "Next: … · date · amount".
+- [ ] **+ Expense** opens Quick add on Expense; **+ Income** opens it on Income; tapping elsewhere opens the app.
+- [ ] Add an expense in the app: all widgets update.
+- [ ] App lock on: widgets show **Locked**.
+
 ---
 
 ## Issues

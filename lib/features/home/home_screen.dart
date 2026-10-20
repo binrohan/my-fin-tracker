@@ -8,6 +8,7 @@ import '../../app/theme.dart';
 import '../../core/money.dart';
 import '../../core/period.dart';
 import '../../ledger/enums.dart';
+import '../../ledger/free_to_spend.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/collapsible.dart';
 import '../../ui/forms.dart';
@@ -149,14 +150,8 @@ class _FreeToSpend extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final on = scheme.onPrimary;
-    final period = summary.period;
-    final bills = ledger.unpaidFixedBills(period).fold<Poisha>(0, (t, b) => t + b.remaining);
-    final slots = ledger.slotsIn(period).fold<Poisha>(0, (t, s) => t + (s.left > 0 ? s.left : 0));
-    final free = summary.leftToSpend - bills - slots;
-    final daysLeft = period.daysInMonth - today.day + 1;
-    final perDay = free > 0 && period.contains(today)
-        ? (free / daysLeft / poishaPerTaka).round() * poishaPerTaka
-        : null;
+    final f = FreeToSpend.of(ledger, today);
+    final (bills, slots, free, daysLeft, perDay) = (f.bills, f.slots, f.free, f.daysLeft, f.perDay);
 
     Widget line(String label, Poisha amount, {bool total = false}) => Row(
       children: [

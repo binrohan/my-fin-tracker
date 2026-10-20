@@ -17,14 +17,19 @@ enum QuickAddMode { expense, income, move }
 
 /// Opens quick add. Pass [editing] to change an existing income, expense
 /// or move, or [prefill] to start a new one filled in. True when saved.
-Future<bool> showQuickAdd(BuildContext context, {Entry? editing, QuickAddPrefill? prefill}) async =>
+Future<bool> showQuickAdd(
+  BuildContext context, {
+  Entry? editing,
+  QuickAddPrefill? prefill,
+  QuickAddMode? mode,
+}) async =>
     await showModalBottomSheet<bool>(
       useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (_) => QuickAddSheet(editing: editing, prefill: prefill),
+      builder: (_) => QuickAddSheet(editing: editing, prefill: prefill, mode: mode),
     ) ==
     true;
 
@@ -52,10 +57,13 @@ bool canEditInQuickAdd(Entry e) =>
     e.type == EntryType.expense || e.type == EntryType.income || e.type == EntryType.move;
 
 class QuickAddSheet extends ConsumerStatefulWidget {
-  const QuickAddSheet({super.key, this.editing, this.prefill});
+  const QuickAddSheet({super.key, this.editing, this.prefill, this.mode});
 
   final Entry? editing;
   final QuickAddPrefill? prefill;
+
+  /// Start on Income or Move instead of Expense (from the widget).
+  final QuickAddMode? mode;
 
   @override
   ConsumerState<QuickAddSheet> createState() => _QuickAddSheetState();
@@ -139,6 +147,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       _to =
           potFromSetting(ledger, ledger.settings[_lastIncomePot]) ??
           (account: bank, fund: spending);
+      if (widget.mode case final m?) _mode = m;
       if (widget.prefill case final p?) {
         _mode = p.mode;
         _typed = _amountText(p.amount);

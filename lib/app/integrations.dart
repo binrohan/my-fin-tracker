@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:local_auth/local_auth.dart';
@@ -10,6 +11,7 @@ import '../core/money.dart';
 import '../core/period.dart';
 import '../data/auto_backup.dart';
 import '../features/quick_add/quick_add_sheet.dart';
+import '../ledger/free_to_spend.dart';
 import '../ledger/ledger.dart';
 import '../ledger/sms.dart';
 import 'providers.dart';
@@ -22,6 +24,8 @@ const appLockSetting = 'app_lock';
 const _relockAfter = Duration(minutes: 1);
 
 const _widgetClass = 'com.myfin.my_fin_tracker.QuickAddWidget';
+const _freeWidgetClass = 'com.myfin.my_fin_tracker.FreeToSpendWidget';
+const _glanceWidgetClass = 'com.myfin.my_fin_tracker.MonthGlanceWidget';
 
 /// Everything that connects the app to the phone: the fingerprint lock,
 /// the app-icon shortcut, the home-screen widget and the weekly backup.
@@ -43,6 +47,7 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
 
   /// Quick add asked for by a shortcut or the widget, opened once unlocked.
   bool _pendingQuickAdd = false;
+  QuickAddMode? _pendingMode;
   StreamSubscription<Uri?>? _widgetTaps;
   bool _backupChecked = false;
 
@@ -75,11 +80,13 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
   }
 
   void _onWidgetUri(Uri? uri) {
-    if (uri?.host == 'quickadd') _requestQuickAdd();
+    if (uri?.host != 'quickadd') return;
+    _requestQuickAdd(mode: uri?.queryParameters['mode'] == 'income' ? QuickAddMode.income : null);
   }
 
-  void _requestQuickAdd() {
+  void _requestQuickAdd({QuickAddMode? mode}) {
     _pendingQuickAdd = true;
+    _pendingMode = mode;
     _openPending();
   }
 
@@ -92,7 +99,8 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
       return;
     }
     _pendingQuickAdd = false;
-    showQuickAdd(context);
+    showQuickAdd(context, mode: _pendingMode);
+    _pendingMode = null;
   }
 
   @override
@@ -215,9 +223,67 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
             : '≈ ${formatTaka(perDay)} a day',
       );
       await HomeWidget.updateWidget(qualifiedAndroidName: _widgetClass);
+      await _updateFreeWidgets(ledger, today, hideAmount: hideAmount);
     } catch (_) {
       // No widget support (tests, desktop): nothing to update.
     }
+  }
+
+  /// The Free to spend widget (3×1) and Month at a glance (4×2).
+  Future<void> _updateFreeWidgets(Ledger ledger, DateTime today, {required bool hideAmount}) async {
+    final f = FreeToSpend.of(ledger, today);
+    final p = f.summary.period;
+    final free = hideAmount
+        ? 'Locked'
+        : f.free >= 0
+        ? formatTaka(f.free)
+        : 'Short ${formatTaka(-f.free)}';
+    final perDay = f.perDay == null ? null : '≈ ${formatTaka(f.perDay!)} a day';
+    final bills = f.bills + f.slots;
+
+    await HomeWidget.saveWidgetData<String>('free_title', 'Free to spend · ${p.shortLabel}');
+    await HomeWidget.saveWidgetData<String>('free_amount', free);
+    await HomeWidget.saveWidgetData<String>(
+      'free_detail',
+      hideAmount
+          ? 'Open the app to see it'
+          : [
+              ?perDay,
+              if (bills > 0) 'after ${formatTaka(bills)} bills' else 'no bills left',
+            ].join(' · '),
+    );
+    await HomeWidget.updateWidget(qualifiedAndroidName: _freeWidgetClass);
+
+    final next = f.next;
+    await HomeWidget.saveWidgetData<String>(
+      'g_month',
+      '${p.label.split(' ').first} · day ${today.day} of ${p.daysInMonth}',
+    );
+    await HomeWidget.saveWidgetData<String>('g_amount', free);
+    await HomeWidget.saveWidgetData<String>(
+      'g_perday',
+      hideAmount ? 'Free to spend' : 'Free to spend${perDay == null ? '' : ' · $perDay'}',
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'g_spent',
+      hideAmount || f.summary.budget <= 0
+          ? 'Budget'
+          : 'Spent ${formatTaka(f.summary.expenses)} of ${formatTaka(f.summary.budget)}',
+    );
+    await HomeWidget.saveWidgetData<int>(
+      'g_progress',
+      hideAmount ? 0 : (f.spentShare * 100).round(),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'g_next',
+      hideAmount
+          ? ''
+          : next == null
+          ? 'No bills left this month'
+          : 'Next: ${next.name} · ${next.date.day} ${DateFormat.MMM().format(next.date)} · '
+                '${formatTaka(next.amount)}',
+    );
+    await HomeWidget.updateWidget(qualifiedAndroidName: _glanceWidgetClass);
   }
 
   @override

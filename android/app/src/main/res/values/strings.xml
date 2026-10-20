@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_description">Left to spend this month, and quick add</string>
+    <string name="free_widget_description">Free to spend after the bills still to pay</string>
+    <string name="glance_widget_description">Month at a glance: free to spend, budget used, next bill, add buttons</string>
+    <string name="widget_left_label">Left to spend</string>
+    <string name="widget_free_label">Free to spend</string>
+    <string name="widget_glance_label">Month at a glance</string>
 </resources>

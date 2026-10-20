@@ -37,6 +37,7 @@
         </activity>
         <receiver
             android:name=".QuickAddWidget"
+            android:label="@string/widget_left_label"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
@@ -44,6 +45,28 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/quick_add_widget_info"/>
+        </receiver>
+        <receiver
+            android:name=".FreeToSpendWidget"
+            android:label="@string/widget_free_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/free_to_spend_widget_info"/>
+        </receiver>
+        <receiver
+            android:name=".MonthGlanceWidget"
+            android:label="@string/widget_glance_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/month_glance_widget_info"/>
         </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
