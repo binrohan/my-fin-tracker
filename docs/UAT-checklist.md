@@ -174,13 +174,13 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 ## 18. New in 1.2.0
 
 **Raise from next month**
-- [ ] More → Monthly plan → **From November** → new salary amount, new split, new budgets → Save. The message says October stays as it was.
-- [ ] Back on **From October**: everything is as before, with a note that changes are waiting.
+- [ ] More → Monthly plan → change the salary, split and budgets → **Save** → *When should this apply?* → **From November** (already chosen if the salary is "for next month") → Save. The message says October stays as it was.
+- [ ] Open the plan again: October's figures, and a yellow **Changes from November** note (Salary ৳85,000 → ৳1,00,000, …). **View / edit** shows November's plan with a bar "October keeps its plan"; **Back to October** returns.
 - [ ] Spend tab (October): budgets and Short/Unplanned unchanged.
 - [ ] Income tax: July–October at the old salary, November–June at the new one.
 - [ ] On 26 Oct the reminder and the Record sheet expect the **new** salary (it is November's money).
 - [ ] After 26 Oct salary (For November) → on 1 Nov the release uses the **new split**.
-- [ ] **Cancel changes** (on From November) brings November back to October's plan.
+- [ ] **Cancel** on the yellow note brings November back to October's plan.
 
 **Tracker: Add amount**
 - [ ] More → Trackers → a tracker → **Add amount** (e.g. ৳3,000, "Paid by Abbu") → it shows under **Outside your accounts** and in the total.

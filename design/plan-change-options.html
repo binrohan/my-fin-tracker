@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan Change Options</title>
+<style>
+  :root {
+    --accent: #0D6A55;
+    --on-accent: #ffffff;
+    --soft: #D9EEE6;
+    --bg: #F4F7F5;
+    --surface: #ffffff;
+    --fg: #14201A;
+    --muted: #56665E;
+    --line: #D5DED8;
+    --sunk: #E9EFEB;
+    --warn: #9a5b00;
+    --warn-soft: #fff1d6;
+    --page: #e7ece9;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent: #4EC2A0; --on-accent: #07231A; --soft: #173A30; --bg: #0D1311;
+      --surface: #151D1A; --fg: #E1EAE5; --muted: #93A39B; --line: #2A3631; --sunk: #1C2622;
+      --warn: #f0b04f; --warn-soft: #2e2412; --page: #070a09; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --accent: #4EC2A0; --on-accent: #07231A; --soft: #173A30; --bg: #0D1311;
+    --surface: #151D1A; --fg: #E1EAE5; --muted: #93A39B; --line: #2A3631; --sunk: #1C2622;
+    --warn: #f0b04f; --warn-soft: #2e2412; --page: #070a09; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--fg);
+    font: 15px/1.5 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: clamp(24px, 5vw, 34px); margin: 0 0 6px; line-height: 1.2; }
+  .lead { color: var(--muted); margin: 0 0 8px; max-width: 760px; }
+  .scenario {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 16px; margin: 18px 0 28px; max-width: 760px;
+  }
+  .scenario b { color: var(--accent); }
+
+  .option { margin: 0 0 40px; }
+  .option-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .option h2 { margin: 0; font-size: 21px; }
+  .tag {
+    font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px;
+    background: var(--accent); color: var(--on-accent);
+  }
+  .tag.plain { background: var(--sunk); color: var(--muted); }
+  .option > p { margin: 4px 0 14px; color: var(--muted); max-width: 760px; }
+  .proscons { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; max-width: 760px; margin-bottom: 16px; }
+  .proscons div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+  .proscons h4 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .proscons ul { margin: 0; padding-left: 18px; }
+
+  .flow { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .step { display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: 100%; }
+  .step .cap { font-size: 13px; color: var(--muted); min-height: 2.6em; }
+  .step .cap b { color: var(--fg); }
+
+  /* Phone */
+  .phone {
+    width: 300px; max-width: 100%; height: 560px; border-radius: 30px; padding: 10px;
+    background: #111; box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  }
+  .screen {
+    position: relative; height: 100%; border-radius: 22px; overflow: hidden;
+    background: var(--bg); display: flex; flex-direction: column; font-size: 13px;
+  }
+  .appbar { display: flex; align-items: center; gap: 10px; padding: 14px 14px 6px; font-weight: 600; font-size: 16px; }
+  .appbar .back { font-size: 18px; color: var(--muted); }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 6px; }
+  .tabs span { flex: 1; text-align: center; padding: 8px 0; color: var(--muted); font-size: 12.5px; }
+  .tabs span.on { color: var(--accent); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+  .body { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .label { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
+  .row .amt { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .field {
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; display: flex; justify-content: space-between;
+    background: var(--surface);
+  }
+  .field small { color: var(--muted); }
+  .field.changed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .muted { color: var(--muted); }
+  .bottom { padding: 8px 12px 12px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); background: var(--surface); }
+  .bottom .bal { flex: 1; font-size: 11.5px; color: var(--muted); }
+  .btn {
+    border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 12.5px; text-align: center;
+    background: var(--accent); color: var(--on-accent); white-space: nowrap;
+  }
+  .btn.tonal { background: var(--soft); color: var(--fg); }
+  .btn.text { background: transparent; color: var(--accent); padding: 4px 6px; }
+  .btn.outline { background: transparent; border: 1px solid var(--line); color: var(--fg); }
+  .btn.block { display: block; }
+  .waiting { background: var(--warn-soft); border: 1px solid transparent; border-left: 4px solid var(--warn); }
+  .waiting .label { color: var(--warn); }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .seg span { flex: 1; text-align: center; padding: 6px 0; font-size: 12px; }
+  .seg span.on { background: var(--soft); font-weight: 600; }
+  .mode {
+    background: var(--accent); color: var(--on-accent); padding: 8px 12px; font-size: 12px; font-weight: 600;
+  }
+  .mode small { display: block; font-weight: 400; opacity: .85; }
+
+  /* Dialog overlay */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.42); display: flex; align-items: center; justify-content: center; padding: 18px; }
+  .dialog { background: var(--surface); border-radius: 18px; padding: 16px; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+  .dialog h3 { margin: 0; font-size: 16px; }
+  .radio { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border-radius: 10px; }
+  .radio.on { background: var(--soft); }
+  .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--muted); flex: none; margin-top: 2px; }
+  .radio.on .dot { border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); background: var(--accent); }
+  .radio small { display: block; color: var(--muted); font-size: 11.5px; }
+  .actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+  .same { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; max-width: 760px; }
+  .same h2 { margin: 0 0 8px; font-size: 19px; }
+  .same ul { margin: 0; padding-left: 20px; }
+  .same li { margin: 4px 0; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Changing the plan from next month</h1>
+  <p class="lead">Three ways the Monthly plan could handle a change that starts next month. Pick one; the behaviour behind it (October keeps its plan, November uses the new one) is the same in all three, except "Revert".</p>
+
+  <div class="scenario">
+    <b>Your case:</b> the salary goes up from <b>৳85,000 to ৳1,00,000</b>. The raised salary arrives on <b>26 October</b> and is spent in <b>November</b>. October's budgets and split must not change; November's should.
+  </div>
+
+  <!-- ===================== Option A ===================== -->
+  <section class="option">
+    <div class="option-head"><h2>A. Ask when saving</h2><span class="tag">Recommended</span></div>
+    <p>No tabs. You edit the plan exactly as today. When you tap Save, the app asks <em>when</em> it should apply. A change waiting for next month shows as a note at the top.</p>
+    <div class="proscons">
+      <div><h4>Good</h4><ul><li>Screen looks like today</li><li>The question comes at the moment it matters</li><li>Waiting change is always visible</li></ul></div>
+      <div><h4>Watch out</h4><ul><li>One extra tap on every Save</li></ul></div>
+    </div>
+    <div class="flow">
+      <div class="step">
+        <div class="cap"><b>1.</b> Edit as usual: change the salary.</div>
+        <div class="phone"><div class="screen">
+          <div class="appbar"><span class="back">←</span>Monthly plan</div>
+          <div class="tabs"><span class="on">Income</span><span>Split</span><span>Expenses</span></div>
+          <div class="body">
+            <div class="card">
+              <div class="label">Salary</div>
+              <div class="field changed"><small>Amount</small><span>1,00,000</span></div>
+              <div class="row muted"><span>Arrives on</span><span>26th · Bank</span></div>
+              <div class="row muted"><span>For next month</span><span>On</span></div>
+            </div>
+            <div class="card">
+              <div class="label">Bonus</div>
+              <div class="field"><small>Amount</small><span>0</span></div>
+            </div>
+          </div>
+          <div class="bottom"><span class="bal">Unassigned ৳15,000</span><span class="btn">Save</span></div>
+        </div></div>
+      </div>
+      <div class="step">
+        <div class="cap"><b>2.</b> Save asks when it applies. Next month is picked for you if the salary is "for next month".</div>
+        <div class="phone"><div class="screen">
+          <div class="appbar"><span class="back">←</span>Monthly plan</div>
+          <div class="tabs"><span class="on">Income</span><span>Split</span><span>Expenses</span></div>
+          <div class="body"><div class="card"><div class="label">Salary</div><div class="field"><small>Amount</small><span>1,00,000</span></div></div></div>
+          <div class="scrim"><div class="dialog">
+            <h3>When should this apply?</h3>
+            <div class="radio"><span class="dot"></span><div>This month (October)<small>Changes October's budgets and split too</small></div></div>
+            <div class="radio on"><span class="dot"></span><div>From November<small>October keeps its plan; November and later use this</small></div></div>
+            <div class="actions"><span class="btn text">Cancel</span><span class="btn">Save</span></div>
+          </div></div>
+        </div></div>
+      </div>
+      <div class="step">
+        <div class="cap"><b>3.</b> Back on the plan (still October's), the waiting change shows on top.</div>
+        <div class="phone"><div class="screen">
+          <div class="appbar"><span class="back">←</span>Monthly plan</div>
+          <div class="tabs"><span class="on">Income</span><span>Split</span><span>Expenses</span></div>
+          <div class="body">
+            <div class="card waiting">
+              <div class="label">Changes from November</div>
+              <div class="row"><span>Salary</span><span class="amt">৳85,000 → ৳1,00,000</span></div>
+              <div class="row"><span>Monthly Savings</span><span class="amt">৳20,000 → ৳30,000</span></div>
+              <div class="row"><span><span class="btn text">View / edit</span></span><span><span class="btn text">Cancel</span></span></div>
+            </div>
+            <div class="card">
+              <div class="label">Salary</div>
+              <div class="field"><small>Amount</small><span>85,000</span></div>
+            </div>
+          </div>
+          <div class="bottom"><span class="bal">October plan</span><span class="btn">Save</span></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Option B ===================== -->
+  <section class="option">
+    <div class="option-head"><h2>B. Separate button</h2><span class="tag plain">Alternative</span></div>
+    <p>The plan always opens on this month. A button at the bottom opens the same screen in a clearly coloured <em>November plan</em> mode.</p>
+    <div class="proscons">
+      <div><h4>Good</h4><ul><li>Normal saves have no extra question</li><li>Hard to change the wrong month: the bar is always visible</li></ul></div>
+      <div><h4>Watch out</h4><ul><li>You have to know to use the button before editing</li><li>Two places that look alike</li></ul></div>
+    </div>
+    <div class="flow">
+      <div class="step">
+        <div class="cap"><b>1.</b> This month's plan, with a button for next month.</div>
+        <div class="phone"><div class="screen">
+          <div class="appbar"><span class="back">←</span>Monthly plan</div>
+          <div class="tabs"><span class="on">Income</span><span>Split</span><span>Expenses</span></div>
+          <div class="body">
+            <div class="card"><div class="label">Salary</div><div class="field"><small>Amount</small><span>85,000</span></div><div class="row muted"><span>Arrives on</span><span>26th · Bank</span></div></div>
+            <div class="card"><div class="label">Bonus</div><div class="field"><small>Amount</small><span>0</span></div></div>
+            <span class="btn tonal block">Plan a change from November</span>
+          </div>
+          <div class="bottom"><span class="bal">October plan</span><span class="btn">Save</span></div>
+        </div></div>
+      </div>
+      <div class="step">
+        <div class="cap"><b>2.</b> November mode: coloured bar, own Save.</div>
+        <div class="phone"><div class="screen">
+          <div class="appbar"><span class="back">←</span>November plan</div>
+          <div class="mode">Changes from November 2026<small>October keeps its plan</small></div>
+          <div class="tabs"><span class="on">Income</span><span>Split</span><span>Expenses</span></div>
+          <div class="body">
+            <div class="card"><div class="label">Salary</div><div class="field changed"><small>Amount</small><span>1,00,000</span></div><div class="row muted"><span>Arrives on</span><span>26th · Bank</span></div></div>
+            <span class="btn outline block">Cancel November changes</span>
+          </div>
+          <div class="bottom"><span class="bal">Unassigned ৳15,000</span><span class="btn">Save November plan</span></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Option C ===================== -->
+  <section class="option">
+    <div class="option-head"><h2>C. Revert</h2><span class="tag plain">Back to before</span></div>
+    <p>One plan, as before 1.2.0. Changes apply from the current month. For the raise you would wait and edit on 1 November, after the salary is released and before you spend.</p>
+    <div class="proscons">
+      <div><h4>Good</h4><ul><li>Simplest screen</li></ul></div>
+      <div><h4>Watch out</h4><ul><li>The 1 November split uses the old plan unless you edit on the 26th–31st</li><li>Budgets edited in October change October</li><li>Tax prices earlier months at the new salary</li><li>The 26 October reminder expects the old amount</li></ul></div>
+    </div>
+    <div class="flow">
+      <div class="step">
+        <div class="cap"><b>1.</b> Same as today without the month choice.</div>
+        <div class="phone"><div class="screen">
+          <div class="appbar"><span class="back">←</span>Monthly plan</div>
+          <div class="tabs"><span class="on">Income</span><span>Split</span><span>Expenses</span></div>
+          <div class="body">
+            <div class="card"><div class="label">Salary</div><div class="field"><small>Amount</small><span>85,000</span></div><div class="row muted"><span>Arrives on</span><span>26th · Bank</span></div></div>
+            <div class="card"><div class="label">Bonus</div><div class="field"><small>Amount</small><span>0</span></div></div>
+          </div>
+          <div class="bottom"><span class="bal">Applies from October on</span><span class="btn">Save</span></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Today, for reference -->
+  <section class="option">
+    <div class="option-head"><h2>Today (1.2.1), for comparison</h2><span class="tag plain">Current</span></div>
+    <p>A two-way switch above the tabs. Easy to miss which month you are editing.</p>
+    <div class="flow">
+      <div class="step">
+        <div class="phone"><div class="screen">
+          <div class="appbar"><span class="back">←</span>Monthly plan</div>
+          <div class="tabs"><span class="on">Income</span><span>Split</span><span>Expenses</span></div>
+          <div class="body">
+            <div class="seg"><span>From October</span><span class="on">From November</span></div>
+            <div class="row muted" style="font-size:11.5px"><span>October 2026 keeps its plan; these apply from November 2026 on.</span></div>
+            <div class="card"><div class="label">Salary</div><div class="field changed"><small>Amount</small><span>1,00,000</span></div></div>
+          </div>
+          <div class="bottom"><span class="bal">Unassigned ৳15,000</span><span class="btn">Save</span></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="same">
+    <h2>Same in A and B (and today)</h2>
+    <ul>
+      <li>October's budgets, Short/Unplanned and month close are not touched.</li>
+      <li>The salary of 26 October is expected at ৳1,00,000 and held for November.</li>
+      <li>On 1 November it is released with the <b>new</b> split.</li>
+      <li>Tax: July–October at ৳85,000, November–June at ৳1,00,000.</li>
+      <li>A waiting change can be cancelled until November starts.</li>
+    </ul>
+  </div>
+
+  <footer>My Fin Tracker · design proposal · amounts are examples</footer>
+</div>
+</body>
+</html>
