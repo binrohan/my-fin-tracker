@@ -318,13 +318,24 @@ class _ThisMonth extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = summary;
-    final heldByCategory = <int, Poisha>{};
-    for (final e in ledger.heldIncomes(summary.period)) {
-      if (e.categoryId != null) {
-        heldByCategory.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
+    // Income by type, split by where it went: into Spending (part of this
+    // month's sum) or straight into another pot (shown apart, not counted).
+    final spending = ledger.spendingFund.id;
+    final toSpending = <int?, Poisha>{};
+    final elsewhere = <(int?, int), Poisha>{};
+    for (final e in ledger.entries) {
+      if (e.type != EntryType.income || !s.period.contains(e.date)) continue;
+      for (final l in ledger.postingsOf(e.id)) {
+        if (l.amount <= 0 || !ledger.isLiquid(l.accountId)) continue;
+        final kind = ledger.funds[l.fundId]?.kind;
+        if (l.fundId == spending) {
+          toSpending.update(e.categoryId, (v) => v + l.amount, ifAbsent: () => l.amount);
+        } else if (kind != FundKind.nextMonth) {
+          elsewhere.update((e.categoryId, l.fundId), (v) => v + l.amount, ifAbsent: () => l.amount);
+        }
       }
     }
-    final income = ledger.categoryLines(s.period, CategoryKind.income).where((l) => l.actual != 0);
+    String name(int? category) => ledger.categories[category]?.name ?? 'Income';
     return CollapsibleCard(
       title: 'This month',
       collapsed: fold('month'),
@@ -340,13 +351,8 @@ class _ThisMonth extends StatelessWidget {
             signed: true,
           ),
         // Income held for next month is not part of this month's flow.
-        for (final line in income)
-          if (line.actual - (heldByCategory[line.category.id] ?? 0) != 0)
-            AmountRow(
-              line.category.name,
-              line.actual - (heldByCategory[line.category.id] ?? 0),
-              signed: true,
-            ),
+        for (final MapEntry(:key, :value) in toSpending.entries)
+          AmountRow(name(key), value, signed: true),
         if (s.setAside != 0)
           AmountRow('Set aside', -s.setAside, detail: 'savings, goals, DPS', signed: true),
         AmountRow('Spent', -s.spendingExpenses, signed: true),
@@ -355,6 +361,12 @@ class _ThisMonth extends StatelessWidget {
         if (s.startingNet != 0) AmountRow('Starting balance', s.startingNet, signed: true),
         if (s.adjustNet != 0) AmountRow('Adjustments', s.adjustNet, signed: true),
         AmountRow('Left to spend', s.leftToSpend, total: true),
+        for (final MapEntry(key: (category, fund), :value) in elsewhere.entries)
+          Text(
+            'Also received: ${name(category)} ${formatTaka(value)} → '
+            '${ledger.funds[fund]?.name ?? 'a pot'}',
+            style: TextStyle(color: StatusColors.of(context).muted, fontSize: 12),
+          ),
       ],
     );
   }

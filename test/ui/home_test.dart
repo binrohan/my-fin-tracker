@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_fin_tracker/app/providers.dart';
 import 'package:my_fin_tracker/app/theme.dart';
+import 'package:my_fin_tracker/core/money.dart';
 import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
@@ -88,5 +89,28 @@ void main() {
       () async => (await Ledger.load(db)).settings[homeCollapsedSetting],
     );
     expect(saved, 'attention', reason: 'This month opened again');
+  });
+
+  testWidgets('income straight into savings is shown apart, not in the sum', (tester) async {
+    await tester.runAsync(() async {
+      final l = await Ledger.load(db);
+      final other = l.categories.values.firstWhere((c) => c.name == 'Other income').id;
+      final bank = l.accounts.values.firstWhere((a) => a.name == 'Bank').id;
+      final savings = l.funds.values.firstWhere((f) => f.name == 'Monthly Savings').id;
+      await LedgerRepository(db).income(
+        DateTime(2026, 10, 7),
+        taka(5000),
+        categoryId: other,
+        to: (account: bank, fund: savings),
+      );
+    });
+    await pump(tester);
+    await tester.scrollUntilVisible(
+      find.text('Also received: Other income ৳5,000 → Monthly Savings'),
+      300,
+    );
+    // Left to spend is unchanged by it.
+    expect(find.text('৳24,420'), findsWidgets);
+    expect(find.text('Other income'), findsNothing, reason: 'not a row of the sum');
   });
 }
