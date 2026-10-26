@@ -112,18 +112,21 @@ void main() {
   testWidgets("What it's for opens the details", (tester) async {
     await pump(tester);
     await tester.scrollUntilVisible(find.text('WHAT YOUR MONEY IS FOR'), 300);
-    await tester.scrollUntilVisible(find.text('Sector'), 300);
-    // Sectors down the side, accounts across.
-    expect(find.text('Spending'), findsWidgets);
+    await tester.scrollUntilVisible(find.textContaining('Carried forward', findRichText: true), 300);
+    // An outline, one line per kind of money; no table on Home.
+    expect(find.text('Sector'), findsNothing);
     expect(find.text('Monthly Savings'), findsOneWidget);
-    expect(find.text('Bank'), findsWidgets);
-    expect(find.text('Cash'), findsWidgets);
-    expect(find.text('1,32,920'), findsOneWidget, reason: 'bank + cash + wallets');
+    expect(find.text('৳68,000'), findsOneWidget);
+    expect(find.textContaining('Saved for things', findRichText: true), findsOneWidget);
+    expect(find.text('৳40,500'), findsOneWidget);
     await tester.ensureVisible(find.text('WHAT YOUR MONEY IS FOR'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('WHAT YOUR MONEY IS FOR'));
     await tester.pumpAndSettle();
     expect(find.text('EVERY POT'), findsOneWidget);
+    // The bank/cash table lives here.
+    await tester.scrollUntilVisible(find.text('Sector'), 300);
+    expect(find.text('1,32,920'), findsOneWidget, reason: 'bank + cash + wallets');
     await tester.scrollUntilVisible(find.text('৳4,28,770'), 300);
     expect(find.textContaining('Net worth', findRichText: true), findsOneWidget);
   });

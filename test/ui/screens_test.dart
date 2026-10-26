@@ -695,8 +695,8 @@ void main() {
     testWidgets('Home: held for November, October unchanged', (tester) async {
       await pump(tester, const HomeScreen(), held);
       expect(find.text('৳24,420'), findsWidgets, reason: 'left to spend unchanged');
-      await tester.scrollUntilVisible(find.text('For November'), 300);
-      expect(find.text('85,000'), findsWidgets, reason: 'in the table, without ৳');
+      await tester.scrollUntilVisible(find.text('Held for November'), 300);
+      expect(find.text('৳85,000'), findsWidgets);
     });
 
     testWidgets('recording it offers "For November", on by default', (tester) async {
