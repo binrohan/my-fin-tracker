@@ -754,6 +754,24 @@ class Ledger {
     return byId;
   }
 
+  /// The budget an expense on [categoryId] is checked against in month
+  /// [p]: the category's own, or else the nearest section above it with a
+  /// budget of its own. Null when none has a budget (nothing to keep to).
+  ({int categoryId, Poisha left})? budgetRoom(int categoryId, Period p) {
+    final lines = _linesById(p);
+    int? at = categoryId;
+    while (at != null) {
+      final line = lines[at];
+      final category = categories[at];
+      if (line != null && category != null) {
+        final hasOwn = line.children.isEmpty || (budgetsFor(p)[at] ?? 0) > 0;
+        if (hasOwn && line.budget > 0) return (categoryId: at, left: line.remaining);
+      }
+      at = category?.parentId;
+    }
+    return null;
+  }
+
   /// Budget a category has left this month that can be moved elsewhere.
   Poisha movableFrom(int categoryId, Period p) =>
       math.max(0, _linesById(p)[categoryId]?.remaining ?? 0);

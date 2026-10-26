@@ -523,18 +523,29 @@ class _GiveBackSheetState extends ConsumerState<_GiveBackSheet> {
 
 /// Move budget between two categories for this month only (e.g. to cover
 /// an overspent Ration from Random).
-Future<void> showMoveBudgetSheet(BuildContext context, Period period) => showModalBottomSheet(
-  context: context,
-  useRootNavigator: true,
-  isScrollControlled: true,
-  showDragHandle: true,
-  builder: (_) => _MoveBudgetSheet(period: period),
-);
+/// Moves budget between categories for [period] only. Start with [to] and
+/// [amount] to cover a category that would go over. True when moved.
+Future<bool> showMoveBudgetSheet(
+  BuildContext context,
+  Period period, {
+  int? to,
+  Poisha? amount,
+}) async =>
+    await showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _MoveBudgetSheet(period: period, to: to, amount: amount),
+    ) ==
+    true;
 
 class _MoveBudgetSheet extends ConsumerStatefulWidget {
-  const _MoveBudgetSheet({required this.period});
+  const _MoveBudgetSheet({required this.period, this.to, this.amount});
 
   final Period period;
+  final int? to;
+  final Poisha? amount;
 
   @override
   ConsumerState<_MoveBudgetSheet> createState() => _MoveBudgetSheetState();
@@ -543,7 +554,7 @@ class _MoveBudgetSheet extends ConsumerStatefulWidget {
 class _MoveBudgetSheetState extends ConsumerState<_MoveBudgetSheet> {
   int? _from;
   int? _to;
-  final _amount = TextEditingController();
+  late final _amount = TextEditingController(text: amountText(widget.amount ?? 0));
 
   @override
   void dispose() {
@@ -557,8 +568,24 @@ class _MoveBudgetSheetState extends ConsumerState<_MoveBudgetSheet> {
     if (ledger == null) return const SizedBox(height: 200);
     final cats = _budgetCategories(ledger, widget.period);
     final slots = [for (final s in ledger.slotsIn(widget.period)) s.category];
-    _from ??= cats.firstOrNull?.id;
-    _to ??= cats.length > 1 ? cats[1].id : cats.firstOrNull?.id;
+    // A section with its own budget can be the one to cover.
+    final target = ledger.categories[widget.to];
+    if (target != null && !cats.any((c) => c.id == target.id) && !slots.contains(target)) {
+      cats.add(target);
+    }
+    _to ??= widget.to ?? (cats.length > 1 ? cats[1].id : cats.firstOrNull?.id);
+    // Take from the category with the most budget left.
+    _from ??= ([...cats]..removeWhere((c) => c.id == _to))
+        .fold<CategoryRow?>(
+          null,
+          (best, c) =>
+              best == null ||
+                  ledger.movableFrom(c.id, widget.period) >
+                      ledger.movableFrom(best.id, widget.period)
+              ? c
+              : best,
+        )
+        ?.id;
     final status = StatusColors.of(context);
     final amount = parseTaka(_amount.text) ?? 0;
     final available = _from == null ? 0 : ledger.movableFrom(_from!, widget.period);
@@ -617,7 +644,7 @@ class _MoveBudgetSheetState extends ConsumerState<_MoveBudgetSheet> {
                         date: ref.read(todayProvider),
                       );
                   if (!context.mounted) return;
-                  Navigator.pop(context);
+                  Navigator.pop(context, true);
                   showSnack(context, '${formatTaka(amount)} moved');
                 },
           child: Text('Move ${formatTaka(amount)}'),

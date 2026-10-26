@@ -90,19 +90,22 @@ void main() {
       testWidgets('Home shows the October figures', (tester) async {
         await pump(tester, const HomeScreen(), sample, brightness: brightness);
         expect(find.text('October 2026'), findsOneWidget);
-        expect(find.text('৳24,420'), findsWidgets);
-        expect(find.text('≈ ৳1,018 a day for 24 days'), findsOneWidget);
         expect(find.text('Balanced'), findsOneWidget);
         expect(find.text('September 2026 is over'), findsOneWidget);
         expect(find.text('NEEDS ATTENTION'), findsOneWidget);
         expect(find.text('No backup yet'), findsOneWidget);
-        expect(find.text('Water & Service due in 2 days'), findsOneWidget);
+        // Bills are on their own card, not repeated under Needs attention.
+        expect(find.text('Water & Service due in 2 days'), findsNothing);
+        expect(find.text('LEFT TO SPEND THIS MONTH'), findsOneWidget);
+        expect(find.text('৳24,420'), findsWidgets);
+        expect(find.text('≈ ৳1,018 a day for 24 days'), findsOneWidget);
+        expect(find.textContaining('Left after bills', findRichText: true), findsOneWidget);
+        expect(find.text('৳20,420'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('BILLS TO PAY'), 300);
         await tester.scrollUntilVisible(find.text('৳1,23,970'), 300);
         expect(find.text('৳1,23,970'), findsOneWidget);
-        await tester.scrollUntilVisible(find.text('৳1,32,920').last, 300);
-        expect(find.text('৳1,32,920'), findsNWidgets(2));
-        await tester.scrollUntilVisible(find.text('৳4,28,770'), 300);
-        expect(find.text('৳4,28,770'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('WHAT YOUR MONEY IS FOR'), 300);
+        expect(find.textContaining('Carried forward', findRichText: true), findsOneWidget);
       });
 
       testWidgets('Spend shows budget against actual', (tester) async {
@@ -687,13 +690,11 @@ void main() {
       await db.close();
     });
 
-    testWidgets('Home: ready for November, October unchanged', (tester) async {
+    testWidgets('Home: held for November, October unchanged', (tester) async {
       await pump(tester, const HomeScreen(), held);
-      expect(find.text('READY FOR NOVEMBER 2026'), findsOneWidget);
-      expect(find.text('৳85,000'), findsWidgets);
       expect(find.text('৳24,420'), findsWidgets, reason: 'left to spend unchanged');
-      await tester.scrollUntilVisible(find.text('For next month'), 300);
-      expect(find.text('For next month'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('For November'), 300);
+      expect(find.text('৳85,000'), findsWidgets);
     });
 
     testWidgets('recording it offers "For November", on by default', (tester) async {

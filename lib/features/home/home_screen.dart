@@ -23,13 +23,10 @@ import '../setup/starting_balances_screen.dart';
 import '../sms/sms_screen.dart';
 import '../spend/save_budget_sheet.dart';
 import '../spend/spend_screen.dart';
+import '../entries/entries_screen.dart';
+import '../spend/slots.dart';
+import 'money_details_screen.dart';
 import 'month_tasks.dart';
-
-/// Which Home to show: [homeStandard] (left to spend) or [homeAfterBills]
-/// (free to spend once fixed bills and slots are taken off).
-const homeStyleSetting = 'home_style';
-const homeStandard = 'standard';
-const homeAfterBills = 'after_bills';
 
 /// Home sections folded away, by id, comma-separated.
 const homeCollapsedSetting = 'home_collapsed';
@@ -71,65 +68,34 @@ class HomeScreen extends ConsumerWidget {
           if (!next.remove(id)) next.add(id);
           ref.read(repositoryProvider).setSetting(homeCollapsedSetting, next.join(','));
         });
-        final afterBills = ledger.settings[homeStyleSetting] == homeAfterBills;
-
         final s = ledger.summary(period);
         final toClose = ledger.monthToClose(today);
-        // The Bills card lists bills on this Home; don't repeat them.
+        // Bills have their own card below; don't repeat them here.
         final reminders = remindersFor(
           ledger,
           today,
-        ).where((r) => !afterBills || r.kind != ReminderKind.bill).toList();
+        ).where((r) => r.kind != ReminderKind.bill).toList();
         final sms = ref.watch(smsSuggestionsProvider);
-        final attention = reminders.isNotEmpty || sms.isNotEmpty
-            ? _NeedsAttention(
+
+        return PageList(
+          children: [
+            header,
+            // Most important first: the month's number, then what needs
+            // doing, then what happened, then the overview.
+            if (toClose != null) _CloseMonthBanner(period: toClose),
+            _MainCard(ledger: ledger, summary: s, today: today, fold: fold),
+            if (reminders.isNotEmpty || sms.isNotEmpty)
+              _NeedsAttention(
                 ledger: ledger,
                 reminders: reminders,
                 messages: sms.length,
                 fold: fold,
                 today: today,
-              )
-            : null;
-        final ready = ledger.heldForNextMonth > 0
-            ? CollapsibleCard(
-                title: 'Ready for ${period.next.label}',
-                collapsed: fold('ready'),
-                onToggle: () => fold.toggle('ready'),
-                summary: Money(ledger.heldForNextMonth),
-                color: Theme.of(context).colorScheme.primaryContainer,
-                children: [
-                  Money(
-                    ledger.heldForNextMonth,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    'Held apart; it becomes spending money on 1 ${period.next.label.split(' ').first}.',
-                    style: TextStyle(color: StatusColors.of(context).muted, fontSize: 13),
-                  ),
-                ],
-              )
-            : null;
-
-        return PageList(
-          children: [
-            header,
-            if (toClose != null) _CloseMonthBanner(period: toClose),
-            if (afterBills) ...[
-              _FreeToSpend(ledger: ledger, summary: s, today: today),
-              _BillsToPay(ledger: ledger, period: period, fold: fold),
-              ?attention,
-              ?ready,
-            ] else ...[
-              ?attention,
-              ?ready,
-              _LeftToSpend(summary: s, today: today),
-            ],
-            _ThisMonth(ledger: ledger, summary: s, fold: fold),
-            _WhereAndWhat(ledger: ledger, fold: fold),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: AmountRow('Net worth', ledger.netWorth(), detail: 'incl. investments & loans'),
-            ),
+              ),
+            _BillsToPay(ledger: ledger, period: period, fold: fold),
+            _History(ledger: ledger, fold: fold),
+            _WhereItIs(ledger: ledger, fold: fold),
+            _WhatItsFor(ledger: ledger, summary: s),
           ],
         );
       },
@@ -137,34 +103,104 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// The "After bills" main card: what is free once the fixed bills still to
-/// pay and money kept in slots are taken off, with the sum shown.
-class _FreeToSpend extends StatelessWidget {
-  const _FreeToSpend({required this.ledger, required this.summary, required this.today});
+/// The last five entries, with See all.
+class _History extends StatelessWidget {
+  const _History({required this.ledger, required this.fold});
+
+  final Ledger ledger;
+  final _Fold fold;
+
+  @override
+  Widget build(BuildContext context) {
+    final recent = ledger.entries.where((e) => e.type != EntryType.opening).take(5).toList();
+    if (recent.isEmpty) return const SizedBox.shrink();
+    return CollapsibleCard(
+      title: 'Recent',
+      collapsed: fold('history'),
+      onToggle: () => fold.toggle('history'),
+      summary: Text('${recent.length}'),
+      children: [
+        for (final e in recent)
+          InkWell(
+            onTap: () => showEntryDetails(context, e),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: AmountRow(
+                entryTitle(ledger, e),
+                e.type == EntryType.move ? e.amount : entrySigned(ledger, e),
+                detail: DateFormat.MMMd().format(e.date),
+                signed: e.type != EntryType.move,
+              ),
+            ),
+          ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            onPressed: () => openScreen(context, const EntriesScreen()),
+            child: const Text('See all'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// This month's spending money: what is left, what is left after the
+/// bills still to pay, and where it sits. Opens to the budget breakdown.
+class _MainCard extends ConsumerWidget {
+  const _MainCard({
+    required this.ledger,
+    required this.summary,
+    required this.today,
+    required this.fold,
+  });
 
   final Ledger ledger;
   final PeriodSummary summary;
   final DateTime today;
+  final _Fold fold;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final on = scheme.onPrimary;
+    final soft = on.withValues(alpha: .8);
     final f = FreeToSpend.of(ledger, today);
-    final (bills, slots, free, daysLeft, perDay) = (f.bills, f.slots, f.free, f.daysLeft, f.perDay);
+    final s = summary;
+    final period = s.period;
+    // Opened by the user; folded by default.
+    final open = fold.closed.contains('breakdown+');
+    final spending = ledger.spendingFund.id;
+    final cells = [
+      for (final a in ledger.accountsOfType((t) => t.isLiquid))
+        if (ledger.cell(a.id, spending) != 0) (name: a.name, amount: ledger.cell(a.id, spending)),
+    ];
 
-    Widget line(String label, Poisha amount, {bool total = false}) => Row(
+    Widget line(String label, Poisha amount, {bool strong = false, String? detail}) => Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: [
         Expanded(
-          child: Text(
-            label,
-            style: TextStyle(color: on, fontWeight: total ? FontWeight.w700 : null),
+          child: Text.rich(
+            TextSpan(
+              text: label,
+              children: [
+                if (detail != null)
+                  TextSpan(
+                    text: '  $detail',
+                    style: TextStyle(color: soft, fontSize: 12, fontWeight: FontWeight.w400),
+                  ),
+              ],
+            ),
+            style: TextStyle(color: on, fontWeight: strong ? FontWeight.w700 : null),
           ),
         ),
         Money(
           amount,
           color: on,
-          style: TextStyle(fontWeight: total ? FontWeight.w700 : FontWeight.w500),
+          style: TextStyle(fontWeight: strong ? FontWeight.w700 : FontWeight.w500),
         ),
       ],
     );
@@ -172,27 +208,134 @@ class _FreeToSpend extends StatelessWidget {
     return SectionCard(
       color: scheme.primary,
       children: [
-        Label(free >= 0 ? 'Free to spend' : 'Short after bills', color: on.withValues(alpha: .8)),
+        Label('Left to spend this month', color: soft),
         Money(
-          free.abs(),
+          s.leftToSpend,
           color: on,
           style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, height: 1.05),
         ),
-        if (perDay != null)
-          Text('≈ ${formatTaka(perDay)} a day for $daysLeft days', style: TextStyle(color: on)),
-        if (free < 0)
+        if (s.perDay(today) case final perDay? when perDay > 0)
+          Text('≈ ${formatTaka(perDay)} a day for ${f.daysLeft} days', style: TextStyle(color: on)),
+        Divider(color: on.withValues(alpha: .3), height: 8),
+        line(
+          f.free >= 0 ? 'Left after bills' : 'Short after bills',
+          f.free.abs(),
+          strong: true,
+          detail: f.bills + f.slots == 0
+              ? 'no bills left'
+              : '${formatTaka(f.bills + f.slots)} still to pay'
+                    '${f.perDay == null ? '' : ' · ≈ ${formatTaka(f.perDay!)}/day'}',
+        ),
+        if (cells.isNotEmpty)
           Text(
-            'Bills still to pay are more than what is left to spend.',
-            style: TextStyle(color: on),
+            [for (final c in cells) '${c.name} ${formatTaka(c.amount)}'].join(' · '),
+            style: TextStyle(color: soft, fontSize: 13),
           ),
-        Divider(color: on.withValues(alpha: .3)),
-        line('Left to spend', summary.leftToSpend),
-        line('Bills still to pay', -bills),
-        if (slots > 0) line('Kept in slots', -slots),
-        Divider(color: on.withValues(alpha: .3), height: 4),
-        line('Free to spend', free, total: true),
+        InkWell(
+          onTap: () => fold.toggle('breakdown+'),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    open ? 'Hide budget by category' : 'Budget by category',
+                    style: TextStyle(color: on, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (!open && s.unplanned < 0)
+                  Text('Short ${formatTaka(-s.unplanned)}  ', style: TextStyle(color: on)),
+                Icon(open ? Icons.expand_less : Icons.expand_more, color: on),
+              ],
+            ),
+          ),
+        ),
+        if (open) ..._breakdown(context, ref, period, on, soft),
       ],
     );
+  }
+
+  /// Each budget: left of budget, or how far over with Cover (move budget
+  /// in from elsewhere).
+  List<Widget> _breakdown(
+    BuildContext context,
+    WidgetRef ref,
+    Period period,
+    Color on,
+    Color soft,
+  ) {
+    final rows = <Widget>[];
+    void add(CategoryLine l, {bool sub = false}) {
+      final over = l.budget > 0 && l.actual > l.budget;
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(left: sub ? 12 : 0, top: 2, bottom: 2),
+          child: Row(
+            spacing: 6,
+            children: [
+              Expanded(
+                child: Text(
+                  l.category.name,
+                  style: TextStyle(color: on, fontWeight: sub ? null : FontWeight.w600),
+                ),
+              ),
+              Text(
+                l.budget == 0
+                    ? '${formatTaka(l.actual)} spent'
+                    : over
+                    ? '${formatTaka(l.actual - l.budget)} over'
+                    : '${formatTaka(l.remaining)} of ${formatTaka(l.budget, symbol: false)}',
+                style: TextStyle(
+                  color: over ? on : soft,
+                  fontWeight: over ? FontWeight.w700 : null,
+                ),
+              ),
+              if (over)
+                InkWell(
+                  onTap: () => showMoveBudgetSheet(
+                    context,
+                    period,
+                    to: l.category.id,
+                    amount: l.actual - l.budget,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: on.withValues(alpha: .2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text('Cover', style: TextStyle(color: on, fontSize: 12)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final budgets = ledger.budgetsFor(period);
+    for (final l in ledger.categoryLines(period, CategoryKind.expense)) {
+      if (l.budget == 0 && l.actual == 0) continue;
+      add(l);
+      // A section without a budget of its own is covered per subsection.
+      if (l.children.isNotEmpty && (budgets[l.category.id] ?? 0) == 0) {
+        for (final c in l.children) {
+          if (c.budget > 0 && c.actual > c.budget) add(c, sub: true);
+        }
+      }
+    }
+    rows.add(
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          style: TextButton.styleFrom(foregroundColor: on, padding: EdgeInsets.zero),
+          onPressed: () => context.go('/spend'),
+          child: const Text('Open the Spend tab'),
+        ),
+      ),
+    );
+    return rows;
   }
 }
 
@@ -263,117 +406,9 @@ class _BillsToPay extends ConsumerWidget {
   }
 }
 
-class _LeftToSpend extends StatelessWidget {
-  const _LeftToSpend({required this.summary, required this.today});
-
-  final PeriodSummary summary;
-  final DateTime today;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final on = scheme.onPrimary;
-    final s = summary;
-    final perDay = s.perDay(today);
-    final daysLeft = s.period.daysInMonth - today.day + 1;
-    final planned = s.leftToSpend <= 0 ? 1.0 : s.budgetLeft / s.leftToSpend;
-
-    return SectionCard(
-      color: scheme.primary,
-      children: [
-        Label('Left to spend', color: on.withValues(alpha: .8)),
-        Money(
-          s.leftToSpend,
-          color: on,
-          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, height: 1.05),
-        ),
-        if (perDay != null && perDay > 0)
-          Text('≈ ${formatTaka(perDay)} a day for $daysLeft days', style: TextStyle(color: on)),
-        Bar(planned, color: on, height: 6),
-        DefaultTextStyle.merge(
-          style: TextStyle(color: on, fontSize: 13),
-          child: Row(
-            children: [
-              Expanded(child: Text('Budgeted ${formatTaka(s.budgetLeft)}')),
-              Text(
-                s.unplanned >= 0
-                    ? 'Unplanned ${formatTaka(s.unplanned)}'
-                    : 'Short ${formatTaka(-s.unplanned)}',
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ThisMonth extends StatelessWidget {
-  const _ThisMonth({required this.ledger, required this.summary, required this.fold});
-
-  final Ledger ledger;
-  final PeriodSummary summary;
-  final _Fold fold;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = summary;
-    // Income by type, split by where it went: into Spending (part of this
-    // month's sum) or straight into another pot (shown apart, not counted).
-    final spending = ledger.spendingFund.id;
-    final toSpending = <int?, Poisha>{};
-    final elsewhere = <(int?, int), Poisha>{};
-    for (final e in ledger.entries) {
-      if (e.type != EntryType.income || !s.period.contains(e.date)) continue;
-      for (final l in ledger.postingsOf(e.id)) {
-        if (l.amount <= 0 || !ledger.isLiquid(l.accountId)) continue;
-        final kind = ledger.funds[l.fundId]?.kind;
-        if (l.fundId == spending) {
-          toSpending.update(e.categoryId, (v) => v + l.amount, ifAbsent: () => l.amount);
-        } else if (kind != FundKind.nextMonth) {
-          elsewhere.update((e.categoryId, l.fundId), (v) => v + l.amount, ifAbsent: () => l.amount);
-        }
-      }
-    }
-    String name(int? category) => ledger.categories[category]?.name ?? 'Income';
-    return CollapsibleCard(
-      title: 'This month',
-      collapsed: fold('month'),
-      onToggle: () => fold.toggle('month'),
-      summary: Money(s.leftToSpend),
-      children: [
-        AmountRow('Carried forward', s.carriedForward),
-        if (s.released != 0)
-          AmountRow(
-            'Income for ${s.period.label.split(' ').first}',
-            s.released,
-            detail: 'received last month',
-            signed: true,
-          ),
-        // Income held for next month is not part of this month's flow.
-        for (final MapEntry(:key, :value) in toSpending.entries)
-          AmountRow(name(key), value, signed: true),
-        if (s.setAside != 0)
-          AmountRow('Set aside', -s.setAside, detail: 'savings, goals, DPS', signed: true),
-        AmountRow('Spent', -s.spendingExpenses, signed: true),
-        if (s.loanNet != 0)
-          AmountRow(s.loanNet > 0 ? 'Borrowed' : 'Loan repayment', s.loanNet, signed: true),
-        if (s.startingNet != 0) AmountRow('Starting balance', s.startingNet, signed: true),
-        if (s.adjustNet != 0) AmountRow('Adjustments', s.adjustNet, signed: true),
-        AmountRow('Left to spend', s.leftToSpend, total: true),
-        for (final MapEntry(key: (category, fund), :value) in elsewhere.entries)
-          Text(
-            'Also received: ${name(category)} ${formatTaka(value)} → '
-            '${ledger.funds[fund]?.name ?? 'a pot'}',
-            style: TextStyle(color: StatusColors.of(context).muted, fontSize: 12),
-          ),
-      ],
-    );
-  }
-}
-
-class _WhereAndWhat extends StatelessWidget {
-  const _WhereAndWhat({required this.ledger, required this.fold});
+/// Bank, cash and wallets.
+class _WhereItIs extends StatelessWidget {
+  const _WhereItIs({required this.ledger, required this.fold});
 
   final Ledger ledger;
   final _Fold fold;
@@ -381,57 +416,75 @@ class _WhereAndWhat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final liquid = ledger.accountsOfType((t) => t.isLiquid).where((a) => !a.archived);
-    final goals = ledger
-        .fundsOfKind(FundKind.goal)
-        .fold<Poisha>(0, (t, f) => t + ledger.fundBalance(f.id));
     final total = ledger.liquidTotal();
-
-    // Stacked, not side by side: at phone width with Android's font sizes
-    // two half-width cards wrap names like "Spending".
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 12,
+    return CollapsibleCard(
+      title: 'Where your money is',
+      collapsed: fold('where'),
+      onToggle: () => fold.toggle('where'),
+      summary: Money(total),
       children: [
-        CollapsibleCard(
-          title: 'Where it is',
-          collapsed: fold('where'),
-          onToggle: () => fold.toggle('where'),
-          summary: Money(total),
+        for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
+        AmountRow('Total', total, total: true),
+        Wrap(
+          spacing: 4,
           children: [
-            for (final a in liquid) AmountRow(a.name, ledger.accountBalance(a.id)),
-            AmountRow('Total', total, total: true),
-            Wrap(
-              spacing: 4,
-              children: [
-                TextButton.icon(
-                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                  onPressed: () => showMatchBalance(context),
-                  icon: const Icon(Icons.fact_check_outlined, size: 18),
-                  label: const Text('Match balance'),
-                ),
-                TextButton.icon(
-                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                  onPressed: () => openScreen(context, const CashScreen()),
-                  icon: const Icon(Icons.payments_outlined, size: 18),
-                  label: const Text('Cash drawer'),
-                ),
-              ],
+            TextButton.icon(
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              onPressed: () => showMatchBalance(context),
+              icon: const Icon(Icons.fact_check_outlined, size: 18),
+              label: const Text('Match balance'),
+            ),
+            TextButton.icon(
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              onPressed: () => openScreen(context, const CashScreen()),
+              icon: const Icon(Icons.payments_outlined, size: 18),
+              label: const Text('Cash drawer'),
             ),
           ],
         ),
-        CollapsibleCard(
-          title: "What it's for",
-          collapsed: fold('what'),
-          onToggle: () => fold.toggle('what'),
-          summary: Money(total),
+      ],
+    );
+  }
+}
+
+/// A short "What it's for": the main pots and this month's two key
+/// figures. Tap for every pot, how the month adds up, and net worth.
+class _WhatItsFor extends StatelessWidget {
+  const _WhatItsFor({required this.ledger, required this.summary});
+
+  final Ledger ledger;
+  final PeriodSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = summary;
+    final savings = ledger
+        .fundsOfKind(FundKind.savings)
+        .fold<Poisha>(0, (t, f) => t + ledger.fundBalance(f.id));
+    final goals = ledger
+        .fundsOfKind(FundKind.goal)
+        .fold<Poisha>(0, (t, f) => t + ledger.fundBalance(f.id));
+    final next = ledger.heldForNextMonth;
+    return SectionCard(
+      onTap: () => openScreen(context, const MoneyDetailsScreen()),
+      children: [
+        Row(
           children: [
-            AmountRow('Spending', ledger.fundBalance(ledger.spendingFund.id)),
-            for (final f in ledger.fundsOfKind(FundKind.savings))
-              AmountRow(f.name, ledger.fundBalance(f.id)),
-            if (goals != 0) AmountRow('Goals', goals),
-            if (ledger.heldForNextMonth != 0) AmountRow('For next month', ledger.heldForNextMonth),
-            AmountRow('Total', total, total: true),
+            const Expanded(child: Label('What your money is for')),
+            Icon(Icons.chevron_right, size: 20, color: StatusColors.of(context).muted),
           ],
+        ),
+        AmountRow('Spending', ledger.fundBalance(ledger.spendingFund.id)),
+        AmountRow('Savings', savings),
+        if (goals != 0) AmountRow('Goals', goals),
+        if (next != 0) AmountRow('For ${s.period.next.label.split(' ').first}', next),
+        const Divider(),
+        AmountRow('Carried forward', s.carriedForward, detail: 'from last month'),
+        AmountRow(
+          s.unplanned >= 0 ? 'Unplanned' : 'Short',
+          s.unplanned.abs(),
+          detail: s.unplanned >= 0 ? 'no budget waiting for it' : 'budgets need more',
+          color: s.unplanned < 0 ? StatusColors.of(context).bad : null,
         ),
       ],
     );

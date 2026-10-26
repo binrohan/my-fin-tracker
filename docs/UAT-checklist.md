@@ -197,6 +197,16 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Add an expense in the app: all widgets update.
 - [ ] App lock on: widgets show **Locked**.
 
+## 20. New in 1.4.0: one Home, and keeping to the budget
+
+- [ ] Home order: **Left to spend this month** → Needs attention → **Bills to pay** → **Recent** → **Where your money is** → **What your money is for**. More → Appearance no longer has a Home page choice.
+- [ ] Main card: Left to spend, **Left after bills** (minus bills still to pay), and where the spending money sits (Bank · Cash · bKash).
+- [ ] **Budget by category** opens each budget's "left of"; an over category shows **Cover** → Move budget with it filled in.
+- [ ] **Recent**: last five entries; tap one for details; **See all** opens All entries.
+- [ ] **What your money is for**: short list; tap → every pot, This month, Net worth.
+- [ ] Quick add an expense bigger than its category's budget left → **Over the … budget** → **Move ৳…** → pick From → Move → the expense is saved and the category isn't over.
+- [ ] Same again → **Record anyway** saves it over budget; **Cancel** goes back to Quick add.
+
 ---
 
 ## Issues

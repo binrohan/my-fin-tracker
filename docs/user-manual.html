@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Fin Tracker Manual</title>
-<meta name="description" content="How to use My Fin Tracker, version 1.3.1: setup, daily entries, budgets, savings, loans, month end, tools, reports and backup.">
+<meta name="description" content="How to use My Fin Tracker, version 1.4.0: setup, daily entries, budgets, savings, loans, month end, tools, reports and backup.">
 <style>
   :root {
     --bg: #f6f7f5;
@@ -149,7 +149,7 @@
 <body>
 
 <header class="top">
-  <span class="badge">Version 1.3.1</span>
+  <span class="badge">Version 1.4.0</span>
   <h1>My Fin Tracker: how to use it</h1>
   <p>Track spending, savings, loans and salary on your Android phone. Your data stays on the phone unless you share a backup.</p>
 </header>
@@ -263,22 +263,17 @@
 
 <section id="home">
   <h2><span class="num">6</span>Home</h2>
+  <p>From top to bottom:</p>
   <ul>
     <li><strong>Close September</strong> appears after a month ends (see <a href="#monthend">section 12</a>).</li>
-    <li><strong>Needs attention</strong> lists bank messages to add, income that should have arrived, bills due and slots planned in the next 3 days, overdue or long loans, investments maturing soon, and an overdue backup. Tap one to go to the right screen.</li>
-    <li><strong>Ready for November</strong> shows income held for next month.</li>
-    <li><strong>Left to spend</strong> is the big card, with about how much a day you can spend.</li>
-    <li><strong>This month</strong> shows how you got to that number: carried forward, income, set aside, spent, loans.</li>
-    <li><strong>Where it is / What it's for</strong> shows balances by account and by pot. <strong>Match balance</strong> and <strong>Cash drawer</strong> are here too.</li>
-    <li><strong>Net worth</strong> includes investments and loans.</li>
+    <li><strong>Left to spend this month</strong> (the big card): this month's spending money and about how much a day. <strong>Left after bills</strong> takes off the fixed bills still to pay and money kept in slots. Below it, where the spending money sits (e.g. Bank ৳10,000 · Cash ৳490). Tap <strong>Budget by category</strong> to see what is left of each budget; a category that went over shows <strong>Cover</strong> to move budget into it.</li>
+    <li><strong>Needs attention</strong>: bank messages to add, income that should have arrived, slots coming up, overdue or long loans, investments maturing, an overdue backup.</li>
+    <li><strong>Bills to pay</strong>: fixed bills still unpaid this month, with their due dates and <strong>Pay all</strong>.</li>
+    <li><strong>Recent</strong>: the last five entries. <strong>See all</strong> opens every entry.</li>
+    <li><strong>Where your money is</strong>: bank, cash and wallets, with Match balance and the Cash drawer.</li>
+    <li><strong>What your money is for</strong>: Spending, Savings, Goals, carried forward and unplanned (or short). Tap it for every pot, how this month adds up, and net worth.</li>
   </ul>
-  <p>Tap a section's heading to fold it away. Folded, it shows just its total or count, and stays folded next time.</p>
-  <h3>Two Homes</h3>
-  <p>Choose in <span class="path">More → Appearance → Home page</span>:</p>
-  <ul>
-    <li><strong>Standard</strong>: the big number is everything left to spend, bills included.</li>
-    <li><strong>After bills</strong>: the big number is <strong>Free to spend</strong>. Fixed bills still to pay, and money kept in slots, are taken off, and the sum is shown in the card (Left to spend − bills still to pay = free to spend). A <strong>Bills to pay</strong> card lists each unpaid bill with its due date, and <strong>Pay all</strong>.</li>
-  </ul>
+  <p>Tap a section's heading to fold it away; it stays folded next time.</p>
 </section>
 
 <section id="expenses">
@@ -292,6 +287,8 @@
     <li><strong>Move budget</strong>: move budget from one category to another for this month only.</li>
   </ul>
   <p>Neither changes your Monthly plan. Next month starts from the plan again.</p>
+  <h3>Keeping to the budget</h3>
+  <p>When an expense would take a category over its budget, Quick add stops and says by how much. <strong>Move ৳…</strong> opens Move budget with the category and amount filled in: choose where to take it from, and the expense is then saved. <strong>Record anyway</strong> saves it over budget (for money already spent), and <strong>Cancel</strong> goes back. Categories already over show <strong>Cover</strong> under Budget by category on Home.</p>
   <h3>Save to a pot during the month</h3>
   <p><strong>Save to pot</strong> moves part of a category's budget into a savings pot or goal now, instead of waiting for month end. Example: Rice Bag's ৳1,000 into a Rice Bag pot each month. You can also tap a category that is linked to a pot. This month's budget for the category drops and the money moves out of Spending, so nothing shows as <em>Short</em>. A fixed bill saved in full no longer shows as due, and closing the month won't save it again. <strong>Undo</strong> in the same card reverses it.</p>
 </section>
@@ -444,7 +441,7 @@
   </dl>
 </section>
 
-  <footer>My Fin Tracker 1.3.1 · Works offline · Your data stays on your phone</footer>
+  <footer>My Fin Tracker 1.4.0 · Works offline · Your data stays on your phone</footer>
   </main>
 </div>
 </body>

@@ -10,9 +10,10 @@ import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
+import 'package:my_fin_tracker/features/home/money_details_screen.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
 
-/// The two Homes and folding sections, at Galaxy S24 size.
+/// Home and its details screen, at Galaxy S24 size.
 void main() {
   late AppDatabase db;
 
@@ -25,6 +26,7 @@ void main() {
 
   Future<void> pump(
     WidgetTester tester, {
+    Widget home = const Scaffold(body: HomeScreen()),
     Map<String, String> settings = const {},
     Brightness brightness = Brightness.light,
   }) async {
@@ -45,50 +47,75 @@ void main() {
           repositoryProvider.overrideWithValue(LedgerRepository(db)),
           todayProvider.overrideWithValue(DateTime(2026, 10, 8)),
         ],
-        child: MaterialApp(
-          theme: buildTheme(brightness),
-          home: const Scaffold(body: HomeScreen()),
-        ),
+        child: MaterialApp(theme: buildTheme(brightness), home: home),
       ),
     );
     await tester.pumpAndSettle();
   }
 
   for (final brightness in Brightness.values) {
-    testWidgets('After bills: free to spend with the sum (${brightness.name})', (tester) async {
-      await pump(tester, settings: {homeStyleSetting: homeAfterBills}, brightness: brightness);
+    testWidgets('history, the main card and its breakdown (${brightness.name})', (tester) async {
+      await pump(tester, brightness: brightness);
+      expect(find.text('LEFT TO SPEND THIS MONTH'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Budget by category'), 300);
       // Left to spend ৳24,420 − bills ৳4,000.
-      expect(find.text('FREE TO SPEND'), findsOneWidget);
-      expect(find.text('৳20,420'), findsWidgets);
-      expect(find.text('Bills still to pay'), findsOneWidget);
-      expect(find.text('−৳4,000'), findsOneWidget);
-      expect(find.text('BILLS TO PAY'), findsOneWidget);
-      expect(find.text('Pay all · ৳4,000'), findsOneWidget);
-      // Bills are listed once, not again under Needs attention.
-      expect(find.text('Water & Service due in 2 days'), findsNothing);
+      expect(find.textContaining('Left after bills', findRichText: true), findsOneWidget);
+      expect(find.text('৳20,420'), findsOneWidget);
+      expect(find.textContaining('Bank ৳'), findsWidgets, reason: 'where the spending money is');
+
+      await tester.ensureVisible(find.text('Budget by category'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Budget by category'));
+      await tester.pumpAndSettle();
+      final open = await tester.runAsync(
+        () async => (await Ledger.load(db)).settings[homeCollapsedSetting],
+      );
+      expect(open, contains('breakdown+'));
+      await tester.scrollUntilVisible(find.text('RECENT'), 300);
+      expect(find.text('See all'), findsOneWidget);
     });
   }
 
-  testWidgets('Standard Home keeps left to spend first', (tester) async {
-    await pump(tester);
-    expect(find.text('LEFT TO SPEND'), findsOneWidget);
-    expect(find.text('FREE TO SPEND'), findsNothing);
-    expect(find.text('Water & Service due in 2 days'), findsOneWidget);
+  testWidgets('the breakdown lists each budget and offers Cover when over', (tester) async {
+    await tester.runAsync(() async {
+      final l = await Ledger.load(db);
+      final ration = l.categories.values.firstWhere((c) => c.name == 'Ration').id;
+      final bank = l.accounts.values.firstWhere((a) => a.name == 'Bank').id;
+      await LedgerRepository(db).expense(
+        DateTime(2026, 10, 7),
+        taka(20000),
+        categoryId: ration,
+        from: (account: bank, fund: l.spendingFund.id),
+      );
+    });
+    await pump(tester, settings: {homeCollapsedSetting: 'breakdown+'});
+    await tester.scrollUntilVisible(find.text('Hide budget by category'), 300);
+    expect(find.text('Ration'), findsWidgets);
+    expect(find.text('Cover'), findsWidgets);
   });
 
-  testWidgets('folded sections show a summary and stay folded', (tester) async {
-    await pump(tester, settings: {homeCollapsedSetting: 'attention,month'});
+  testWidgets('folded sections stay folded', (tester) async {
+    await pump(tester, settings: {homeCollapsedSetting: 'attention,history'});
     expect(find.text('NEEDS ATTENTION'), findsOneWidget);
-    expect(find.text('Water & Service due in 2 days'), findsNothing);
-    await tester.scrollUntilVisible(find.text('THIS MONTH'), 300);
-    expect(find.text('Carried forward'), findsNothing);
-
-    await tester.tap(find.text('THIS MONTH'));
+    expect(find.text('No backup yet'), findsNothing);
+    expect(find.text('See all'), findsNothing);
+    await tester.scrollUntilVisible(find.text('RECENT'), 300);
+    await tester.tap(find.text('RECENT'));
     await tester.pumpAndSettle();
     final saved = await tester.runAsync(
       () async => (await Ledger.load(db)).settings[homeCollapsedSetting],
     );
-    expect(saved, 'attention', reason: 'This month opened again');
+    expect(saved, 'attention', reason: 'Recent opened again');
+  });
+
+  testWidgets("What it's for opens the details", (tester) async {
+    await pump(tester);
+    await tester.scrollUntilVisible(find.text('WHAT YOUR MONEY IS FOR'), 300);
+    await tester.tap(find.text('WHAT YOUR MONEY IS FOR'));
+    await tester.pumpAndSettle();
+    expect(find.text('EVERY POT'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('৳4,28,770'), 300);
+    expect(find.textContaining('Net worth', findRichText: true), findsOneWidget);
   });
 
   testWidgets('income straight into savings is shown apart, not in the sum', (tester) async {
@@ -104,13 +131,11 @@ void main() {
         to: (account: bank, fund: savings),
       );
     });
-    await pump(tester);
+    await pump(tester, home: const MoneyDetailsScreen());
     await tester.scrollUntilVisible(
       find.text('Also received: Other income ৳5,000 → Monthly Savings'),
       300,
     );
-    // Left to spend is unchanged by it.
-    expect(find.text('৳24,420'), findsWidgets);
     expect(find.text('Other income'), findsNothing, reason: 'not a row of the sum');
   });
 }

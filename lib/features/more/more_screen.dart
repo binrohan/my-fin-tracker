@@ -23,7 +23,6 @@ import '../trackers/trackers_screen.dart';
 import '../entries/entries_screen.dart';
 import '../loans/loans_screen.dart';
 import '../reports/reports_screen.dart';
-import '../home/home_screen.dart';
 import '../home/month_tasks.dart';
 import '../plan/monthly_plan_screen.dart';
 import '../setup/accounts_screen.dart';
@@ -399,9 +398,6 @@ class _AppearanceCard extends ConsumerWidget {
     LedgerRepository repo() => ref.read(repositoryProvider);
     final status = StatusColors.of(context);
     final darkNow = Theme.of(context).brightness == Brightness.dark;
-    final homeStyle = ref.watch(ledgerProvider).value?.settings[homeStyleSetting] == homeAfterBills
-        ? homeAfterBills
-        : homeStandard;
 
     return SectionCard(
       children: [
@@ -427,24 +423,6 @@ class _AppearanceCard extends ConsumerWidget {
           selected: {look.mode},
           showSelectedIcon: false,
           onSelectionChanged: (s) => repo().setSetting(Appearance.modeKey, s.single.name),
-        ),
-        const SizedBox(height: 4),
-        Text('Home page', style: TextStyle(color: status.muted)),
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: homeStandard, label: Text('Standard')),
-            ButtonSegment(value: homeAfterBills, label: Text('After bills')),
-          ],
-          selected: {homeStyle},
-          showSelectedIcon: false,
-          onSelectionChanged: (s) => repo().setSetting(homeStyleSetting, s.single),
-        ),
-        Text(
-          homeStyle == homeAfterBills
-              ? 'Shows what is free once the fixed bills still to pay are taken off, '
-                    'with the sum and a Bills to pay list.'
-              : 'Shows everything left to spend this month, bills included.',
-          style: TextStyle(color: status.muted, fontSize: 12),
         ),
         const SizedBox(height: 4),
         Text('Colour', style: TextStyle(color: status.muted)),

@@ -12,6 +12,7 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../entries/receipt.dart';
+import '../spend/slots.dart';
 
 enum QuickAddMode { expense, income, move }
 
@@ -229,7 +230,62 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
   bool get _canSave =>
       !_saving && _amount > 0 && (_mode == QuickAddMode.move ? _from != _to : _categoryId != null);
 
+  /// An expense that would take its category over budget: offers to move
+  /// budget in first. True to go on and save.
+  Future<bool> _keepToBudget(Ledger ledger) async {
+    if (_mode != QuickAddMode.expense || _categoryId == null) return true;
+    final period = Period.of(_date);
+    final room = ledger.budgetRoom(_categoryId!, period);
+    if (room == null) return true;
+    var left = room.left;
+    // Editing: the old amount is already counted in what is spent.
+    final old = widget.editing;
+    if (old != null &&
+        old.type == EntryType.expense &&
+        old.categoryId != null &&
+        period.contains(old.date) &&
+        ledger.budgetRoom(old.categoryId!, period)?.categoryId == room.categoryId) {
+      left += old.amount;
+    }
+    final over = _amount - left;
+    if (over <= 0) return true;
+
+    final name = ledger.categories[room.categoryId]?.name ?? 'This category';
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Over the $name budget'),
+        content: Text(
+          left > 0
+              ? '$name has ${formatTaka(left)} left this month. This expense is '
+                    '${formatTaka(_amount)}: ${formatTaka(over)} over.\n\n'
+                    'Move ${formatTaka(over)} of budget from another category first.'
+              : '$name has no budget left this month'
+                    '${left < 0 ? ' (already ${formatTaka(-left)} over)' : ''}.\n\n'
+                    'Move ${formatTaka(over)} of budget from another category first.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'anyway'),
+            child: const Text('Record anyway'),
+          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'move'),
+            child: Text('Move ${formatTaka(over)}'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return false;
+    if (choice == 'anyway') return true;
+    if (choice != 'move') return false;
+    return showMoveBudgetSheet(context, period, to: room.categoryId, amount: over);
+  }
+
   Future<void> _save(Ledger ledger) async {
+    if (!await _keepToBudget(ledger)) return;
+    if (!mounted) return;
     setState(() => _saving = true);
     final repo = ref.read(repositoryProvider);
     final messenger = ScaffoldMessenger.of(context);
