@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App icon: a bold ৳ in a thin mint ring (108 × 108, adaptive icon). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,27 a27,27 0 1,1 0,54 a27,27 0 1,1 0,-54"
+        android:strokeColor="#4EC2A0"
+        android:strokeWidth="3" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43.37 38Q47.06 38 49.35 40.34Q51.64 42.67 51.64 46.96V48.78H53.36V54.68H51.64L51.69 63Q51.69 64.52 52.7 65.31Q53.7 66.1 55.28 66.1Q58.23 66.1 59.81 64Q61.38 61.91 61.38 58.81Q61.38 54.63 57.69 54.63Q56.61 54.63 55.62 54.83V48.82Q57.15 48.48 58.72 48.48Q63.45 48.48 65.86 51.31Q68.27 54.14 68.27 58.81Q68.27 64.32 64.78 68.16Q61.28 72 55.28 72Q50.9 72 47.85 69.61Q44.8 67.23 44.8 63V54.68H40.91V48.78H44.8V48.23Q44.8 44.4 41.55 44.4Q40.17 44.4 39.73 44.45V38.34Q41.75 38 43.37 38Z" />
+</vector>

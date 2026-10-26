@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dev app ("My Fin (dev)") is orange so the two apps are easy to tell apart. -->
+    <color name="ic_launcher_background">#B4471B</color>
+</resources>
