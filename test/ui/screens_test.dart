@@ -96,11 +96,13 @@ void main() {
         expect(find.text('No backup yet'), findsOneWidget);
         // Bills are on their own card, not repeated under Needs attention.
         expect(find.text('Water & Service due in 2 days'), findsNothing);
-        expect(find.text('LEFT TO SPEND THIS MONTH'), findsOneWidget);
-        expect(find.text('৳24,420'), findsWidgets);
-        expect(find.text('≈ ৳1,018 a day for 24 days'), findsOneWidget);
-        expect(find.textContaining('Left after bills', findRichText: true), findsOneWidget);
+        // Headline: left to spend ৳24,420 − bills ৳4,000.
+        expect(find.text('LEFT TO SPEND AFTER BILLS'), findsOneWidget);
         expect(find.text('৳20,420'), findsOneWidget);
+        expect(find.text('≈ ৳851 a day · 24 days left'), findsOneWidget);
+        expect(find.text('Left to spend'), findsOneWidget);
+        expect(find.text('৳24,420'), findsWidgets);
+        expect(find.text('≈ ৳1,018 a day'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('BILLS TO PAY'), 300);
         await tester.scrollUntilVisible(find.text('৳1,23,970'), 300);
         expect(find.text('৳1,23,970'), findsOneWidget);
@@ -694,7 +696,7 @@ void main() {
       await pump(tester, const HomeScreen(), held);
       expect(find.text('৳24,420'), findsWidgets, reason: 'left to spend unchanged');
       await tester.scrollUntilVisible(find.text('For November'), 300);
-      expect(find.text('৳85,000'), findsWidgets);
+      expect(find.text('85,000'), findsWidgets, reason: 'in the table, without ৳');
     });
 
     testWidgets('recording it offers "For November", on by default', (tester) async {

@@ -56,12 +56,13 @@ void main() {
   for (final brightness in Brightness.values) {
     testWidgets('history, the main card and its breakdown (${brightness.name})', (tester) async {
       await pump(tester, brightness: brightness);
-      expect(find.text('LEFT TO SPEND THIS MONTH'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Budget by category'), 300);
       // Left to spend ৳24,420 − bills ৳4,000.
-      expect(find.textContaining('Left after bills', findRichText: true), findsOneWidget);
+      expect(find.text('LEFT TO SPEND AFTER BILLS'), findsOneWidget);
       expect(find.text('৳20,420'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Budget by category'), 300);
+      expect(find.text('Left to spend'), findsOneWidget);
       expect(find.textContaining('Bank ৳'), findsWidgets, reason: 'where the spending money is');
+      expect(find.text('Bills to pay'), findsOneWidget);
 
       await tester.ensureVisible(find.text('Budget by category'));
       await tester.pumpAndSettle();
@@ -111,6 +112,15 @@ void main() {
   testWidgets("What it's for opens the details", (tester) async {
     await pump(tester);
     await tester.scrollUntilVisible(find.text('WHAT YOUR MONEY IS FOR'), 300);
+    await tester.scrollUntilVisible(find.text('Sector'), 300);
+    // Sectors down the side, accounts across.
+    expect(find.text('Spending'), findsWidgets);
+    expect(find.text('Monthly Savings'), findsOneWidget);
+    expect(find.text('Bank'), findsWidgets);
+    expect(find.text('Cash'), findsWidgets);
+    expect(find.text('1,32,920'), findsOneWidget, reason: 'bank + cash + wallets');
+    await tester.ensureVisible(find.text('WHAT YOUR MONEY IS FOR'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('WHAT YOUR MONEY IS FOR'));
     await tester.pumpAndSettle();
     expect(find.text('EVERY POT'), findsOneWidget);

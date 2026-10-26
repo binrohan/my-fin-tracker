@@ -200,7 +200,8 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 ## 20. New in 1.4.0: one Home, and keeping to the budget
 
 - [ ] Home order: **Left to spend this month** → Needs attention → **Bills to pay** → **Recent** → **Where your money is** → **What your money is for**. More → Appearance no longer has a Home page choice.
-- [ ] Main card: Left to spend, **Left after bills** (minus bills still to pay), and where the spending money sits (Bank · Cash · bKash).
+- [ ] Main card: big **Left to spend after bills**, ≈ a day; tiles **Left to spend** and **Bills to pay**; chips for where the spending money sits (Bank · Cash · bKash).
+- [ ] **What your money is for** is a table: sectors down, Bank/Cash/bKash across, totals; nothing wraps or is cut off.
 - [ ] **Budget by category** opens each budget's "left of"; an over category shows **Cover** → Move budget with it filled in.
 - [ ] **Recent**: last five entries; tap one for details; **See all** opens All entries.
 - [ ] **What your money is for**: short list; tap → every pot, This month, Net worth.
