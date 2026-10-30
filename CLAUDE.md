@@ -43,4 +43,7 @@ More detail, read when relevant:
 3. Schema change? snapshot the old schema to `test/fixtures/schema_vN.sql` first + upgrade test.
 4. Update `docs/user-manual.html`, a "New in x.y.z" section in `docs/UAT-checklist.md`, bump
    `version:` in pubspec (x.y.z+build), commit, `git tag vX.Y.Z`, build, install if the phone is on.
-5. Reply in plain words: what changed for the user, what was verified, anything not done.
+5. **Keep the AI notes current in the same commit** when relevant: `docs/ai/status.md` (version,
+   open questions), `architecture.md` (model/schema/keys), `conventions.md` (new test pitfalls),
+   `workflow.md` (process), and this file (rules, commands).
+6. Reply in plain words: what changed for the user, what was verified, anything not done.

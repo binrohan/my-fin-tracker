@@ -660,7 +660,7 @@ class LedgerRepository {
     }
     // Split already done (or not wanted): nothing to do when it is released.
     if (to == IncomeTo.nextMonth) {
-      await setSetting(splitOnReleaseKey(Period.of(date).next), 'false');
+      await setSetting(splitOnReleaseKey(Period.of(date).next), splitDone);
     }
     return id;
   });
@@ -703,34 +703,49 @@ class LedgerRepository {
     return (setAside: setAside, unplanned: extra > 0 ? extra : 0);
   }
 
+  /// Marks that a month's parked income needs no split on release.
+  static const splitDone = 'done';
+
   /// Catch-up for a salary recorded under the old rules (held whole for
-  /// next month, split waiting for the 1st): splits it now as the plan
-  /// says, keeping only its spending part parked. Runs once; returns what
-  /// went to pots and to Unplanned, or null when there was nothing to do.
-  Future<({Poisha setAside, Poisha unplanned})?> splitHeldSalary(DateTime today) =>
-      db.transaction(() async {
-        final ledger = await Ledger.load(db);
-        final month = Period.of(today);
+  /// next month, its split left for the 1st, or switched off by recording
+  /// another income after it): splits it now as the plan says, keeping only
+  /// its spending part parked. Looks at this month and, if not released
+  /// yet, last month. Runs once per month; returns what went to pots and
+  /// to Unplanned, or null when there was nothing to do.
+  Future<({Poisha setAside, Poisha unplanned})?> splitHeldSalary(DateTime today) => db.transaction(
+    () async {
+      final ledger = await Ledger.load(db);
+      final plan = ledger.latestPlan;
+      final fund = ledger.nextMonthFund;
+      if (fund == null || plan.isEmpty) return null;
+      final now = Period.of(today);
+      for (final month in [now, now.previous]) {
         final key = splitOnReleaseKey(month.next);
-        if (ledger.settings[key] != 'true') return null;
-        final plan = ledger.latestPlan;
+        if (ledger.settings[key] == splitDone) continue;
         final held = ledger
             .heldIncomes(month)
             .where((e) => e.categoryId == plan.categoryId)
             .firstOrNull;
-        final fund = ledger.nextMonthFund;
-        if (held == null || fund == null || plan.isEmpty) return null;
+        if (held == null) continue;
         final account = ledger.postingsOf(held.id).firstWhere((l) => l.fundId == fund.id).accountId;
-        final available = ledger.cell(account, fund.id);
+        // Already released (and split then): nothing parked any more.
+        final parked = ledger.cell(account, fund.id);
+        if (parked <= 0) {
+          await setSetting(key, splitDone);
+          continue;
+        }
         final result = await _splitAsPlanned(
           today,
-          held.amount < available ? held.amount : available,
+          held.amount < parked ? held.amount : parked,
           plan,
           (account: account, fund: fund.id),
         );
-        await setSetting(key, 'false');
+        await setSetting(key, splitDone);
         return result;
-      });
+      }
+      return null;
+    },
+  );
 
   /// Income received now to spend next month: held in "For next month" in
   /// [account] until the 1st. [setAsideOnRelease] decides whether the
@@ -788,7 +803,9 @@ class LedgerRepository {
         final trigger = ledger
             .heldIncomes(month.previous)
             .where((e) => e.categoryId == plan.categoryId);
-        final wanted = ledger.settings[splitOnReleaseKey(month)] != 'false';
+        // Only salaries held by old versions with the split still pending;
+        // the catch-up normally handles those before release.
+        final wanted = ledger.settings[splitOnReleaseKey(month)] == 'true';
         if (plan.isEmpty || trigger.isEmpty || !wanted) return (released: released, setAside: 0);
         final account = ledger.postingsOf(trigger.first.id).first.accountId;
         await applyAllocation(plan, month.start, (account: account, fund: spending));

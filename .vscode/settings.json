@@ -1,0 +1,21 @@
+{
+  // My Fin Tracker colours (the app's green), so this window is easy to spot.
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#0D6A55",
+    "titleBar.activeForeground": "#FFFFFF",
+    "titleBar.inactiveBackground": "#0A4F40",
+    "titleBar.inactiveForeground": "#D9EEE6",
+    "activityBar.background": "#0A4F40",
+    "activityBar.foreground": "#FFFFFF",
+    "activityBar.inactiveForeground": "#9FD9C6",
+    "activityBarBadge.background": "#4EC2A0",
+    "activityBarBadge.foreground": "#07231A",
+    "sideBar.border": "#0D6A55",
+    "sideBarTitle.foreground": "#4EC2A0",
+    "statusBar.background": "#0D6A55",
+    "statusBar.foreground": "#FFFFFF",
+    "statusBar.noFolderBackground": "#0D6A55",
+    "window.activeBorder": "#0D6A55",
+    "window.inactiveBorder": "#0A4F40"
+  }
+}

@@ -172,8 +172,13 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
   /// repository checks again inside its transaction.
   Future<void> _releaseIfDue(Ledger ledger) async {
     final now = DateTime.now();
-    final catchUp =
-        ledger.settings[LedgerRepository.splitOnReleaseKey(Period.of(now).next)] == 'true';
+    // A salary parked whole by an older version, not split yet.
+    final catchUp = [Period.of(now), Period.of(now).previous].any(
+      (m) =>
+          ledger.settings[LedgerRepository.splitOnReleaseKey(m.next)] !=
+              LedgerRepository.splitDone &&
+          ledger.heldIncomes(m).any((e) => e.categoryId == ledger.latestPlan.categoryId),
+    );
     if (_releasing || (ledger.releaseDue(now).isEmpty && !catchUp)) return;
     _releasing = true;
     try {

@@ -31,8 +31,10 @@
 - The plan is a **blueprint** used when income arrives (`latestPlan`). `receiveIncome`:
   pots filled at once (moves "Salary plan"), spending part → Spending or the nextMonth fund
   (parked, `IncomeTo.nextMonth`), the rest → the **Unplanned** fund (`FundKind.unplanned`, not
-  monthly). Release on the 1st only moves parked money (split_on_release_<month> = 'false').
-  `splitHeldSalary` is a one-time catch-up for salaries held whole by versions ≤ 1.4.3.
+  monthly). Release on the 1st only moves parked money; it splits only when
+  split_on_release_<month> == 'true' (old data). 'done' = split handled.
+  `splitHeldSalary` (run on app start) splits a salary parked whole by versions ≤ 1.4.3, for this
+  month or last month if not released yet. Editing an income never splits again.
   Plan screen saves to `allocation_plan@<next month>`; its budgets apply from next month.
 - Refund = an expense entry with a **negative** amount (`repo.refund`), same category/tracker.
 

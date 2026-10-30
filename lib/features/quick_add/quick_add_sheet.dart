@@ -311,7 +311,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         categoryId: _categoryId!,
         account: _to.account,
         to: IncomeTo.nextMonth,
-        split: ledger.latestPlan.categoryId == _categoryId ? ledger.latestPlan : null,
+        // Editing an amount never splits again; a new salary is split now.
+        split: widget.editing == null && ledger.latestPlan.categoryId == _categoryId
+            ? ledger.latestPlan
+            : null,
         note: note,
       ),
       QuickAddMode.income => repo.income(
