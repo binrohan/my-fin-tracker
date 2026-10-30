@@ -51,8 +51,9 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
   bool _loaded = false;
   late final Period _thisMonth = Period.of(ref.read(todayProvider));
 
-  /// The month the changes apply from: this one, or the next.
-  late Period _period = _thisMonth;
+  /// The plan is a blueprint, used when income arrives; its budgets apply
+  /// from next month (this month changes with Move budget).
+  late final Period _period = _thisMonth.next;
   final _incomes = <_IncomeRow>[];
   final _splits = <_SplitRow>[];
   final _expenseTarget = TextEditingController();
@@ -61,9 +62,6 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
   /// Budget field per expense category (sections and subsections).
   final _budgets = <int, TextEditingController>{};
   Map<int, Poisha> _originalBudgets = {};
-
-  /// Income amounts as loaded, to tell whether the salary was changed.
-  Map<int, Poisha> _loadedIncomes = {};
 
   @override
   void dispose() {
@@ -81,7 +79,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
   void _load(Ledger ledger) {
     if (_loaded) return;
     _loaded = true;
-    final plan = ledger.planFor(_period);
+    final plan = ledger.latestPlan;
     for (final i in plan.incomes) {
       if (ledger.categories[i.categoryId] != null) {
         _incomes.add(
@@ -102,7 +100,6 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
       if (ledger.funds[i.fundId] != null) _splits.add(_SplitRow(i.fundId, i.accountId, i.amount));
     }
     _trigger = plan.categoryId ?? _incomes.firstOrNull?.categoryId;
-    _loadedIncomes = {for (final i in plan.incomes) i.categoryId: i.amount};
     _originalBudgets = _budgetValues(ledger);
     final total = ledger
         .categoryLines(_period, CategoryKind.expense, withMoves: false)
@@ -134,76 +131,8 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
   Poisha get _setAside => _splits.fold(0, (t, r) => t + _value(r.amount));
   Poisha get _unassigned => _plannedIncome - _value(_expenseTarget) - _setAside;
 
-  /// When editing this month's plan, asks whether the changes apply now or
-  /// from next month. Null if cancelled.
-  Future<Period?> _askWhen(Ledger ledger) async {
-    final next = _thisMonth.next;
-    // A changed salary that is next month's money (paid on the 26th) is
-    // most likely a change for next month.
-    final salaryChanged = _incomes.any(
-      (r) => r.forNextMonth && _value(r.amount) != (_loadedIncomes[r.categoryId] ?? 0),
-    );
-    var choice = salaryChanged ? next : _thisMonth;
-    final waiting = _pending(ledger, next);
-    String month(Period p) => p.label.split(' ').first;
-    return showDialog<Period>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          final status = StatusColors.of(context);
-          Widget option(Period value, String title, String detail) => RadioListTile<Period>(
-            contentPadding: EdgeInsets.zero,
-            value: value,
-            title: Text(title),
-            subtitle: Text(detail),
-          );
-          return AlertDialog(
-            title: const Text('When should this apply?'),
-            content: RadioGroup<Period>(
-              groupValue: choice,
-              onChanged: (v) => setState(() => choice = v ?? choice),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  option(
-                    _thisMonth,
-                    'This month (${month(_thisMonth)})',
-                    'Changes ${month(_thisMonth)}\'s budgets and split too'
-                        '${waiting ? '. The changes waiting for ${month(next)} stay.' : ''}',
-                  ),
-                  option(
-                    next,
-                    'From ${month(next)}',
-                    '${month(_thisMonth)} keeps its plan; ${month(next)} and later use this'
-                        '${waiting ? '. Replaces the changes already waiting.' : ''}',
-                  ),
-                  if (waiting && choice == next)
-                    Text(
-                      'Changes already waiting for ${month(next)} will be replaced.',
-                      style: TextStyle(color: status.warn, fontSize: 12),
-                    ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, choice),
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   Future<void> _save(Ledger ledger) async {
-    // Editing next month's waiting changes saves to next month; editing
-    // this month's plan asks.
-    final target = _period == _thisMonth ? await _askWhen(ledger) : _period;
-    if (target == null) return;
+    final target = _period;
     final repo = ref.read(repositoryProvider);
     final plan = AllocationPlan(
       categoryId: _incomes.any((r) => r.categoryId == _trigger)
@@ -233,153 +162,19 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
     }
     if (!mounted) return;
     Navigator.pop(context);
-    showSnack(
-      context,
-      target == _thisMonth
-          ? 'Monthly plan saved'
-          : 'Saved. It applies from ${target.label}; ${_thisMonth.label} stays as it was.',
-    );
+    showSnack(context, 'Monthly plan saved. Used when income arrives.');
   }
 
-  /// Start again with the plan of [month] (unsaved changes are dropped).
-  void _switchTo(Period month) {
-    for (final c in [
-      ..._incomes.map((r) => r.amount),
-      ..._splits.map((r) => r.amount),
-      ..._budgets.values,
-    ]) {
-      c.dispose();
-    }
-    setState(() {
-      _period = month;
-      _incomes.clear();
-      _splits.clear();
-      _budgets.clear();
-      _loaded = false;
-    });
-  }
-
-  /// Removes the changes waiting for next month: its plan and budgets.
-  Future<void> _cancelNext(Period next) async {
-    if (!await confirm(
-      context,
-      title: 'Cancel the changes from ${next.label}?',
-      body: '${next.label} will use the same plan and budgets as ${_thisMonth.label}.',
-      action: 'Cancel changes',
-      destructive: true,
-    )) {
-      return;
-    }
-    final repo = ref.read(repositoryProvider);
-    await repo.deleteSetting(Ledger.planKeyFrom(next));
-    await repo.deleteBudgetsOf(next);
-    if (mounted) _switchTo(_thisMonth);
-  }
-
-  /// True when next month has a plan or budgets of its own.
-  bool _pending(Ledger ledger, Period next) =>
-      ledger.planChanges.contains(next) ||
-      ledger.budgets.any((b) => b.year == next.year && b.month == next.month);
-
-  /// What changes next month, line by line: "Salary ৳85,000 → ৳1,00,000".
-  List<(String, Poisha, Poisha)> _differences(Ledger ledger, Period next) {
-    final now = ledger.planFor(_thisMonth);
-    final then = ledger.planFor(next);
-    final lines = <(String, Poisha, Poisha)>[];
-    for (final id in {
-      ...now.incomes.map((i) => i.categoryId),
-      ...then.incomes.map((i) => i.categoryId),
-    }) {
-      final a = now.sourceFor(id)?.amount ?? 0;
-      final b = then.sourceFor(id)?.amount ?? 0;
-      if (a != b) lines.add((ledger.categories[id]?.name ?? 'Income', a, b));
-    }
-    Poisha item(AllocationPlan p, int fund) =>
-        p.items.where((i) => i.fundId == fund).fold(0, (t, i) => t + i.amount);
-    for (final fund in {...now.items.map((i) => i.fundId), ...then.items.map((i) => i.fundId)}) {
-      final a = item(now, fund);
-      final b = item(then, fund);
-      if (a != b) lines.add((ledger.funds[fund]?.name ?? 'Pot', a, b));
-    }
-    if ((now.expenseTarget ?? 0) != (then.expenseTarget ?? 0)) {
-      lines.add(('For expenses', now.expenseTarget ?? 0, then.expenseTarget ?? 0));
-    }
-    return lines;
-  }
-
-  /// The note above the tabs: changes waiting for next month, or (while
-  /// editing them) which month they start.
-  Widget? _topNote(Ledger ledger) {
+  /// How the plan is used, above the tabs.
+  Widget _topNote() {
     final status = StatusColors.of(context);
-    final next = _thisMonth.next;
     String month(Period p) => p.label.split(' ').first;
-    final pending = _pending(ledger, next);
-    final budgetCount = ledger.budgets
-        .where((b) => b.year == next.year && b.month == next.month)
-        .length;
-
-    if (_period == next) {
-      return Material(
-        color: Theme.of(context).colorScheme.primary,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Changes from ${next.label}\n${month(_thisMonth)} keeps its plan',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontSize: 13),
-                ),
-              ),
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                ),
-                onPressed: () => _switchTo(_thisMonth),
-                child: Text('Back to ${month(_thisMonth)}'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    if (!pending) return null;
-    final lines = _differences(ledger, next);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: status.warnSoft,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(left: BorderSide(color: status.warn, width: 4)),
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 8, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Label('Changes from ${next.label}', color: status.warn),
-            for (final (name, a, b) in lines.take(4))
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 1),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(name)),
-                    Text('${formatTaka(a)} → ${formatTaka(b)}'),
-                  ],
-                ),
-              ),
-            if (lines.length > 4) Text('and ${lines.length - 4} more'),
-            if (budgetCount > 0)
-              Text('${budgetCount == 1 ? '1 budget' : '$budgetCount budgets'} changed'),
-            Row(
-              children: [
-                TextButton(onPressed: () => _switchTo(next), child: const Text('View / edit')),
-                const Spacer(),
-                TextButton(onPressed: () => _cancelNext(next), child: const Text('Cancel')),
-              ],
-            ),
-          ],
-        ),
+      child: Text(
+        'A blueprint: used when income arrives. Budgets apply from ${month(_period)}; '
+        'to change ${month(_thisMonth)}, use Move budget on the Spend tab.',
+        style: TextStyle(color: status.muted, fontSize: 12.5),
       ),
     );
   }
@@ -431,7 +226,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
         ),
         body: Column(
           children: [
-            ?_topNote(ledger),
+            _topNote(),
             Expanded(
               child: TabBarView(
                 // A new key per month so the tabs start again with its figures.

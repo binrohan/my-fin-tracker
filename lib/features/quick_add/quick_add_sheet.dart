@@ -55,7 +55,9 @@ class QuickAddPrefill {
 }
 
 bool canEditInQuickAdd(Entry e) =>
-    e.type == EntryType.expense || e.type == EntryType.income || e.type == EntryType.move;
+    (e.type == EntryType.expense && e.amount > 0) ||
+    e.type == EntryType.income ||
+    e.type == EntryType.move;
 
 class QuickAddSheet extends ConsumerStatefulWidget {
   const QuickAddSheet({super.key, this.editing, this.prefill, this.mode});
@@ -302,11 +304,14 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         note: note,
         trackerId: _trackerId,
       ),
-      QuickAddMode.income when _holdForNextMonth(ledger) => repo.incomeForNextMonth(
+      // Parked for next month; the main income is split as planned now.
+      QuickAddMode.income when _holdForNextMonth(ledger) => repo.receiveIncome(
         _date,
         amount,
         categoryId: _categoryId!,
         account: _to.account,
+        to: IncomeTo.nextMonth,
+        split: ledger.latestPlan.categoryId == _categoryId ? ledger.latestPlan : null,
         note: note,
       ),
       QuickAddMode.income => repo.income(

@@ -754,6 +754,21 @@ class Ledger {
     return byId;
   }
 
+  /// How far categories went over their budgets in month [p], added up:
+  /// a section with its own budget counts as one, otherwise each
+  /// subsection counts on its own.
+  Poisha overBudget(Period p) {
+    final own = budgetsFor(p);
+    Poisha over(CategoryLine l) {
+      if (l.children.isEmpty || (own[l.category.id] ?? 0) > 0) {
+        return l.budget > 0 && l.actual > l.budget ? l.actual - l.budget : 0;
+      }
+      return l.children.fold(0, (t, c) => t + over(c));
+    }
+
+    return categoryLines(p, CategoryKind.expense).fold(0, (t, l) => t + over(l));
+  }
+
   /// The budget an expense on [categoryId] is checked against in month
   /// [p]: the category's own, or else the nearest section above it with a
   /// budget of its own. Null when none has a budget (nothing to keep to).
@@ -872,6 +887,12 @@ class Ledger {
 
   Fund? get nextMonthFund => funds.values.where((f) => f.kind == FundKind.nextMonth).firstOrNull;
 
+  /// The Unplanned pot, once some income has gone there.
+  Fund? get unplannedFund => funds.values.where((f) => f.kind == FundKind.unplanned).firstOrNull;
+
+  /// Money nothing is planned for yet (not tied to a month).
+  Poisha get unplannedMoney => unplannedFund == null ? 0 : fundBalance(unplannedFund!.id);
+
   /// Income held for next month now (all of it is released on the 1st).
   Poisha get heldForNextMonth => nextMonthFund == null ? 0 : fundBalance(nextMonthFund!.id);
 
@@ -954,7 +975,7 @@ class Ledger {
         if (e.type == EntryType.income && p.contains(e.date)) e.categoryId,
     };
     return [
-      for (final i in planFor(p).incomes)
+      for (final i in latestPlan.incomes)
         if (i.day != null &&
             today.day >= i.day!.clamp(1, p.daysInMonth) &&
             !received.contains(i.categoryId) &&

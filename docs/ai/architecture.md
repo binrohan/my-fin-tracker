@@ -28,9 +28,13 @@
 ## Monthly plan (lib/ledger/allocation.dart)
 - `AllocationPlan` JSON in settings. Dated: base key `allocation_plan`, changes from a month in
   `allocation_plan@YYYY-MM`. Always read with `ledger.planFor(period)` (or `latestPlan`).
-- `IncomeSource.forNextMonth`: salary on the 26th is held in the nextMonth fund and released on
-  the 1st (`releaseHeldIncome`, runs the split of that month's plan). `expectedIncome` expects
-  next month's planned amount for such income.
+- The plan is a **blueprint** used when income arrives (`latestPlan`). `receiveIncome`:
+  pots filled at once (moves "Salary plan"), spending part → Spending or the nextMonth fund
+  (parked, `IncomeTo.nextMonth`), the rest → the **Unplanned** fund (`FundKind.unplanned`, not
+  monthly). Release on the 1st only moves parked money (split_on_release_<month> = 'false').
+  `splitHeldSalary` is a one-time catch-up for salaries held whole by versions ≤ 1.4.3.
+  Plan screen saves to `allocation_plan@<next month>`; its budgets apply from next month.
+- Refund = an expense entry with a **negative** amount (`repo.refund`), same category/tracker.
 
 ## Settings keys (table `settings`)
 allocation_plan(@YYYY-MM), tax_rules, tax_inputs_<year>, income_tax_types, zakat_inputs,

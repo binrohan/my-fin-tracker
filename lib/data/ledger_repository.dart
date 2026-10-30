@@ -28,7 +28,10 @@ class LedgerRepository {
     String note = '',
     bool? budgetSave,
   }) {
-    assert(amount >= 0, 'Entry amounts are positive; postings carry the sign');
+    assert(
+      amount >= 0 || type == EntryType.expense,
+      'Entry amounts are positive (a refund is the one negative expense)',
+    );
     return db.transaction(() async {
       final entryId = await db
           .into(db.entries)
@@ -549,6 +552,20 @@ class LedgerRepository {
         }
       });
 
+  /// Money back for an expense (a cancelled ticket): a negative expense in
+  /// the same category and tracker, dated when the money came back, into
+  /// [to]. It lowers what the category and tracker spent in that month.
+  Future<int> refund(Entry expense, Poisha amount, DateTime date, Pot to) => _write(
+    date: date,
+    type: EntryType.expense,
+    amount: -amount,
+    categoryId: expense.categoryId,
+    trackerId: expense.trackerId,
+    postings: [(to, amount)],
+    note:
+        'Refund: ${expense.note.isEmpty ? 'expense of ${dateOnly(expense.date).day}/${expense.date.month}' : expense.note}',
+  );
+
   /// Saves [amount] of a category's budget to a pot now, during the month:
   /// this month's budget for it drops by that much and the money moves from
   /// Spending to [fundId], staying in [account]. Delete the entry to undo.
@@ -594,6 +611,126 @@ class LedgerRepository {
   }
 
   static String splitOnReleaseKey(Period month) => 'split_on_release_$month';
+
+  /// The "Unplanned" pot: money nothing is planned for yet, not tied to a
+  /// month. Created on first use.
+  Future<int> unplannedFund() async {
+    final existing = await (db.select(
+      db.funds,
+    )..where((f) => f.kind.equalsValue(FundKind.unplanned))).getSingleOrNull();
+    if (existing != null) return existing.id;
+    return db
+        .into(db.funds)
+        .insert(FundsCompanion.insert(name: 'Unplanned', kind: FundKind.unplanned));
+  }
+
+  /// Records an income and puts it where it belongs, all at once:
+  /// - with [split] (the Monthly plan, for the main income), the plan's pots
+  ///   are filled first; then the plan's spending part goes to [to]; what
+  ///   is left goes to Unplanned;
+  /// - without, the whole amount goes to [to].
+  /// [to] is Spending (spend now), the next-month pot (parked for next
+  /// month), Unplanned, or a savings pot or goal ([potFund]).
+  Future<int> receiveIncome(
+    DateTime date,
+    Poisha amount, {
+    required int categoryId,
+    required int account,
+    required IncomeTo to,
+    int? potFund,
+    AllocationPlan? split,
+    String note = '',
+  }) => db.transaction(() async {
+    final ledger = await Ledger.load(db);
+    final target = switch (to) {
+      IncomeTo.spending => ledger.spendingFund.id,
+      IncomeTo.nextMonth => await nextMonthFund(),
+      IncomeTo.unplanned => await unplannedFund(),
+      IncomeTo.pot => potFund!,
+    };
+    final id = await income(
+      date,
+      amount,
+      categoryId: categoryId,
+      to: (account: account, fund: target),
+      note: note,
+    );
+    if (split != null && !split.isEmpty) {
+      await _splitAsPlanned(date, amount, split, (account: account, fund: target));
+    }
+    // Split already done (or not wanted): nothing to do when it is released.
+    if (to == IncomeTo.nextMonth) {
+      await setSetting(splitOnReleaseKey(Period.of(date).next), 'false');
+    }
+    return id;
+  });
+
+  /// From [amount] sitting in [from]: fills the plan's pots, keeps the
+  /// plan's spending part where it is, and moves the rest to Unplanned.
+  /// Returns what went to pots and to Unplanned.
+  Future<({Poisha setAside, Poisha unplanned})> _splitAsPlanned(
+    DateTime date,
+    Poisha amount,
+    AllocationPlan plan,
+    Pot from,
+  ) async {
+    var left = amount;
+    var setAside = 0;
+    for (final item in plan.items) {
+      final part = item.amount < left ? item.amount : left;
+      if (part <= 0) break;
+      await move(
+        date,
+        part,
+        from: from,
+        to: (account: item.accountId ?? from.account, fund: item.fundId),
+        note: 'Salary plan',
+      );
+      left -= part;
+      setAside += part;
+    }
+    final target = plan.expenseTarget;
+    final extra = target == null ? 0 : left - target;
+    if (extra > 0) {
+      await move(
+        date,
+        extra,
+        from: from,
+        to: (account: from.account, fund: await unplannedFund()),
+        note: 'Left after the plan',
+      );
+    }
+    return (setAside: setAside, unplanned: extra > 0 ? extra : 0);
+  }
+
+  /// Catch-up for a salary recorded under the old rules (held whole for
+  /// next month, split waiting for the 1st): splits it now as the plan
+  /// says, keeping only its spending part parked. Runs once; returns what
+  /// went to pots and to Unplanned, or null when there was nothing to do.
+  Future<({Poisha setAside, Poisha unplanned})?> splitHeldSalary(DateTime today) =>
+      db.transaction(() async {
+        final ledger = await Ledger.load(db);
+        final month = Period.of(today);
+        final key = splitOnReleaseKey(month.next);
+        if (ledger.settings[key] != 'true') return null;
+        final plan = ledger.latestPlan;
+        final held = ledger
+            .heldIncomes(month)
+            .where((e) => e.categoryId == plan.categoryId)
+            .firstOrNull;
+        final fund = ledger.nextMonthFund;
+        if (held == null || fund == null || plan.isEmpty) return null;
+        final account = ledger.postingsOf(held.id).firstWhere((l) => l.fundId == fund.id).accountId;
+        final available = ledger.cell(account, fund.id);
+        final result = await _splitAsPlanned(
+          today,
+          held.amount < available ? held.amount : available,
+          plan,
+          (account: account, fund: fund.id),
+        );
+        await setSetting(key, 'false');
+        return result;
+      });
 
   /// Income received now to spend next month: held in "For next month" in
   /// [account] until the 1st. [setAsideOnRelease] decides whether the

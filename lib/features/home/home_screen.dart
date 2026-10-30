@@ -281,8 +281,10 @@ class _MainCard extends ConsumerWidget {
                     style: TextStyle(color: on, fontWeight: FontWeight.w600),
                   ),
                 ),
-                if (!open && s.unplanned < 0)
-                  chip('Short ${formatTaka(-s.unplanned)}', strong: true),
+                // Overspending is shown on its own; it doesn't eat into
+                // Unplanned. Cover it per category below.
+                if (!open && ledger.overBudget(period) > 0)
+                  chip('Over ${formatTaka(ledger.overBudget(period))}', strong: true),
                 Icon(open ? Icons.expand_less : Icons.expand_more, color: on),
               ],
             ),
@@ -511,15 +513,12 @@ class _WhatItsFor extends StatelessWidget {
         if (o.savedForThings != 0)
           AmountRow('Saved for things', o.savedForThings, detail: 'goals and pots'),
         if (o.heldForNext != 0)
-          AmountRow('Held for ${s.period.next.label.split(' ').first}', o.heldForNext),
-        const Divider(),
-        AmountRow('Carried forward', s.carriedForward, detail: 'from last month'),
-        AmountRow(
-          s.unplanned >= 0 ? 'Unplanned' : 'Short',
-          s.unplanned.abs(),
-          detail: s.unplanned >= 0 ? 'no budget waiting for it' : 'budgets need more',
-          color: s.unplanned < 0 ? status.bad : null,
-        ),
+          AmountRow(
+            'Held for ${s.period.next.label.split(' ').first}',
+            o.heldForNext,
+            detail: 'spending money, parked',
+          ),
+        AmountRow('Unplanned', o.unplanned, detail: 'nothing planned for it yet'),
       ],
     );
   }

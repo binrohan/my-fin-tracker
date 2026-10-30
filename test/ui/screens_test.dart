@@ -107,7 +107,7 @@ void main() {
         await tester.scrollUntilVisible(find.text('৳1,23,970'), 300);
         expect(find.text('৳1,23,970'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('WHAT YOUR MONEY IS FOR'), 300);
-        expect(find.textContaining('Carried forward', findRichText: true), findsOneWidget);
+        expect(find.textContaining('Unplanned', findRichText: true), findsOneWidget);
       });
 
       testWidgets('Spend shows budget against actual', (tester) async {
@@ -695,7 +695,10 @@ void main() {
     testWidgets('Home: held for November, October unchanged', (tester) async {
       await pump(tester, const HomeScreen(), held);
       expect(find.text('৳24,420'), findsWidgets, reason: 'left to spend unchanged');
-      await tester.scrollUntilVisible(find.text('Held for November'), 300);
+      await tester.scrollUntilVisible(
+        find.textContaining('Held for November', findRichText: true),
+        300,
+      );
       expect(find.text('৳85,000'), findsWidgets);
     });
 
@@ -714,11 +717,10 @@ void main() {
       );
       await tester.tap(find.text('record'));
       await tester.pumpAndSettle();
-      expect(find.text('For November 2026'), findsOneWidget);
-      final toggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'For November 2026'),
-      );
-      expect(toggle.value, isTrue);
+      // The salary is next month's money: its spending part is parked.
+      final chip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Held for November'));
+      expect(chip.selected, isTrue);
+      expect(find.text('Goes to'), findsOneWidget, reason: 'this plan has no split');
     });
   });
 

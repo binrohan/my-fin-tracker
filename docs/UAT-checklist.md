@@ -208,6 +208,16 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Quick add an expense bigger than its category's budget left → **Over the … budget** → **Move ৳…** → pick From → Move → the expense is saved and the category isn't over.
 - [ ] Same again → **Record anyway** saves it over budget; **Cancel** goes back to Quick add.
 
+## 21. New in 1.5.0: salary splits when it arrives
+
+- [ ] After updating, open the app: a held salary from before is split once ("Salary split as planned: … to your pots, … to Unplanned"). Pots (Tax, Korbani, Zakat, Monthly Savings) go up; **Held for November** shows only the spending part.
+- [ ] Record a salary: the sheet lists each pot, the spending part (Held for November / Spending now) and Unplanned. After saving, pots are filled at once.
+- [ ] On 1 Nov: only the held part becomes November's spending money; pots don't change again.
+- [ ] Record a bonus: **Goes to** a pot / Unplanned / Spending now / Held for November.
+- [ ] Monthly plan: change the salary → Save: no question, no money moves. Budget edits show "Applies from November".
+- [ ] Home: **Unplanned** is the pot; overspending shows as an **Over ৳…** chip on the main card, not in Unplanned. Carried forward is in the details screen only.
+- [ ] Open an expense → **Refund (money back)** → ৳1,400 of ৳1,600 → the category's spending drops by ৳1,400 that month.
+
 ---
 
 ## Issues

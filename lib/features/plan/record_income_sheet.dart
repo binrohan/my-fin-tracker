@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -9,9 +8,11 @@ import '../../core/period.dart';
 import '../../ledger/allocation.dart';
 import '../../ledger/enums.dart';
 import '../../ui/forms.dart';
+import '../../ui/widgets.dart';
 
 /// "Has your Salary arrived?": records a planned income in the account it
-/// arrived in, and sets money aside as the plan says.
+/// arrived in and puts it where it belongs at once: the plan's pots, the
+/// spending part (now or parked for next month), the rest to Unplanned.
 Future<void> showRecordIncome(BuildContext context, IncomeSource source) => showModalBottomSheet(
   context: context,
   useRootNavigator: true,
@@ -33,8 +34,11 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
   late final _amount = TextEditingController(text: amountText(widget.source.amount));
   int? _account;
   late DateTime _date = ref.read(todayProvider);
-  bool _setAside = true;
-  late bool _forNextMonth = widget.source.forNextMonth;
+  bool _split = true;
+
+  /// Where the money (or, after the split, its spending part) goes.
+  late IncomeTo _to = widget.source.forNextMonth ? IncomeTo.nextMonth : IncomeTo.spending;
+  int? _pot;
 
   @override
   void dispose() {
@@ -53,11 +57,41 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
         ? widget.source.accountId
         : defaultAccount(ledger, AccountType.bank).id;
     final name = ledger.categories[widget.source.categoryId]?.name ?? 'Income';
-    final plan = ledger.planFor(Period.of(_date));
+    // The Monthly plan is a blueprint: used as it is now, when income arrives.
+    final plan = ledger.latestPlan;
     final offersSplit = plan.categoryId == widget.source.categoryId && !plan.isEmpty;
+    final splitting = offersSplit && _split;
     final amount = parseTaka(_amount.text) ?? 0;
     final next = Period.of(_date).next;
-    final firstOfNext = DateFormat.MMMd().format(next.start);
+    final nextName = next.label.split(' ').first;
+    final pots = [
+      ...ledger.fundsOfKind(FundKind.savings),
+      ...ledger.fundsOfKind(FundKind.goal).where((f) => f.achievedAt == null),
+    ];
+
+    // What goes where, as the repository will do it.
+    var left = amount;
+    final parts = <(String, Poisha)>[];
+    if (splitting) {
+      for (final i in plan.items) {
+        final part = i.amount < left ? i.amount : left;
+        if (part <= 0) break;
+        parts.add((ledger.funds[i.fundId]?.name ?? 'Pot', part));
+        left -= part;
+      }
+    }
+    final target = plan.expenseTarget;
+    final spendPart = splitting && target != null && left > target ? target : left;
+    final extra = left - spendPart;
+    final toLabel = switch (_to) {
+      IncomeTo.spending => 'Spending now',
+      IncomeTo.nextMonth => 'Held for $nextName',
+      IncomeTo.unplanned => 'Unplanned',
+      IncomeTo.pot => ledger.funds[_pot]?.name ?? 'a pot',
+    };
+
+    Widget choice(String label, bool selected, VoidCallback onTap) =>
+        ChoiceChip(label: Text(label), selected: selected, onSelected: (_) => setState(onTap));
 
     return SheetBody(
       title: 'Record $name',
@@ -72,12 +106,7 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
           spacing: 8,
           runSpacing: 6,
           children: [
-            for (final a in accounts)
-              ChoiceChip(
-                label: Text(a.name),
-                selected: a.id == _account,
-                onSelected: (_) => setState(() => _account = a.id),
-              ),
+            for (final a in accounts) choice(a.name, a.id == _account, () => _account = a.id),
           ],
         ),
         PickerField(
@@ -93,62 +122,65 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
             if (picked != null) setState(() => _date = picked);
           },
         ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text('For ${next.label}'),
-          subtitle: Text(
-            _forNextMonth
-                ? 'Held until $firstOfNext, then it becomes ${next.label}\'s spending money'
-                : 'Counts as spending money now',
-          ),
-          value: _forNextMonth,
-          onChanged: (v) => setState(() => _forNextMonth = v),
-        ),
         if (offersSplit)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(
-              _forNextMonth
-                  ? 'Set aside ${formatTaka(plan.total)} on $firstOfNext as planned'
-                  : 'Set aside ${formatTaka(plan.total)} as planned',
+            title: const Text('Split as planned, now'),
+            subtitle: const Text('Fills your pots today, from the Monthly plan'),
+            value: _split,
+            onChanged: (v) => setState(() => _split = v),
+          ),
+        Text(
+          splitting ? 'Spending part goes to' : 'Goes to',
+          style: TextStyle(color: status.muted),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            choice('Held for $nextName', _to == IncomeTo.nextMonth, () => _to = IncomeTo.nextMonth),
+            choice('Spending now', _to == IncomeTo.spending, () => _to = IncomeTo.spending),
+            choice('Unplanned', _to == IncomeTo.unplanned, () => _to = IncomeTo.unplanned),
+            if (!splitting)
+              for (final f in pots)
+                choice(f.name, _to == IncomeTo.pot && _pot == f.id, () {
+                  _to = IncomeTo.pot;
+                  _pot = f.id;
+                }),
+          ],
+        ),
+        if (amount > 0)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: status.sunk, borderRadius: BorderRadius.circular(12)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 4,
+              children: [
+                for (final (pot, value) in parts) AmountRow(pot, value),
+                AmountRow(toLabel, spendPart, total: parts.isNotEmpty),
+                if (extra > 0) AmountRow('Unplanned', extra, detail: 'more than planned'),
+              ],
             ),
-            subtitle: Text(
-              [
-                for (final i in plan.items)
-                  '${ledger.funds[i.fundId]?.name} ${formatTaka(i.amount)}',
-              ].join(' · '),
-            ),
-            value: _setAside,
-            onChanged: (v) => setState(() => _setAside = v),
           ),
         FilledButton(
-          onPressed: amount <= 0
+          onPressed: amount <= 0 || (_to == IncomeTo.pot && _pot == null)
               ? null
               : () async {
-                  final repo = ref.read(repositoryProvider);
-                  if (_forNextMonth) {
-                    await repo.incomeForNextMonth(
-                      _date,
-                      amount,
-                      categoryId: widget.source.categoryId,
-                      account: _account!,
-                      setAsideOnRelease: offersSplit && _setAside,
-                    );
-                  } else {
-                    final pot = (account: _account!, fund: ledger.spendingFund.id);
-                    await repo.income(_date, amount, categoryId: widget.source.categoryId, to: pot);
-                    if (offersSplit && _setAside) await repo.applyAllocation(plan, _date, pot);
-                  }
+                  await ref
+                      .read(repositoryProvider)
+                      .receiveIncome(
+                        _date,
+                        amount,
+                        categoryId: widget.source.categoryId,
+                        account: _account!,
+                        to: (splitting && _to == IncomeTo.pot) ? IncomeTo.spending : _to,
+                        potFund: _pot,
+                        split: splitting ? plan : null,
+                      );
                   if (!context.mounted) return;
                   Navigator.pop(context);
-                  showSnack(
-                    context,
-                    _forNextMonth
-                        ? '$name held for ${next.label}'
-                        : offersSplit && _setAside
-                        ? '$name recorded and ${formatTaka(plan.total)} set aside'
-                        : '$name recorded',
-                  );
+                  showSnack(context, '$name recorded');
                 },
           child: Text('Record ${formatTaka(amount)}'),
         ),

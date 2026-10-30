@@ -23,6 +23,10 @@ enum FundKind {
   /// Income received this month for next month (salary on the 26th), held
   /// apart until the 1st, when it is released into Spending.
   nextMonth,
+
+  /// Money nothing is planned for yet, not tied to any month: what is left
+  /// of an income after its split and its spending part.
+  unplanned,
 }
 
 enum CategoryKind { expense, income }
@@ -79,4 +83,19 @@ enum TrackerKind {
 
   /// A budget with an end date: how much is left.
   countdown,
+}
+
+/// Where an income goes when it arrives (after its split, if any).
+enum IncomeTo {
+  /// Spending money now.
+  spending,
+
+  /// Parked for next month; released into Spending on the 1st.
+  nextMonth,
+
+  /// The Unplanned pot.
+  unplanned,
+
+  /// A savings pot or goal.
+  pot,
 }

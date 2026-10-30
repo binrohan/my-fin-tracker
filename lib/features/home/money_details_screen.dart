@@ -249,6 +249,7 @@ class MoneyOutline {
     required this.savings,
     required this.savedForThings,
     required this.heldForNext,
+    required this.unplanned,
   });
 
   factory MoneyOutline.of(Ledger ledger) {
@@ -263,6 +264,7 @@ class MoneyOutline {
       savings: main == null ? 0 : ledger.fundBalance(main.id),
       savedForThings: sum(pots.skip(1)) + sum(ledger.fundsOfKind(FundKind.goal)),
       heldForNext: ledger.heldForNextMonth,
+      unplanned: ledger.unplannedMoney,
     );
   }
 
@@ -271,4 +273,7 @@ class MoneyOutline {
   final Poisha savings;
   final Poisha savedForThings;
   final Poisha heldForNext;
+
+  /// The Unplanned pot.
+  final Poisha unplanned;
 }

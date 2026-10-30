@@ -10,6 +10,7 @@ import 'package:quick_actions/quick_actions.dart';
 import '../core/money.dart';
 import '../core/period.dart';
 import '../data/auto_backup.dart';
+import '../data/ledger_repository.dart';
 import '../features/quick_add/quick_add_sheet.dart';
 import '../ledger/free_to_spend.dart';
 import '../ledger/ledger.dart';
@@ -171,9 +172,29 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
   /// repository checks again inside its transaction.
   Future<void> _releaseIfDue(Ledger ledger) async {
     final now = DateTime.now();
-    if (_releasing || ledger.releaseDue(now).isEmpty) return;
+    final catchUp =
+        ledger.settings[LedgerRepository.splitOnReleaseKey(Period.of(now).next)] == 'true';
+    if (_releasing || (ledger.releaseDue(now).isEmpty && !catchUp)) return;
     _releasing = true;
     try {
+      // A salary held whole under the old rules: split it now, keep only
+      // its spending part parked.
+      if (catchUp) {
+        final split = await ref.read(repositoryProvider).splitHeldSalary(now);
+        final context = rootNavigatorKey.currentContext;
+        if (split != null && context != null && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 8),
+              content: Text(
+                'Salary split as planned: ${formatTaka(split.setAside)} to your pots'
+                '${split.unplanned > 0 ? ', ${formatTaka(split.unplanned)} to Unplanned' : ''}',
+              ),
+            ),
+          );
+        }
+      }
+      if (ledger.releaseDue(now).isEmpty) return;
       final result = await ref.read(repositoryProvider).releaseHeldIncome(now);
       final context = rootNavigatorKey.currentContext;
       if (result.released > 0 && context != null && context.mounted) {

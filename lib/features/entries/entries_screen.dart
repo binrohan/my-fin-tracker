@@ -7,6 +7,7 @@ import '../../app/theme.dart';
 import '../../core/money.dart';
 import '../../core/period.dart';
 import '../../data/database.dart';
+import '../../data/ledger_repository.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
@@ -248,6 +249,15 @@ Future<void> showEntryDetails(BuildContext context, Entry shown) => showModalBot
               ),
           ],
           if (entry.type == EntryType.expense || entry.receipt != null) EntryReceipt(entry: entry),
+          if (entry.type == EntryType.expense && entry.amount > 0)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => showRefund(context, entry),
+                icon: const Icon(Icons.undo),
+                label: const Text('Refund (money back)'),
+              ),
+            ),
           if (entry.loanId != null)
             OutlinedButton.icon(
               onPressed: () {
@@ -300,3 +310,98 @@ Future<void> showEntryDetails(BuildContext context, Entry shown) => showModalBot
     },
   ),
 );
+
+/// Money back for [expense], e.g. a cancelled ticket: how much, when, and
+/// where it came back to.
+Future<void> showRefund(BuildContext context, Entry expense) => showModalBottomSheet(
+  useRootNavigator: true,
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (_) => _RefundSheet(expense: expense),
+);
+
+class _RefundSheet extends ConsumerStatefulWidget {
+  const _RefundSheet({required this.expense});
+
+  final Entry expense;
+
+  @override
+  ConsumerState<_RefundSheet> createState() => _RefundSheetState();
+}
+
+class _RefundSheetState extends ConsumerState<_RefundSheet> {
+  late final _amount = TextEditingController(text: amountText(widget.expense.amount));
+  late DateTime _date = ref.read(todayProvider);
+  Pot? _to;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ledger = ref.watch(ledgerProvider).value;
+    if (ledger == null) return const SizedBox(height: 200);
+    final e = widget.expense;
+    final status = StatusColors.of(context);
+    // Back to where it was paid from, unless you choose otherwise.
+    _to ??=
+        ledger
+            .postingsOf(e.id)
+            .where((p) => p.amount < 0)
+            .map((p) => (account: p.accountId, fund: p.fundId))
+            .firstOrNull ??
+        (account: defaultAccount(ledger, AccountType.bank).id, fund: ledger.spendingFund.id);
+    final amount = parseTaka(_amount.text) ?? 0;
+    final ok = amount > 0 && amount <= e.amount;
+    return SheetBody(
+      title: 'Refund · ${entryTitle(ledger, e)}',
+      children: [
+        Text(
+          'Paid ${formatTaka(e.amount)} on ${DateFormat.yMMMd().format(e.date)}. '
+          'A refund lowers what ${ledger.categories[e.categoryId]?.name ?? 'the category'} spent '
+          'in the month the money comes back.',
+          style: TextStyle(color: status.muted, fontSize: 13),
+        ),
+        AmountField(controller: _amount, label: 'Money back', onChanged: (_) => setState(() {})),
+        if (amount > e.amount)
+          Text('At most ${formatTaka(e.amount)}', style: TextStyle(color: status.bad)),
+        PickerField(
+          label: 'Came back to',
+          value: potLabel(ledger, _to!),
+          onTap: () async {
+            final picked = await pickPot(context, ledger, title: 'Came back to', initial: _to!);
+            if (picked != null) setState(() => _to = picked);
+          },
+        ),
+        PickerField(
+          label: 'Date',
+          value: DateFormat.yMMMEd().format(_date),
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _date,
+              firstDate: e.date,
+              lastDate: ref.read(todayProvider),
+            );
+            if (picked != null) setState(() => _date = picked);
+          },
+        ),
+        FilledButton(
+          onPressed: !ok
+              ? null
+              : () async {
+                  await ref.read(repositoryProvider).refund(e, amount, _date, _to!);
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  showSnack(context, '${formatTaka(amount)} refund recorded');
+                },
+          child: Text('Record refund ${formatTaka(amount)}'),
+        ),
+      ],
+    );
+  }
+}

@@ -33,9 +33,11 @@ class Affordability {
 
   factory Affordability.of(Ledger ledger, Poisha amount, DateTime today) {
     final period = Period.of(today);
-    final savings = ledger
-        .fundsOfKind(FundKind.savings)
-        .fold<Poisha>(0, (t, f) => t + math.max(0, ledger.fundBalance(f.id)));
+    final savings =
+        ledger
+            .fundsOfKind(FundKind.savings)
+            .fold<Poisha>(0, (t, f) => t + math.max(0, ledger.fundBalance(f.id))) +
+        math.max<Poisha>(0, ledger.unplannedMoney);
     return Affordability(
       amount: amount,
       summary: ledger.summary(period),
@@ -50,7 +52,7 @@ class Affordability {
   final PeriodSummary summary;
   final int daysLeft;
 
-  /// Money in your savings pots (not goals) you could borrow from.
+  /// Money in your savings pots (not goals) and in Unplanned.
   final Poisha savings;
   final int chargeBp;
 
