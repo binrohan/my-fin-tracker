@@ -20,10 +20,15 @@
 - Month-only changes: `budget_moves` (category → category), slots (categories with
   slotYear/slotMonth; `dueDay` = likely spend day), and **saves to a pot** (move entries with
   `entries.budget_save = true`, they lower that month's budget via `budgetDeltas`).
+- Loan repayments out of Spending can carry `entries.category_id` (the budget they came from);
+  `repaidFromBudget` lowers that month's budget via `budgetDeltas` too.
 - `budgetRoom(category, period)` = budget left to check an expense against (Quick add's
   "Over the X budget" step offers Move budget / Record anyway).
 - Month close is manual (`closeMonth`): unused budget → linked pots (`categories.savings_fund_id`),
   slot leftovers back, leftover split.
+  Those close moves (move entries with a category, `budget_save` not true) don't change the
+  budget; `savedAtCloseIn` / `savedAtClose(line)` count them as used (report "Saved" column,
+  Spend tab).
 
 ## Monthly plan (lib/ledger/allocation.dart)
 - `AllocationPlan` JSON in settings. Dated: base key `allocation_plan`, changes from a month in

@@ -150,6 +150,33 @@ void main() {
     expect((result.released, result.setAside), (taka(60000), 0));
   });
 
+  test('fixing the salary amount after the 1st releases the difference once', () async {
+    Future<int> salary(Poisha amount, {AllocationPlan? split}) => repo.receiveIncome(
+      arrived,
+      amount,
+      categoryId: category('Salary'),
+      account: account('Bank'),
+      to: IncomeTo.nextMonth,
+      split: split,
+    );
+    final id = await salary(taka(80000), split: plan);
+    await repo.releaseHeldIncome(DateTime(2026, 11, 1));
+    await reload();
+    final spendingBefore = ledger.fundBalance(ledger.spendingFund.id);
+    final potsBefore = ledger.fundBalance(fund('Monthly Savings'));
+
+    // Edit the amount (what Quick add does): no second split.
+    await repo.replaceEntry(id, () => salary(taka(87266)));
+    await reload();
+    expect(ledger.fundBalance(ledger.nextMonthFund!.id), taka(7266));
+    await repo.releaseHeldIncome(DateTime(2026, 11, 1));
+    await repo.releaseHeldIncome(DateTime(2026, 11, 2));
+    await reload();
+    expect(ledger.fundBalance(ledger.spendingFund.id) - spendingBefore, taka(7266));
+    expect(ledger.fundBalance(ledger.nextMonthFund!.id), 0);
+    expect(ledger.fundBalance(fund('Monthly Savings')), potsBefore);
+  });
+
   test('overspending is counted on its own', () async {
     expect(ledger.overBudget(const Period(2026, 10)), 0);
     final ration = ledger

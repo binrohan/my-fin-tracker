@@ -210,6 +210,7 @@ class LedgerRepository {
     Poisha amount, {
     required Pot from,
     int? toAccount,
+    int? budgetCategoryId,
     String note = '',
   }) async {
     final loan = await _loan(loanId);
@@ -219,6 +220,7 @@ class LedgerRepository {
       type: EntryType.repay,
       amount: amount,
       loanId: loanId,
+      categoryId: budgetCategoryId,
       postings: [
         (from, -amount),
         ((account: toAccount ?? from.account, fund: loan.fundId), amount),
@@ -318,6 +320,7 @@ class LedgerRepository {
     DateTime date,
     Poisha amount, {
     required int fromAccount,
+    int? budgetCategoryId,
     String note = '',
   }) async {
     final loan = await _loan(loanId);
@@ -327,6 +330,7 @@ class LedgerRepository {
       type: EntryType.repay,
       amount: amount,
       loanId: loanId,
+      categoryId: budgetCategoryId,
       postings: [
         ((account: fromAccount, fund: loan.fundId), -amount),
         ((account: loan.personAccountId!, fund: loan.fundId), amount),

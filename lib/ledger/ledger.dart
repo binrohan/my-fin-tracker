@@ -643,15 +643,38 @@ class Ledger {
   /// Unused budget of a category already saved to its pot when month [p]
   /// was closed. Saves during the month lower the budget instead (see
   /// [savedDuring]), so they are not counted here.
-  Poisha savedFromBudget(int categoryId, Period p) => entries
-      .where(
-        (e) =>
-            e.type == EntryType.move &&
-            e.categoryId == categoryId &&
-            e.budgetSave != true &&
-            p.contains(e.date),
-      )
-      .fold(0, (t, e) => t + e.amount);
+  Poisha savedFromBudget(int categoryId, Period p) => savedAtCloseIn(p)[categoryId] ?? 0;
+
+  /// Unused budget saved to pots when month [p] was closed, by category.
+  Map<int, Poisha> savedAtCloseIn(Period p) {
+    final saved = <int, Poisha>{};
+    for (final e in entries) {
+      if (e.type == EntryType.move &&
+          e.budgetSave != true &&
+          e.categoryId != null &&
+          p.contains(e.date)) {
+        saved.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
+      }
+    }
+    return saved;
+  }
+
+  /// What a category's line (with everything under it) saved to pots when
+  /// month [p] was closed: used, not left over.
+  Poisha savedAtClose(CategoryLine l, Period p) =>
+      savedFromBudget(l.category.id, p) + l.children.fold(0, (t, c) => t + savedAtClose(c, p));
+
+  /// Loan repayments from Spending in month [p] that were taken out of a
+  /// category's budget, by category.
+  Map<int, Poisha> repaidFromBudget(Period p) {
+    final repaid = <int, Poisha>{};
+    for (final e in entries) {
+      if (e.type == EntryType.repay && e.categoryId != null && p.contains(e.date)) {
+        repaid.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
+      }
+    }
+    return repaid;
+  }
 
   /// Budget saved to pots during month [p], by category.
   Map<int, Poisha> savedDuring(Period p) {
@@ -728,16 +751,19 @@ class Ledger {
   ];
 
   /// Net budget moved into (+) or out of (−) each category in month [p],
-  /// including budget saved to a pot during the month.
+  /// including budget saved to a pot during the month and budget used to
+  /// pay back a loan.
   Map<int, Poisha> budgetDeltas(Period p) {
     final d = <int, Poisha>{};
     for (final m in movesIn(p)) {
       d.update(m.toCategoryId, (v) => v + m.amount, ifAbsent: () => m.amount);
       d.update(m.fromCategoryId, (v) => v - m.amount, ifAbsent: () => -m.amount);
     }
-    savedDuring(p).forEach((category, amount) {
-      d.update(category, (v) => v - amount, ifAbsent: () => -amount);
-    });
+    for (final taken in [savedDuring(p), repaidFromBudget(p)]) {
+      taken.forEach((category, amount) {
+        d.update(category, (v) => v - amount, ifAbsent: () => -amount);
+      });
+    }
     return d;
   }
 

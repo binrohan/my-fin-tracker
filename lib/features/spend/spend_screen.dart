@@ -28,7 +28,9 @@ class SpendScreen extends ConsumerWidget {
     return LedgerBuilder(
       builder: (context, ledger) {
         final s = ledger.summary(period);
-        final saved = ledger.savedDuring(period);
+        final atClose = ledger.savedAtCloseIn(period);
+        final saved = {...ledger.savedDuring(period)};
+        atClose.forEach((c, v) => saved.update(c, (x) => x + v, ifAbsent: () => v));
         final compared = ledger.settings[insightsOffSetting] == 'true'
             ? null
             : compareMonths(ledger, period, today: today);
@@ -105,6 +107,7 @@ class SpendScreen extends ConsumerWidget {
                     period: period,
                     change: compared?.changes[line.category.id],
                     saved: saved,
+                    atClose: atClose,
                   ),
                 ],
               ],
@@ -169,6 +172,7 @@ class _CategoryTile extends StatelessWidget {
     required this.period,
     this.change,
     this.saved = const {},
+    this.atClose = const {},
   });
 
   final CategoryLine line;
@@ -177,6 +181,10 @@ class _CategoryTile extends StatelessWidget {
 
   /// Budget saved to pots this month, by category.
   final Map<int, Poisha> saved;
+
+  /// The part of [saved] sent to pots when the month closed; the budget
+  /// still shows it as left, but it is used.
+  final Map<int, Poisha> atClose;
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +259,8 @@ class _CategoryTile extends StatelessWidget {
         ],
       );
       // Linked to a pot: tap to save its budget there now.
-      if (line.category.savingsFundId == null || line.remaining <= 0) return tile;
+      final left = line.remaining - (atClose[line.category.id] ?? 0);
+      if (line.category.savingsFundId == null || left <= 0) return tile;
       return InkWell(
         onTap: () => showSaveBudgetSheet(context, period, categoryId: line.category.id),
         child: tile,
@@ -266,7 +275,12 @@ class _CategoryTile extends StatelessWidget {
         initiallyExpanded: true,
         children: [
           for (final child in line.children)
-            _SubCategoryRow(line: child, period: period, saved: saved[child.category.id] ?? 0),
+            _SubCategoryRow(
+              line: child,
+              period: period,
+              saved: saved[child.category.id] ?? 0,
+              atClose: atClose[child.category.id] ?? 0,
+            ),
         ],
       ),
     );
@@ -337,7 +351,12 @@ class ComparisonCard extends StatelessWidget {
 }
 
 class _SubCategoryRow extends StatelessWidget {
-  const _SubCategoryRow({required this.line, required this.period, this.saved = 0});
+  const _SubCategoryRow({
+    required this.line,
+    required this.period,
+    this.saved = 0,
+    this.atClose = 0,
+  });
 
   final CategoryLine line;
   final Period period;
@@ -345,13 +364,17 @@ class _SubCategoryRow extends StatelessWidget {
   /// Saved to a pot this month.
   final Poisha saved;
 
+  /// The part of [saved] sent to its pot when the month closed.
+  final Poisha atClose;
+
   @override
   Widget build(BuildContext context) {
     final status = StatusColors.of(context);
     final c = line.category;
     final paid = line.budget > 0 && line.actual >= line.budget;
     Widget? chip;
-    if (saved > 0 && line.remaining <= 0) {
+    final left = line.remaining - atClose;
+    if (saved > 0 && left <= 0) {
       chip = StatusChip('saved ${formatTaka(saved)}', tone: ChipTone.good);
     } else if (c.isFixed && line.budget > 0) {
       chip = paid
@@ -378,7 +401,7 @@ class _SubCategoryRow extends StatelessWidget {
       ),
     );
     // Linked to a pot: tap to save its budget there now.
-    if (c.savingsFundId == null || line.remaining <= 0) return row;
+    if (c.savingsFundId == null || left <= 0) return row;
     return InkWell(
       onTap: () => showSaveBudgetSheet(context, period, categoryId: c.id),
       child: row,

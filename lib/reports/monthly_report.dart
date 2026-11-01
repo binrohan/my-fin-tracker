@@ -232,21 +232,27 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
   final rows = <ReportRow>[];
   final overNotes = <String>[];
 
+  // Unused budget saved to a linked pot at close counts as used.
+  var savedTotal = 0;
   ReportRow row(CategoryLine l, {required bool sub}) {
-    final diff = l.actual - l.budget;
+    final saved = ledger.savedAtClose(l, p);
+    if (!sub) savedTotal += saved;
+    final diff = l.actual + saved - l.budget;
     return ReportRow(
       [
         l.category.name,
         l.budget == 0 ? '' : amt(l.budget),
         amt(l.actual),
+        saved == 0 ? '' : amt(saved),
         l.budget == 0 ? '' : signedAmt(diff).replaceFirst('+0', '0'),
         l.budget == 0 || sub ? '' : 'bar',
       ],
       style: sub ? RowStyle.sub : RowStyle.normal,
       colors: {
         if (l.isOver) 2: ReportColors.bad,
-        if (l.budget > 0 && diff > 0) 3: ReportColors.bad,
-        if (l.budget > 0 && diff < 0) 3: ReportColors.good,
+        if (saved > 0) 3: ReportColors.good,
+        if (l.budget > 0 && diff > 0) 4: ReportColors.bad,
+        if (l.budget > 0 && diff < 0) 4: ReportColors.good,
       },
     );
   }
@@ -258,39 +264,45 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
     }
     if (l.isOver) overNotes.add(_overNote(ledger, p, l));
   }
-  final diff = s.expenses - s.budget;
+  final diff = s.expenses + savedTotal - s.budget;
   rows.add(
     ReportRow(
       [
         'Total',
         amt(s.budget),
         amt(s.expenses),
+        savedTotal == 0 ? '' : amt(savedTotal),
         signedAmt(diff),
-        s.budget == 0 ? '' : pct(s.expenses / s.budget * 100),
+        s.budget == 0 ? '' : pct((s.expenses + savedTotal) / s.budget * 100),
       ],
       style: RowStyle.total,
-      colors: {if (diff > 0) 3: ReportColors.bad, if (diff < 0) 3: ReportColors.good},
+      colors: {if (diff > 0) 4: ReportColors.bad, if (diff < 0) 4: ReportColors.good},
     ),
   );
 
   final barFor = {for (final l in lines) l.category.name: l};
   return [
     sectionTitle('Expenses vs budget', note: '$count entries'),
+    if (savedTotal > 0)
+      muted(
+        'Saved: unused budget sent to the category\'s pot when the month closed; it counts as used.',
+      ),
     table(
-      headers: ['Category', 'Budget', 'Actual', 'Diff', 'Used'],
+      headers: ['Category', 'Budget', 'Actual', 'Saved', 'Diff', 'Used'],
       widths: {
-        0: const pw.FlexColumnWidth(3),
-        1: const pw.FlexColumnWidth(1.4),
-        2: const pw.FlexColumnWidth(1.4),
-        3: const pw.FlexColumnWidth(1.4),
-        4: const pw.FlexColumnWidth(1.8),
+        0: const pw.FlexColumnWidth(2.8),
+        1: const pw.FlexColumnWidth(1.3),
+        2: const pw.FlexColumnWidth(1.3),
+        3: const pw.FlexColumnWidth(1.3),
+        4: const pw.FlexColumnWidth(1.3),
+        5: const pw.FlexColumnWidth(1.6),
       },
       rows: rows,
       custom: {
-        4: (r) {
-          if (r.cells[4] != 'bar') {
+        5: (r) {
+          if (r.cells[5] != 'bar') {
             return pw.Text(
-              r.cells[4],
+              r.cells[5],
               style: pw.TextStyle(
                 fontSize: 8.5,
                 fontWeight: r.style == RowStyle.total ? pw.FontWeight.bold : null,
@@ -298,7 +310,8 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
             );
           }
           final l = barFor[r.cells[0]]!;
-          return progress(l.usage, over: l.isOver);
+          final used = l.budget == 0 ? 0.0 : (l.actual + ledger.savedAtClose(l, p)) / l.budget;
+          return progress(used, over: l.isOver);
         },
       },
     ),

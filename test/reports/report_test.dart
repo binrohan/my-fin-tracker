@@ -8,6 +8,7 @@ import 'package:my_fin_tracker/core/period.dart';
 import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
+import 'package:my_fin_tracker/data/setup_repository.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
 import 'package:my_fin_tracker/reports/annual_report.dart';
 import 'package:my_fin_tracker/reports/csv_export.dart';
@@ -127,5 +128,31 @@ void main() {
       expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
       await keep('monthly-held-$p.pdf', bytes);
     }
+  });
+
+  test('a month whose unused budget went to pots shows it as saved', () async {
+    final db = AppDatabase(
+      DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+    );
+    await loadSampleData(db);
+    var l = await Ledger.load(db);
+    await SetupRepository(db).updateCategory(
+      l.categories.values.firstWhere((c) => c.name == 'Fixed').id,
+      savingsFundId: Value(l.funds.values.firstWhere((f) => f.name == 'Monthly Savings').id),
+    );
+    l = await Ledger.load(db);
+    const sep = Period(2026, 9);
+    await LedgerRepository(db).moveUnusedBudgets(sep, l.spendingFund.id, l.unusedBudgetMoves(sep));
+    final after = await Ledger.load(db);
+    await db.close();
+    expect(after.savedAtCloseIn(sep), isNotEmpty);
+    final bytes = await buildMonthlyReport(
+      after,
+      sep,
+      fonts: fonts,
+      generatedAt: DateTime(2026, 10, 1),
+    );
+    expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+    await keep('monthly-saved-2026-09.pdf', bytes);
   });
 }

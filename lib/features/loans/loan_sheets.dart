@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/money.dart';
+import '../../core/period.dart';
+import '../../data/database.dart';
 import '../../data/ledger_repository.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
@@ -332,10 +334,71 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
   late DateTime _date = ref.read(todayProvider);
   int? _account;
 
+  /// The category whose budget pays for it, when it comes from Spending.
+  int? _budget;
+  bool _budgetSet = false;
+
   @override
   void dispose() {
     _amount.dispose();
     super.dispose();
+  }
+
+  /// Budgets it can come out of, the most money left first.
+  List<CategoryRow> _budgets(Ledger ledger, Period period) => [
+    for (final c in ledger.leafCategories(CategoryKind.expense, month: period))
+      if (ledger.movableFrom(c.id, period) > 0) c,
+  ]..sort((a, b) => ledger.movableFrom(b.id, period).compareTo(ledger.movableFrom(a.id, period)));
+
+  Widget _budgetPicker(Ledger ledger, Period period, Poisha amount) {
+    final options = _budgets(ledger, period);
+    if (!_budgetSet) {
+      _budget = options.firstOrNull?.id;
+      _budgetSet = true;
+    }
+    final name = ledger.categories[_budget]?.name;
+    final room = _budget == null ? 0 : ledger.movableFrom(_budget!, period);
+    final note = name == null
+        ? 'Budgets stay as they are, so together they promise '
+              '${formatTaka(amount)} more than you have.'
+        : amount > room
+        ? '$name has only ${formatTaka(room)} left: its budget goes '
+              '${formatTaka(amount - room)} over.'
+        : '$name\'s budget for ${period.label} goes down by ${formatTaka(amount)}, '
+              'so Budget by category still adds up to what you have.';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 6,
+      children: [
+        PickerField(
+          label: 'Take it from the budget of',
+          value: name == null ? 'No budget' : '$name · ${formatTaka(room)} left',
+          onTap: () async {
+            final picked = await showDialog<int>(
+              context: context,
+              builder: (context) => SimpleDialog(
+                title: const Text('Take it from the budget of'),
+                children: [
+                  for (final c in options)
+                    SimpleDialogOption(
+                      onPressed: () => Navigator.pop(context, c.id),
+                      child: Text(
+                        '${c.name} · ${formatTaka(ledger.movableFrom(c.id, period))} left',
+                      ),
+                    ),
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.pop(context, -1),
+                    child: const Text('No budget'),
+                  ),
+                ],
+              ),
+            );
+            if (picked != null) setState(() => _budget = picked < 0 ? null : picked);
+          },
+        ),
+        Text(note, style: TextStyle(color: StatusColors.of(context).muted, fontSize: 13)),
+      ],
+    );
   }
 
   @override
@@ -348,6 +411,11 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
     final amount = parseTaka(_amount.text) ?? 0;
     final today = ref.watch(todayProvider);
     final receiving = loan.kind == LoanKind.lent;
+    // Paying back out of Spending uses up budget, like an expense.
+    final fromSpending =
+        loan.kind == LoanKind.ownSavings ||
+        (loan.kind == LoanKind.borrowed && loan.fundId == ledger.spendingFund.id);
+    final period = Period.of(_date);
 
     return SheetBody(
       title: receiving ? 'Money received back' : 'Pay back',
@@ -377,6 +445,7 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
             if (picked != null) setState(() => _date = picked);
           },
         ),
+        if (fromSpending && amount > 0) _budgetPicker(ledger, period, amount),
         FilledButton(
           onPressed: amount <= 0
               ? null
@@ -389,11 +458,18 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
                         _date,
                         amount,
                         from: (account: _account!, fund: ledger.spendingFund.id),
+                        budgetCategoryId: _budget,
                       );
                     case LoanKind.lent:
                       await repo.collectFromPerson(loan.id, _date, amount, toAccount: _account!);
                     case LoanKind.borrowed:
-                      await repo.repayPerson(loan.id, _date, amount, fromAccount: _account!);
+                      await repo.repayPerson(
+                        loan.id,
+                        _date,
+                        amount,
+                        fromAccount: _account!,
+                        budgetCategoryId: fromSpending ? _budget : null,
+                      );
                   }
                   if (!context.mounted) return;
                   Navigator.pop(context);

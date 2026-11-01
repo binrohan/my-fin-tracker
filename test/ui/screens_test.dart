@@ -229,6 +229,15 @@ void main() {
         expect(find.text('Charge 5%'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('TIMELINE'), 300);
         expect(find.text('TIMELINE'), findsOneWidget);
+        // Paying back out of Spending asks which budget it comes from.
+        await tester.scrollUntilVisible(find.text('Pay back'), -300);
+        await tester.tap(find.text('Pay back'));
+        await tester.pumpAndSettle();
+        expect(find.text('TAKE IT FROM THE BUDGET OF'), findsOneWidget);
+        expect(find.text('Ration · ৳9,650 left'), findsOneWidget, reason: 'the most room first');
+        await tester.tap(find.text('TAKE IT FROM THE BUDGET OF'));
+        await tester.pumpAndSettle();
+        expect(find.text('No budget'), findsOneWidget);
       });
 
       testWidgets('cash drawer (${brightness.name})', (tester) async {

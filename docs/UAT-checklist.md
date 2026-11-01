@@ -218,6 +218,14 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Home: **Unplanned** is the pot; overspending shows as an **Over ৳…** chip on the main card, not in Unplanned. Carried forward is in the details screen only.
 - [ ] Open an expense → **Refund (money back)** → ৳1,400 of ৳1,600 → the category's spending drops by ৳1,400 that month.
 
+## 22. New in 1.5.2: saved budgets and loan repayments
+
+- [ ] Reports → Monthly report for October: fixed items whose unused budget went to their pots at close show it under **Saved**, and their **Diff** is 0, not green "unused".
+- [ ] Spend tab, October: those items don't offer to save to the pot a second time.
+- [ ] Loans → Own savings → a loan → **Pay back**: **Take it from the budget of** shows the category with the most left; pick Random (or **No budget**). The note says what happens.
+- [ ] After paying ৳250 from Random: Random's budget for the month is ৳250 lower, and **Budget by category** on Home adds up to Left to spend again.
+- [ ] Delete that repayment: Random's budget comes back.
+
 ---
 
 ## Issues

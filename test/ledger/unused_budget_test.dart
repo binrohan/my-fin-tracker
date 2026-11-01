@@ -13,6 +13,7 @@ import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/data/setup_repository.dart';
+import 'package:my_fin_tracker/ledger/enums.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
 
 AppDatabase memoryDb() =>
@@ -69,6 +70,25 @@ void main() {
     final saved = ledger.entries.where((e) => e.note == 'Unused Mine budget, September 2026');
     expect(saved.single.date, DateTime(2026, 9, 30));
     expect(ledger.unusedBudgetMoves(sep), isEmpty, reason: 'nothing left to move a second time');
+  });
+
+  test('what was saved at close counts as used, not left over', () async {
+    final moves = ledger.unusedBudgetMoves(sep);
+    await LedgerRepository(db).moveUnusedBudgets(sep, ledger.spendingFund.id, moves);
+    await reload();
+    final lines = <int, CategoryLine>{};
+    void walk(CategoryLine l) {
+      lines[l.category.id] = l;
+      l.children.forEach(walk);
+    }
+
+    ledger.categoryLines(sep, CategoryKind.expense).forEach(walk);
+    for (final m in moves) {
+      expect(ledger.savedAtClose(lines[m.category.id]!, sep), m.amount, reason: m.category.name);
+    }
+    final mine = lines[category('Mine')]!;
+    expect(mine.actual + ledger.savedAtClose(mine, sep), mine.budget, reason: 'nothing unused');
+    expect(ledger.savedAtCloseIn(oct), isEmpty);
   });
 
   test('never moves more than is left in Spending', () async {
