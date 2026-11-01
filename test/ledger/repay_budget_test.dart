@@ -9,8 +9,8 @@ import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/ledger/enums.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
 
-/// Paying a loan back out of Spending takes it from a category's budget,
-/// so the budgets still add up to the money you have.
+/// Paying a loan back out of Spending counts as spent from a category's
+/// budget, like an expense, so the budgets still add up to the money you have.
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   late AppDatabase db;
@@ -23,11 +23,10 @@ void main() {
   int category(String name) => ledger.categories.values.firstWhere((c) => c.name == name).id;
   int fund(String name) => ledger.funds.values.firstWhere((f) => f.name == name).id;
   int account(String name) => ledger.accounts.values.firstWhere((a) => a.name == name).id;
-  Poisha budgetOf(String name) => ledger
+  CategoryLine lineOf(String name) => ledger
       .categoryLines(oct, CategoryKind.expense)
       .expand((l) => [l, ...l.children])
-      .firstWhere((l) => l.category.name == name)
-      .budget;
+      .firstWhere((l) => l.category.name == name);
 
   setUp(() async {
     db = AppDatabase(DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true));
@@ -55,8 +54,8 @@ void main() {
     expect(after.budgetLeft, before.budgetLeft, reason: 'budgets do not change');
   });
 
-  test('paying back from a budget lowers that budget for the month', () async {
-    final random = budgetOf('Random');
+  test('paying back from a budget counts as spent there, the budget stays', () async {
+    final random = lineOf('Random');
     final before = ledger.summary(oct);
     final loan = await borrow();
     await repo.repayOwnLoan(
@@ -67,11 +66,12 @@ void main() {
       budgetCategoryId: category('Random'),
     );
     await reload();
-    expect(budgetOf('Random'), random - taka(250));
+    expect(lineOf('Random').budget, random.budget);
+    expect(lineOf('Random').actual, random.actual + taka(250));
     final after = ledger.summary(oct);
     expect(after.leftToSpend, before.leftToSpend);
     expect(after.budgetLeft, before.budgetLeft - taka(250));
-    expect(ledger.budgetDeltas(oct.next)[category('Random')], isNull);
+    expect(after.expenses, before.expenses, reason: 'not an expense entry');
   });
 
   test('paying back without a budget leaves the budgets as they were', () async {
@@ -89,8 +89,8 @@ void main() {
     expect(after.unplanned, before.unplanned);
   });
 
-  test('deleting the repayment gives the budget back', () async {
-    final random = budgetOf('Random');
+  test('deleting the repayment takes it off what was spent', () async {
+    final random = lineOf('Random');
     final loan = await borrow();
     final paid = await repo.repayOwnLoan(
       loan,
@@ -101,6 +101,6 @@ void main() {
     );
     await repo.deleteEntry(paid);
     await reload();
-    expect(budgetOf('Random'), random);
+    expect(lineOf('Random').actual, random.actual);
   });
 }

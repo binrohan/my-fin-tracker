@@ -20,8 +20,9 @@
 - Month-only changes: `budget_moves` (category → category), slots (categories with
   slotYear/slotMonth; `dueDay` = likely spend day), and **saves to a pot** (move entries with
   `entries.budget_save = true`, they lower that month's budget via `budgetDeltas`).
-- Loan repayments out of Spending can carry `entries.category_id` (the budget they came from);
-  `repaidFromBudget` lowers that month's budget via `budgetDeltas` too.
+- Loan repayments out of Spending can carry `entries.category_id`: `repaidFromBudget` counts
+  them as spent in that category (`categoryLines` actual), not a budget change. Not in
+  `summary.expenses` (they are repay entries); the report's Actual total adds them.
 - `budgetRoom(category, period)` = budget left to check an expense against (Quick add's
   "Over the X budget" step offers Move budget / Record anyway).
 - Month close is manual (`closeMonth`): unused budget → linked pots (`categories.savings_fund_id`),

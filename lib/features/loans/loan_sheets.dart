@@ -334,7 +334,7 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
   late DateTime _date = ref.read(todayProvider);
   int? _account;
 
-  /// The category whose budget pays for it, when it comes from Spending.
+  /// The category it counts as spent from, when it comes from Spending.
   int? _budget;
   bool _budgetSet = false;
 
@@ -359,25 +359,25 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
     final name = ledger.categories[_budget]?.name;
     final room = _budget == null ? 0 : ledger.movableFrom(_budget!, period);
     final note = name == null
-        ? 'Budgets stay as they are, so together they promise '
+        ? 'Not counted in any budget: budgets stay as they are, so together they promise '
               '${formatTaka(amount)} more than you have.'
         : amount > room
-        ? '$name has only ${formatTaka(room)} left: its budget goes '
+        ? 'Counts as spent from $name, which has ${formatTaka(room)} left: '
               '${formatTaka(amount - room)} over.'
-        : '$name\'s budget for ${period.label} goes down by ${formatTaka(amount)}, '
-              'so Budget by category still adds up to what you have.';
+        : 'Counts as spent from $name this month, like an expense: '
+              '${formatTaka(room - amount)} left after.';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 6,
       children: [
         PickerField(
-          label: 'Take it from the budget of',
+          label: 'Paid from the budget of',
           value: name == null ? 'No budget' : '$name · ${formatTaka(room)} left',
           onTap: () async {
             final picked = await showDialog<int>(
               context: context,
               builder: (context) => SimpleDialog(
-                title: const Text('Take it from the budget of'),
+                title: const Text('Paid from the budget of'),
                 children: [
                   for (final c in options)
                     SimpleDialogOption(
@@ -411,7 +411,7 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
     final amount = parseTaka(_amount.text) ?? 0;
     final today = ref.watch(todayProvider);
     final receiving = loan.kind == LoanKind.lent;
-    // Paying back out of Spending uses up budget, like an expense.
+    // Paying back out of Spending is spent from a budget, like an expense.
     final fromSpending =
         loan.kind == LoanKind.ownSavings ||
         (loan.kind == LoanKind.borrowed && loan.fundId == ledger.spendingFund.id);

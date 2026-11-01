@@ -1,7 +1,8 @@
 # Status (update when it changes)
 
-- Current version: **1.5.2** (schema 7). 1.5.0 salary splits on arrival, Unplanned pot, refunds;
-  1.5.2 report counts close-time saves as used; Pay back takes from a chosen budget.
+- Current version: **1.5.3** (schema 7). 1.5.0 salary splits on arrival, Unplanned pot, refunds;
+  1.5.2 report counts close-time saves as used; 1.5.3 a repayment counts as spent from a chosen
+  category (owner: "loan repay is a month expense", not a budget cut); tap a bill on Home to pay.
 - Production data: salary recorded as ৳87,646 but ৳94,912 arrived (owner confirmed 2026-10-31:
   bank short by ৳7,266). Fix in the app: edit the salary entry's amount (no second split; Held
   for November then becomes ৳52,000).

@@ -259,6 +259,9 @@ class Ledger {
         actual.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
       }
     }
+    if (kind == CategoryKind.expense) {
+      repaidFromBudget(p).forEach((c, v) => actual.update(c, (x) => x + v, ifAbsent: () => v));
+    }
     final budget = budgetsFor(p);
     final delta = withMoves ? budgetDeltas(p) : const <int, Poisha>{};
 
@@ -664,8 +667,8 @@ class Ledger {
   Poisha savedAtClose(CategoryLine l, Period p) =>
       savedFromBudget(l.category.id, p) + l.children.fold(0, (t, c) => t + savedAtClose(c, p));
 
-  /// Loan repayments from Spending in month [p] that were taken out of a
-  /// category's budget, by category.
+  /// Loan repayments from Spending in month [p] paid out of a category's
+  /// budget, by category. They count as spent there, like an expense.
   Map<int, Poisha> repaidFromBudget(Period p) {
     final repaid = <int, Poisha>{};
     for (final e in entries) {
@@ -751,19 +754,16 @@ class Ledger {
   ];
 
   /// Net budget moved into (+) or out of (−) each category in month [p],
-  /// including budget saved to a pot during the month and budget used to
-  /// pay back a loan.
+  /// including budget saved to a pot during the month.
   Map<int, Poisha> budgetDeltas(Period p) {
     final d = <int, Poisha>{};
     for (final m in movesIn(p)) {
       d.update(m.toCategoryId, (v) => v + m.amount, ifAbsent: () => m.amount);
       d.update(m.fromCategoryId, (v) => v - m.amount, ifAbsent: () => -m.amount);
     }
-    for (final taken in [savedDuring(p), repaidFromBudget(p)]) {
-      taken.forEach((category, amount) {
-        d.update(category, (v) => v - amount, ifAbsent: () => -amount);
-      });
-    }
+    savedDuring(p).forEach((category, amount) {
+      d.update(category, (v) => v - amount, ifAbsent: () => -amount);
+    });
     return d;
   }
 

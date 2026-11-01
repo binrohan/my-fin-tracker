@@ -19,6 +19,7 @@ import '../investments/investments_screen.dart';
 import '../loans/loans_screen.dart';
 import '../more/backup_screen.dart';
 import '../plan/record_income_sheet.dart';
+import '../quick_add/quick_add_sheet.dart';
 import '../setup/starting_balances_screen.dart';
 import '../sms/sms_screen.dart';
 import '../spend/save_budget_sheet.dart';
@@ -403,10 +404,7 @@ class _BillsToPay extends ConsumerWidget {
         for (final b in bills)
           InkWell(
             borderRadius: BorderRadius.circular(8),
-            // Linked to a pot (e.g. Rice Bag): save it there instead.
-            onTap: b.category.savingsFundId == null
-                ? null
-                : () => showSaveBudgetSheet(context, period, categoryId: b.category.id),
+            onTap: () => _payBill(context, ref, b),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
@@ -441,6 +439,47 @@ class _BillsToPay extends ConsumerWidget {
             child: Text('Pay all · ${formatTaka(total)}'),
           ),
       ],
+    );
+  }
+
+  /// Pays one bill in Quick add, filled in. A bill linked to a pot (e.g.
+  /// Rice Bag) can be saved there instead.
+  Future<void> _payBill(BuildContext context, WidgetRef ref, CategoryLine bill) async {
+    final pot = ledger.funds[bill.category.savingsFundId];
+    if (pot != null) {
+      final save = await showModalBottomSheet<bool>(
+        context: context,
+        useRootNavigator: true,
+        showDragHandle: true,
+        builder: (context) => SheetBody(
+          title: bill.category.name,
+          children: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Pay ${formatTaka(bill.remaining)}'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Save to ${pot.name}'),
+            ),
+          ],
+        ),
+      );
+      if (save == null || !context.mounted) return;
+      if (save) {
+        await showSaveBudgetSheet(context, period, categoryId: bill.category.id);
+        return;
+      }
+    }
+    if (!context.mounted) return;
+    await showQuickAdd(
+      context,
+      prefill: QuickAddPrefill(
+        mode: QuickAddMode.expense,
+        amount: bill.remaining,
+        date: ref.read(todayProvider),
+        categoryId: bill.category.id,
+      ),
     );
   }
 }

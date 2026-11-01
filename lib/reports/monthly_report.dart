@@ -264,16 +264,19 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
     }
     if (l.isOver) overNotes.add(_overNote(ledger, p, l));
   }
-  final diff = s.expenses + savedTotal - s.budget;
+  // Loan repayments paid from a budget count as spent there.
+  final repaid = ledger.repaidFromBudget(p).values.fold<Poisha>(0, (t, v) => t + v);
+  final spent = s.expenses + repaid;
+  final diff = spent + savedTotal - s.budget;
   rows.add(
     ReportRow(
       [
         'Total',
         amt(s.budget),
-        amt(s.expenses),
+        amt(spent),
         savedTotal == 0 ? '' : amt(savedTotal),
         signedAmt(diff),
-        s.budget == 0 ? '' : pct((s.expenses + savedTotal) / s.budget * 100),
+        s.budget == 0 ? '' : pct((spent + savedTotal) / s.budget * 100),
       ],
       style: RowStyle.total,
       colors: {if (diff > 0) 4: ReportColors.bad, if (diff < 0) 4: ReportColors.good},
@@ -283,6 +286,7 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
   final barFor = {for (final l in lines) l.category.name: l};
   return [
     sectionTitle('Expenses vs budget', note: '$count entries'),
+    if (repaid > 0) muted('Actual includes ${amt(repaid)} of loans paid back from a budget.'),
     if (savedTotal > 0)
       muted(
         'Saved: unused budget sent to the category\'s pot when the month closed; it counts as used.',

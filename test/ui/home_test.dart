@@ -6,12 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:my_fin_tracker/app/providers.dart';
 import 'package:my_fin_tracker/app/theme.dart';
 import 'package:my_fin_tracker/core/money.dart';
+import 'package:my_fin_tracker/core/period.dart';
 import 'package:my_fin_tracker/data/database.dart';
 import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/data/sample_data.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
 import 'package:my_fin_tracker/features/home/money_details_screen.dart';
 import 'package:my_fin_tracker/ledger/ledger.dart';
+import 'package:my_fin_tracker/ui/collapsible.dart';
 
 /// Home and its details screen, at Galaxy S24 size.
 void main() {
@@ -93,6 +95,34 @@ void main() {
     await tester.scrollUntilVisible(find.text('Hide budget by category'), 300);
     expect(find.text('Ration'), findsWidgets);
     expect(find.text('Cover'), findsWidgets);
+  });
+
+  testWidgets('tapping a bill opens Quick add filled in', (tester) async {
+    final bill = await tester.runAsync(
+      () async => (await Ledger.load(db)).unpaidFixedBills(const Period(2026, 10)).first,
+    );
+    await pump(tester);
+    await tester.scrollUntilVisible(find.text('BILLS TO PAY'), 300);
+    final row = find.descendant(
+      of: find.ancestor(of: find.text('BILLS TO PAY'), matching: find.byType(CollapsibleCard)),
+      matching: find.text(bill!.category.name),
+    );
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    if (bill.category.savingsFundId != null) {
+      await tester.tap(find.text('Pay ${formatTaka(bill.remaining)}'));
+      await tester.pumpAndSettle();
+    }
+    final chip = tester.widget<ChoiceChip>(
+      find.ancestor(of: find.text(bill.category.name).last, matching: find.byType(ChoiceChip)),
+    );
+    expect(chip.selected, isTrue);
+    expect(
+      find.textContaining(formatTaka(bill.remaining, symbol: false), findRichText: true),
+      findsWidgets,
+    );
   });
 
   testWidgets('folded sections stay folded', (tester) async {

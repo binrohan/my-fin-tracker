@@ -41,12 +41,16 @@ class QuickAddPrefill {
     required this.amount,
     required this.date,
     this.accountId,
+    this.categoryId,
     this.note = '',
   });
 
   final QuickAddMode mode;
   final Poisha amount;
   final DateTime date;
+
+  /// The category to start on (a bill from Home).
+  final int? categoryId;
 
   /// Paid from (expense), received in (income), or moved from (move, to
   /// cash).
@@ -156,6 +160,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         _typed = _amountText(p.amount);
         _date = p.date;
         _note.text = p.note;
+        if (ledger.categories.containsKey(p.categoryId)) _categoryId = p.categoryId;
         final account = p.accountId != null && ledger.accounts.containsKey(p.accountId)
             ? p.accountId!
             : null;
@@ -409,6 +414,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     final today = ref.watch(todayProvider);
     final status = StatusColors.of(context);
     final chips = ledger.frequentCategories(_kind, today).take(7).toList();
+    // A category chosen ahead (a bill from Home) is always shown.
+    if (ledger.categories[_categoryId] case final c? when !chips.any((x) => x.id == c.id)) {
+      chips.insert(0, c);
+    }
     final selected = ledger.categories[_categoryId];
     if (selected != null && selected.kind == _kind && !chips.any((c) => c.id == selected.id)) {
       chips.insert(0, selected);
