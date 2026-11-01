@@ -53,6 +53,21 @@ class SaveScreen extends ConsumerWidget {
                 label: const Text('Goal'),
               ),
             ),
+            if (ledger.unplannedFund case final floating?)
+              if (ledger.unplannedMoney != 0)
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => openScreen(context, FundScreen(fundId: floating.id)),
+                  child: SectionCard(
+                    children: [
+                      AmountRow(
+                        floating.name,
+                        ledger.unplannedMoney,
+                        detail: 'not tied to any month · tap to use or move',
+                      ),
+                    ],
+                  ),
+                ),
             for (final f in savings) _SavingsCard(ledger: ledger, fund: f, period: period),
             if (active.isNotEmpty) const Label('Saving for something'),
             for (final g in active) _GoalCard(goal: g),

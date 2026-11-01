@@ -59,7 +59,7 @@ class _MatchBalanceSheetState extends ConsumerState<_MatchBalanceSheet> {
       children: [
         Text(
           'Enter the balance your bank app shows (or the cash you counted). '
-          'Any difference is recorded as an adjustment to Spending.',
+          'Any difference is recorded as an adjustment to this month.',
           style: TextStyle(color: status.muted),
         ),
         Wrap(
@@ -217,7 +217,7 @@ class _CloseMonthSheetState extends ConsumerState<_CloseMonthSheet> {
             ),
           if (toPots.any((m) => m.amount < m.unused))
             Text(
-              'Less than the unused budget moves: only ${formatTaka(s.leftToSpend)} was left in Spending.',
+              'Less than the unused budget moves: only ${formatTaka(s.leftToSpend)} was left.',
               style: TextStyle(color: status.warn, fontSize: 13),
             ),
         ],

@@ -15,7 +15,7 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Home shows the total you entered under **Where it is**, and the same total under **What it's for**.
 - [ ] Home shows **✓ Balanced**.
 - [ ] More → **Accounts & pots**: rename or add accounts (another bank, Nagad) and add your real goals with target and date.
-- [ ] More → **Categories**: add, rename or archive categories so they match how you spend. Set the due day on fixed bills.
+- [ ] More → **Monthly plan → Expenses**: add sections, tap a name to rename, archive or set the due day on fixed bills.
 - [ ] More → **Budgets**: enter your monthly budget per category. The total at the bottom is what you expect.
 - [ ] More → **Salary plan**: enter what you set aside each month (savings, goals, DPS).
 
@@ -153,7 +153,7 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 ## 16. New in 1.1.0
 
 **Save to a pot during the month**
-- [ ] Link Rice Bag to the Rice Bag pot (More → Categories → Unused budget goes to).
+- [ ] Link Rice Bag to the Rice Bag pot (Monthly plan → Expenses → tap Rice Bag → Unused budget goes to).
 - [ ] Spend → tap **Rice Bag** (or **Save to pot**): the pot and the unspent amount are filled in. Save.
 - [ ] Rice Bag shows **saved ৳1,000**; the pot grows by ৳1,000; Left to spend and Budgeted both drop by ৳1,000, and nothing becomes **Short**.
 - [ ] If Rice Bag is a fixed bill, it's no longer "due" on Home or in Pay remaining bills.
@@ -169,7 +169,7 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Income tax → Salary note reads like "Recorded ৳… + estimated ৳… for 3 months before your entries + plan ৳… for 8 months to come". July–September (before the app) are included.
 - [ ] **Up to today** includes the estimated earlier months.
 - [ ] **Which incomes are taxable**: set Bonus to **Not taxable** → it leaves Other taxable income. Set it back.
-- [ ] More → Categories → edit an income category: **For income tax** shows the same choice.
+- [ ] Monthly plan → Income → Income types → tap one: **For income tax** shows the same choice.
 
 ## 18. New in 1.2.0
 
@@ -229,6 +229,21 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Delete that repayment: Random's spent goes back down.
 - [ ] Home → **Bills to pay** → tap a bill: Quick add opens with the bill and its amount filled in → Save. The bill leaves the list.
 - [ ] Tap a bill linked to a pot (Rice Bag): choose **Pay ৳…** (Quick add) or **Save to Rice Bag Pot**.
+
+## 24. New in 1.6.0: Floating, Misc, one place for sections
+
+- [ ] After updating: balances and pot totals are the same as before. **Spending** now reads **This month**, **Unplanned** reads **Floating**; October's report is unchanged.
+- [ ] More has no **Categories**. Monthly plan → **Expenses**: tap a name → rename, fixed bill, due day, pot link, archive. Archived ones are listed at the bottom and can be restored.
+- [ ] Monthly plan → **Income** → **Income types**: tap one to edit its tax type; **New income type** works.
+- [ ] Monthly plan → Expenses: **Misc** shows monthly expenses minus the sections, and changes as you type. It appears last on the Spend tab and in quick add.
+- [ ] **+** Expense: **Paid from** lists only Bank, Cash, bKash. Save stays off until you pick a section.
+- [ ] **+** Income: no "For next month" chip. A type not in the plan goes to **Floating**; Salary is split as planned.
+- [ ] **+** Move: From and To list only Bank, Cash, bKash.
+- [ ] Save tab → **Floating** shows when it has money → **Use money** and **Move to a section**.
+- [ ] A pot → **Use money** ৳100 with a note: pot and account drop by ৳100; Left to spend and budgets don't change. It's listed in All entries.
+- [ ] A pot → **Move to a section** ৳100 → Random: Random's budget and Left to spend rise by ৳100; next month's Random doesn't. **Undo** on the Spend tab puts it back.
+- [ ] Close a month: leftover can go to any pot; the rest is **Carried forward**.
+- [ ] A monthly report with a pot used directly: "Not included: ৳… used directly from pots".
 
 ---
 

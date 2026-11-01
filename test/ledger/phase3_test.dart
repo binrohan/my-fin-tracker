@@ -40,7 +40,7 @@ void main() {
       final laptop = fund('New Laptop');
       await repo.buyGoal(
         goalId: laptop,
-        spendingFund: fund('Spending'),
+        spendingFund: fund('This month'),
         payFromAccount: account('Bank'),
         goalMoney: goalMoney(laptop),
         date: today,
@@ -50,7 +50,7 @@ void main() {
       );
       await reload();
       expect(ledger.fundBalance(laptop), 0);
-      expect(ledger.fundBalance(fund('Spending')), taka(20920));
+      expect(ledger.fundBalance(fund('This month')), taka(20920));
       expect(ledger.funds[laptop]!.achievedAt, today);
       expect(ledger.summary(const Period(2026, 10)).expenses, taka(62700));
       expect(ledger.isBalanced, isTrue);
@@ -60,7 +60,7 @@ void main() {
       final bike = fund('Motorbike');
       await repo.buyGoal(
         goalId: bike,
-        spendingFund: fund('Spending'),
+        spendingFund: fund('This month'),
         payFromAccount: account('Bank'),
         goalMoney: goalMoney(bike),
         date: today,
@@ -70,7 +70,7 @@ void main() {
       await reload();
       expect(ledger.cell(account('Bank'), bike), 0);
       expect(ledger.cell(account('Cash'), bike), taka(1000));
-      expect(ledger.fundBalance(fund('Spending')), taka(24420), reason: 'goal covered it all');
+      expect(ledger.fundBalance(fund('This month')), taka(24420), reason: 'goal covered it all');
       expect(ledger.funds[bike]!.achievedAt, today);
     });
 
@@ -89,7 +89,7 @@ void main() {
   });
 
   test('cash withdrawals do not show in the Spending history twice', () {
-    final history = ledger.fundHistory(fund('Spending'));
+    final history = ledger.fundHistory(fund('This month'));
     expect(history.where((h) => h.entry.note == 'Cash withdrawal'), isEmpty);
   });
 
@@ -115,14 +115,14 @@ void main() {
     expect(ledger.loans.where((l) => l.id == own.id), isEmpty);
     expect(ledger.entries.where((e) => e.loanId == own.id), isEmpty);
     expect(ledger.fundBalance(fund('Monthly Savings')), taka(70000));
-    expect(ledger.fundBalance(fund('Spending')), taka(22420));
+    expect(ledger.fundBalance(fund('This month')), taka(22420));
     expect(ledger.isBalanced, isTrue);
   });
 
   test('cash drawer sectors', () {
     final sectors = {for (final s in ledger.sectorsOf(account('Cash'))) s.fund.name: s.amount};
     expect(sectors, {
-      'Spending': taka(2800),
+      'This month': taka(2800),
       'Monthly Savings': taka(2500),
       'Motorbike': taka(2000),
     });

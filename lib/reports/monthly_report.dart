@@ -266,7 +266,11 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
   }
   // Loan repayments paid from a budget count as spent there.
   final repaid = ledger.repaidFromBudget(p).values.fold<Poisha>(0, (t, v) => t + v);
-  final spent = s.expenses + repaid;
+  // Pot money used directly has no category, and no part in the budgets.
+  final fromPots = ledger.entries
+      .where((e) => e.type == EntryType.expense && e.categoryId == null && p.contains(e.date))
+      .fold<Poisha>(0, (t, e) => t + e.amount);
+  final spent = s.expenses - fromPots + repaid;
   final diff = spent + savedTotal - s.budget;
   rows.add(
     ReportRow(
@@ -286,6 +290,7 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
   final barFor = {for (final l in lines) l.category.name: l};
   return [
     sectionTitle('Expenses vs budget', note: '$count entries'),
+    if (fromPots > 0) muted('Not included: ${amt(fromPots)} used directly from pots.'),
     if (repaid > 0) muted('Actual includes ${amt(repaid)} of loans paid back from a budget.'),
     if (savedTotal > 0)
       muted(
@@ -411,7 +416,7 @@ List<pw.Widget> _savingsAndAssets(Ledger ledger, Period p) {
     pw.SizedBox(height: 10),
     noteBox(
       pw.Text(
-        'Carried forward to ${p.next.label}: Spending ${amt(s.carriedForward)} + income ${amt(s.spendingIncome)} '
+        'Carried forward to ${p.next.label}: ${amt(s.carriedForward)} + income ${amt(s.spendingIncome)} '
         '${s.released == 0 ? '' : '+ income for this month ${amt(s.released)} '}'
         '− set aside ${amt(s.setAside)} − spent ${amt(s.spendingExpenses)}'
         '${s.loanNet == 0 ? '' : ' ${s.loanNet > 0 ? '+' : '−'} loans ${amt(s.loanNet.abs())}'}'
@@ -449,7 +454,7 @@ List<pw.Widget> _savingsPots(Ledger ledger, Period p) {
             ReportRow(['Withdrawals', signedAmt(m.withdrawals)], colors: {1: ReportColors.bad}),
           if (m.borrowedOut != 0)
             ReportRow(
-              ['Borrowed to Spending', signedAmt(m.borrowedOut)],
+              ['Borrowed to this month', signedAmt(m.borrowedOut)],
               colors: {1: ReportColors.bad},
             ),
           if (m.repaidIn != 0)

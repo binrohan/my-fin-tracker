@@ -92,12 +92,12 @@ void main() {
     final lines = String.fromCharCodes(bytes.skip(3)).split('\r\n');
     expect(lines.first, 'Date,Type,Category,Amount,From,To,Note,Tracker,Loan');
     final text = utf8.decode(bytes.skip(3).toList());
-    expect(text, contains('2026-09-01,income,Salary,85000.00,,Bank · Spending,,,'));
+    expect(text, contains('2026-09-01,income,Salary,85000.00,,Bank · This month,,,'));
     expect(
       text,
-      contains('2026-09-18,expense,Mine,-1250.00,Bank · Spending,,Desk lamp,Home Office Setup,'),
+      contains('2026-09-18,expense,Mine,-1250.00,Bank · This month,,Desk lamp,Home Office Setup,'),
     );
-    expect(text, contains('2026-09-14,borrow,,5000.00,Bank · Monthly Savings,Bank · Spending,'));
+    expect(text, contains('2026-09-14,borrow,,5000.00,Bank · Monthly Savings,Bank · This month,'));
     expect(text, contains('"Vegetables, Karwan Bazar"'));
     await keep('entries-2026.csv', bytes);
   });

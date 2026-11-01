@@ -26,7 +26,6 @@ import '../reports/reports_screen.dart';
 import '../home/month_tasks.dart';
 import '../plan/monthly_plan_screen.dart';
 import '../setup/accounts_screen.dart';
-import '../setup/categories_screen.dart';
 import '../setup/starting_balances_screen.dart';
 import '../sms/sms_screen.dart';
 import '../tools/afford_screen.dart';
@@ -123,16 +122,10 @@ class MoreScreen extends ConsumerWidget {
                   () => openScreen(context, const AccountsScreen()),
                 ),
                 item(
-                  Icons.category_outlined,
-                  'Categories',
-                  'Expense and income categories, fixed bills',
-                  () => openScreen(context, const CategoriesScreen()),
-                ),
-                item(
                   Icons.pie_chart_outline,
                   'Monthly plan',
                   plan.plannedIncome == 0
-                      ? 'Income, how it is split, expense budget'
+                      ? 'Income types, how it is split, expense sections'
                       : '${formatTaka(plan.plannedIncome)} income · ${formatTaka(plan.total)} set aside',
                   () => openScreen(context, const MonthlyPlanScreen()),
                 ),

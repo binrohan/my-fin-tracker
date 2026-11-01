@@ -240,7 +240,7 @@ class InvestmentScreen extends ConsumerWidget {
                         : () => showMoveSheet(
                             context,
                             title: 'Take money out of ${account.name}',
-                            hint: 'Moves it to your bank. Choose Monthly Savings or Spending as its purpose.',
+                            hint: 'Moves it to your bank. Choose a pot as its purpose.',
                             from: (account: account.id, fund: fund.id),
                             to: (
                               account: bank,

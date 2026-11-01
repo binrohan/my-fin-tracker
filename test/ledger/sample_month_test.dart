@@ -95,10 +95,10 @@ void main() {
       expect(ledger.accountBalance(account('bKash'), before: end), taka(2000));
 
       final cash = account('Cash');
-      expect(ledger.cell(cash, fund('Spending'), before: end), taka(4200));
+      expect(ledger.cell(cash, fund('This month'), before: end), taka(4200));
       expect(ledger.cell(cash, fund('Monthly Savings'), before: end), taka(2500));
       expect(ledger.cell(cash, fund('Motorbike'), before: end), taka(2000));
-      expect(ledger.cell(account('Bank'), fund('Spending'), before: end), taka(3920));
+      expect(ledger.cell(account('Bank'), fund('This month'), before: end), taka(3920));
     });
 
     test('investments', () {
@@ -163,7 +163,7 @@ void main() {
       expect(ledger.accountBalance(account('bKash')), taka(1650));
       expect(ledger.liquidTotal(), taka(132920));
 
-      expect(ledger.fundBalance(fund('Spending')), taka(24420));
+      expect(ledger.fundBalance(fund('This month')), taka(24420));
       expect(ledger.fundBalance(fund('Monthly Savings')), taka(68000));
       expect(
         ledger.fundBalance(fund('New Laptop')) + ledger.fundBalance(fund('Motorbike')),
@@ -174,7 +174,7 @@ void main() {
 
     test('cash drawer by sector', () {
       final cash = account('Cash');
-      expect(ledger.cell(cash, fund('Spending')), taka(2800));
+      expect(ledger.cell(cash, fund('This month')), taka(2800));
       expect(ledger.cell(cash, fund('Monthly Savings')), taka(2500));
       expect(ledger.cell(cash, fund('Motorbike')), taka(2000));
     });

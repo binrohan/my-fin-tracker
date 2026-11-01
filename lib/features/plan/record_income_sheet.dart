@@ -84,9 +84,9 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
     final spendPart = splitting && target != null && left > target ? target : left;
     final extra = left - spendPart;
     final toLabel = switch (_to) {
-      IncomeTo.spending => 'Spending now',
+      IncomeTo.spending => 'This month',
       IncomeTo.nextMonth => 'Held for $nextName',
-      IncomeTo.unplanned => 'Unplanned',
+      IncomeTo.unplanned => 'Floating',
       IncomeTo.pot => ledger.funds[_pot]?.name ?? 'a pot',
     };
 
@@ -130,17 +130,14 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
             value: _split,
             onChanged: (v) => setState(() => _split = v),
           ),
-        Text(
-          splitting ? 'Spending part goes to' : 'Goes to',
-          style: TextStyle(color: status.muted),
-        ),
+        Text(splitting ? 'Expense part goes to' : 'Goes to', style: TextStyle(color: status.muted)),
         Wrap(
           spacing: 8,
           runSpacing: 6,
           children: [
             choice('Held for $nextName', _to == IncomeTo.nextMonth, () => _to = IncomeTo.nextMonth),
-            choice('Spending now', _to == IncomeTo.spending, () => _to = IncomeTo.spending),
-            choice('Unplanned', _to == IncomeTo.unplanned, () => _to = IncomeTo.unplanned),
+            choice('This month', _to == IncomeTo.spending, () => _to = IncomeTo.spending),
+            choice('Floating', _to == IncomeTo.unplanned, () => _to = IncomeTo.unplanned),
             if (!splitting)
               for (final f in pots)
                 choice(f.name, _to == IncomeTo.pot && _pot == f.id, () {
@@ -159,7 +156,7 @@ class _RecordIncomeSheetState extends ConsumerState<_RecordIncomeSheet> {
               children: [
                 for (final (pot, value) in parts) AmountRow(pot, value),
                 AmountRow(toLabel, spendPart, total: parts.isNotEmpty),
-                if (extra > 0) AmountRow('Unplanned', extra, detail: 'more than planned'),
+                if (extra > 0) AmountRow('Floating', extra, detail: 'more than planned'),
               ],
             ),
           ),

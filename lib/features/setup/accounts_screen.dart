@@ -21,12 +21,12 @@ String accountTypeLabel(AccountType t) => switch (t) {
 };
 
 String fundKindLabel(FundKind k) => switch (k) {
-  FundKind.spending => 'Spending',
+  FundKind.spending => 'This month',
   FundKind.savings => 'Savings pot',
   FundKind.goal => 'Goal',
   FundKind.investment => 'Investments',
   FundKind.nextMonth => 'Income for next month',
-  FundKind.unplanned => 'Unplanned',
+  FundKind.unplanned => 'Floating',
 };
 
 /// Where money is (accounts) and what it is for (savings pots and goals).

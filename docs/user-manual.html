@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Fin Tracker Manual</title>
-<meta name="description" content="How to use My Fin Tracker, version 1.5.3: setup, daily entries, budgets, savings, loans, month end, tools, reports and backup.">
+<meta name="description" content="How to use My Fin Tracker, version 1.6.0: setup, daily entries, budgets, savings, loans, month end, tools, reports and backup.">
 <style>
   :root {
     --bg: #f6f7f5;
@@ -149,7 +149,7 @@
 <body>
 
 <header class="top">
-  <span class="badge">Version 1.5.3</span>
+  <span class="badge">Version 1.6.0</span>
   <h1>My Fin Tracker: how to use it</h1>
   <p>Track spending, savings, loans and salary on your Android phone. Your data stays on the phone unless you share a backup.</p>
 </header>
@@ -187,13 +187,13 @@
   <p>The app answers two questions about every taka:</p>
   <ul>
     <li><strong>Where it is</strong>: your <em>accounts</em>, such as Bank, Cash and bKash.</li>
-    <li><strong>What it's for</strong>: your <em>pots</em>. <strong>Spending</strong> is this month's money. <strong>Monthly Savings</strong> is savings. <strong>Goals</strong> are things you are saving for, like a laptop.</li>
+    <li><strong>What it's for</strong>: your <em>pots</em>. <strong>This month</strong> is the money in your plan's sections. <strong>Floating</strong> is money not tied to any month. <strong>Monthly Savings</strong> is savings. <strong>Goals</strong> are things you are saving for, like a laptop.</li>
   </ul>
-  <p>The same ৳10,000 in the bank can be split between Spending and Savings. Both cards on Home always add up to the same total.</p>
+  <p>The same ৳10,000 in the bank can be split between this month's money and savings. Both cards on Home always add up to the same total.</p>
   <div class="tabs">
-    <div><b>Left to spend</b>What is still in the Spending pot this month.</div>
+    <div><b>Left to spend</b>What is still in this month's money.</div>
     <div><b>Budgeted</b>The part of it that your category budgets still need.</div>
-    <div><b>Unplanned</b>Money no budget is waiting for. You can use it freely.</div>
+    <div><b>Floating</b>Money not tied to any month and not planned yet. Use it or move it to a section from the Save tab.</div>
     <div><b>Short</b>Budgets need more than you have left, usually because a category went over.</div>
   </div>
   <p>Months run from the 1st to the last day. Amounts are in taka with lakh grouping (৳1,23,456). Balances are never typed in. They are always worked out from your entries, so the app stays <strong>Balanced</strong>.</p>
@@ -203,7 +203,7 @@
   <h2><span class="num">2</span>First-time setup</h2>
   <ol>
     <li><strong>Accounts &amp; pots</strong> (<span class="path">More → Accounts &amp; pots</span>): add your banks, cash and wallets. Add savings pots and goals. A goal can have a target amount and date.</li>
-    <li><strong>Categories</strong> (<span class="path">More → Categories</span>): expense sections with subsections, such as <em>Ration → Rice Bag</em>. Mark rent and bills as <em>fixed</em> and give them a due day. A category can also send its <em>unused budget</em> to a pot when the month closes.</li>
+    <li><strong>Sections</strong> (<span class="path">More → Monthly plan → Expenses</span>): expense sections with subsections, such as <em>Ration → Rice Bag</em>. Tap a name to rename it, mark it a <em>fixed bill</em> with a due day, send its <em>unused budget</em> to a pot at month close, or archive it. <strong>Misc</strong> is always there and takes whatever your monthly expenses leave unassigned: with ৳52,000 planned and ৳49,000 in sections, Misc has ৳3,000. Income types are on the <strong>Income</strong> tab of the same screen.</li>
     <li><strong>Starting balances</strong> (<span class="path">More → Starting balances</span>): enter what each account holds today. You can split it between Spending and Savings. Enter balances <em>before</em> any expenses. Entries dated earlier than the starting balances get counted twice.</li>
     <li><strong>Monthly plan</strong> (<span class="path">More → Monthly plan</span>): your income, how it is split, and the budget for each category. Section 8 explains this.</li>
   </ol>
@@ -227,7 +227,7 @@
   <p>Tap <strong>+</strong>. Choose <strong>Expense</strong>, <strong>Income</strong> or <strong>Move</strong>, type the amount on the number pad, pick a category and save. The app remembers the last account you used.</p>
   <h3>Expense</h3>
   <ul>
-    <li><strong>Paid from</strong>: which account and pot it came out of (usually Cash or Bank · Spending).</li>
+    <li><strong>Paid from</strong>: which account and pot it came out of (Bank, Cash or bKash). You must also choose a section; the money is this month's.</li>
     <li><strong>Receipt photo</strong>: tap the camera icon in the note field and take a photo or choose one. Tap it again to remove it before saving.</li>
     <li><strong>Major purchase</strong>: also adds it to the Buying list, where you can keep the shop and warranty.</li>
     <li><strong>Tracker chips</strong> count the expense towards a project or countdown, such as a trip.</li>
@@ -235,7 +235,7 @@
   <h3>Income</h3>
   <p>Choose the income type and the account it arrived in. The <strong>For November</strong> chip holds money received now for next month (see <a href="#income">section 8</a>).</p>
   <h3>Move</h3>
-  <p>Money changing place or purpose without being spent. Examples: <em>withdraw from bank</em> (Bank · Spending → Cash · Spending), or putting money into a goal.</p>
+  <p>Money changing place or purpose without being spent. Examples: <em>withdraw from bank</em> (Bank → Cash). To change a pot's money, open the pot on the Save tab.</p>
   <div class="tip"><strong>Faster:</strong> long-press the app icon for <strong>Add expense</strong>, or add a home-screen widget (long-press the home screen → Widgets → My Fin):
     <ul>
       <li><strong>Left to spend</strong> (3×1): what's left this month, with a + button.</li>
@@ -271,7 +271,7 @@
     <li><strong>Bills to pay</strong>: fixed bills still unpaid this month, with their due dates and <strong>Pay all</strong>.</li>
     <li><strong>Recent</strong>: the last five entries. <strong>See all</strong> opens every entry.</li>
     <li><strong>Where your money is</strong>: bank, cash and wallets, with Match balance and the Cash drawer.</li>
-    <li><strong>What your money is for</strong>: one line per kind of money: Spending, your savings (Monthly Savings), money saved for things (goals and other pots), anything held for next month, then carried forward and unplanned (or short, in red). Tap it for every pot, a table of each kind across bank, cash and wallets, how this month adds up, and net worth.</li>
+    <li><strong>What your money is for</strong>: one line per kind of money: This month, your savings (Monthly Savings), money saved for things (goals and other pots), anything held for next month, then carried forward and unplanned (or short, in red). Tap it for every pot, a table of each kind across bank, cash and wallets, how this month adds up, and net worth.</li>
   </ul>
   <p>Tap a section's heading to fold it away; it stays folded next time.</p>
 </section>
@@ -307,14 +307,14 @@
   <p>Record it from <em>Needs attention</em> ("Has your Salary arrived?") or Quick add. With <strong>Split as planned, now</strong> on, in one step:</p>
   <ol>
     <li>Your pots fill at once (Monthly Savings, Tax, Korbani, Zakat, goals…).</li>
-    <li>The expense part goes to <strong>Held for November</strong> (salary on the 26th, spent next month) or to <strong>Spending now</strong>.</li>
-    <li>Anything more than the plan goes to <strong>Unplanned</strong>.</li>
+    <li>The expense part goes to <strong>Held for November</strong> (salary on the 26th, spent next month) or to <strong>This month</strong>.</li>
+    <li>Anything more than the plan goes to <strong>Floating</strong>.</li>
   </ol>
   <p>The sheet shows exactly where every taka goes before you save. On the 1st the parked money becomes that month's spending money; nothing is split again.</p>
-  <h3>Unplanned</h3>
+  <h3>Floating</h3>
   <p>A pot that isn't tied to any month: money nothing is planned for yet. Overspending doesn't touch it; that shows per category as "over". Use it when you decide: Quick add → <strong>Move</strong> from Unplanned to Spending, a pot or a goal.</p>
   <h3>Bonus, dividends and other irregular income</h3>
-  <p>Leave them out of the plan. When one arrives, record it and choose <strong>Goes to</strong>: Held for next month, Spending now, Unplanned, or any pot or goal. Give it an income type once (More → Categories → New → Income) and set <em>For income tax</em>.</p>
+  <p>Leave them out of the plan. When one arrives, record it and choose <strong>Goes to</strong>: Held for next month, This month, Floating, or any pot or goal. In quick add, an income type that isn't in your plan goes to Floating. Give it an income type once (Monthly plan → Income → New income type) and set <em>For income tax</em>.</p>
   <h3>A raise</h3>
   <p>Change the salary and split in the Monthly plan before the new salary arrives. The new figures are used from that salary on.</p>
 </section>
@@ -323,9 +323,11 @@
   <h2><span class="num">9</span>Savings, goals and loans</h2>
   <h3>Savings and goals</h3>
   <p>A <strong>pot</strong> such as Monthly Savings holds money for a purpose. A <strong>goal</strong> is a pot with a target. The goal screen shows progress, whether you are <em>on track</em> and the monthly amount needed. <strong>Buy it</strong> records the purchase and closes the goal.</p>
+  <h3>Using a pot or goal</h3>
+  <p>Open it on the <strong>Save</strong> tab. <strong>Use money</strong> pays from the pot directly: amount, Bank/Cash/bKash, date and a note. It doesn't touch any budget. <strong>Move to a section</strong> adds the money to a section's budget for this month. <strong>To Floating</strong> makes it free again. Floating has the same Use and Move choices.</p>
   <h3>Borrowing from your own savings</h3>
   <p>When the month runs short you can borrow from your savings. The loan has a charge, <strong>5%</strong> by default (change it in <span class="path">More → Rules</span>), so borrowing has a cost and you pay it back.</p>
-  <p>Borrowed money goes into Spending without belonging to any category's budget. Paying it back from this month's money is spending: in <strong>Pay back</strong>, choose <strong>Paid from the budget of</strong> and the amount counts as spent in that category, like an expense. Choose <em>No budget</em> to leave it out of the budgets.</p>
+  <p>Borrowed money joins this month's money without belonging to any category's budget. Paying it back from this month's money is spending: in <strong>Pay back</strong>, choose <strong>Paid from the budget of</strong> and the amount counts as spent in that category, like an expense. Choose <em>No budget</em> to leave it out of the budgets.</p>
   <h3>Loans with people</h3>
   <p><span class="path">More → Loans → People</span>: money you lent or borrowed, with an optional charge and due date. Record repayments as they come. Overdue and long-open loans show on Home. For a loan that started before you used the app, use <strong>Started before I used the app</strong>.</p>
 </section>
@@ -368,7 +370,7 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Answer</th><th>Meaning</th></tr></thead>
     <tbody>
-      <tr><td>Yes</td><td>It fits in unplanned money.</td></tr>
+      <tr><td>Yes</td><td>It fits in money no budget is waiting for.</td></tr>
       <tr><td>Yes, but it is tight</td><td>It uses money your budgets still need.</td></tr>
       <tr><td>Not from this month alone</td><td>Part must come from savings. The borrowing charge is shown.</td></tr>
       <tr><td>Not now</td><td>It's more than this month's money and your savings together.</td></tr>
@@ -390,7 +392,7 @@
     <li>Tax already deducted is taken off, leaving <em>still to pay</em> or a <em>refund</em>.</li>
   </ol>
   <p>While the year is running you see two figures. <strong>Full year</strong> (to 30 June) uses your plan for the months still to come. <strong>Up to today</strong> is the tax on the income your entries show so far, as if the year ended today. Switch between them to see the steps for each.</p>
-  <p><strong>Which incomes are taxable</strong> (on the Tax screen, or when editing an income category in <span class="path">More → Categories</span>): each income type is <em>Salary</em> (gets the salary exemption), <em>Other taxable</em> (taxed in full) or <em>Not taxable</em> (left out, e.g. gifts or money paid back). The plan's main income starts as Salary and the rest as Other taxable.</p>
+  <p><strong>Which incomes are taxable</strong> (on the Tax screen, or under <em>Income types</em> in <span class="path">More → Monthly plan → Income</span>): each income type is <em>Salary</em> (gets the salary exemption), <em>Other taxable</em> (taxed in full) or <em>Not taxable</em> (left out, e.g. gifts or money paid back). The plan's main income starts as Salary and the rest as Other taxable.</p>
   <p>Choose your taxpayer type (general; woman or 65+; disability; freedom fighter) for the right tax-free limit. Tap the settings button at the top to change slabs and rates when a new Finance Act changes them.</p>
   <div class="warn"><strong>Estimates only.</strong> Zakat depends on your circumstances, so ask a scholar. Tax rates change most years, so check with NBR or a tax adviser before filing.</div>
 </section>
@@ -430,7 +432,7 @@
   <h2><span class="num">17</span>Questions and problems</h2>
   <dl class="faq">
     <dt>Home says "Short ৳3,500". Am I out of money?</dt>
-    <dd>No. Your budgets need more than is left in Spending, usually because one category (such as Ration) went over. Lower a budget for this month with <strong>Move budget</strong>, or accept that less is left for the others.</dd>
+    <dd>No. Your budgets need more than is left this month, usually because one category (such as Ration) went over. Lower a budget for this month with <strong>Move budget</strong>, or accept that less is left for the others.</dd>
     <dt>A total looks too high or counted twice.</dt>
     <dd>Check for expenses dated <em>before</em> your starting balances. The starting balance already includes them, so they count twice. Change their date or delete them.</dd>
     <dt>The bank app shows a different balance.</dt>
@@ -446,7 +448,7 @@
   </dl>
 </section>
 
-  <footer>My Fin Tracker 1.5.3 · Works offline · Your data stays on your phone</footer>
+  <footer>My Fin Tracker 1.6.0 · Works offline · Your data stays on your phone</footer>
   </main>
 </div>
 </body>

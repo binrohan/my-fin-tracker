@@ -245,7 +245,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -281,6 +281,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 7) {
         // Tracker amounts from outside your accounts.
         await m.createTable(trackerAmounts);
+      }
+      if (from < 8) {
+        // No schema change: "This month", "Floating" and the Misc section.
+        await setupFloatingAndMisc(this, DateTime.now());
       }
     },
     beforeOpen: (details) async {

@@ -15,12 +15,12 @@ import 'package:my_fin_tracker/features/cash/cash_screen.dart';
 import 'package:my_fin_tracker/features/investments/investments_screen.dart';
 import 'package:my_fin_tracker/features/plan/monthly_plan_screen.dart';
 import 'package:my_fin_tracker/features/reports/reports_screen.dart';
-import 'package:my_fin_tracker/features/setup/categories_screen.dart';
 import 'package:my_fin_tracker/features/setup/starting_balances_screen.dart';
 import 'package:my_fin_tracker/features/home/month_tasks.dart';
 import 'package:my_fin_tracker/data/setup_repository.dart';
 import 'package:my_fin_tracker/core/period.dart';
 import 'package:my_fin_tracker/features/trackers/trackers_screen.dart';
+import 'package:my_fin_tracker/ui/widgets.dart';
 import 'package:my_fin_tracker/features/home/home_screen.dart';
 import 'package:my_fin_tracker/data/ledger_repository.dart';
 import 'package:my_fin_tracker/core/money.dart';
@@ -107,7 +107,7 @@ void main() {
         await tester.scrollUntilVisible(find.text('৳1,23,970'), 300);
         expect(find.text('৳1,23,970'), findsOneWidget);
         await tester.scrollUntilVisible(find.text('WHAT YOUR MONEY IS FOR'), 300);
-        expect(find.textContaining('Unplanned', findRichText: true), findsOneWidget);
+        expect(find.textContaining('Floating', findRichText: true), findsOneWidget);
       });
 
       testWidgets('Spend shows budget against actual', (tester) async {
@@ -487,7 +487,7 @@ void main() {
 
     testWidgets('the expense tab shows when subsections do not add up', (tester) async {
       await pump(tester, const MonthlyPlanScreen(initialTab: 2), sample, fullScreen: true);
-      final rent = find.ancestor(of: find.text('House Rent'), matching: find.byType(Row)).first;
+      final rent = find.ancestor(of: find.text('House Rent'), matching: find.byType(Row)).at(1);
       await tester.enterText(find.descendant(of: rent, matching: find.byType(TextField)), '24000');
       await tester.pumpAndSettle();
       expect(find.text('৳1,000 left to assign'), findsOneWidget);
@@ -510,13 +510,44 @@ void main() {
       await db.close();
     });
 
-    testWidgets('categories show the link and the editor offers it', (tester) async {
-      await pump(tester, const CategoriesScreen(), linked, fullScreen: true);
-      expect(find.text('Unused → New Laptop'), findsOneWidget);
+    testWidgets('the plan shows the link and its editor offers it', (tester) async {
+      await pump(tester, const MonthlyPlanScreen(initialTab: 2), linked, fullScreen: true);
+      await tester.scrollUntilVisible(
+        find.text('Unused → New Laptop'),
+        300,
+        scrollable: find
+            .descendant(of: find.byType(ListView).last, matching: find.byType(Scrollable))
+            .first,
+      );
       await tester.tap(find.text('Mine'));
       await tester.pumpAndSettle();
+      expect(find.text('Edit Mine'), findsOneWidget);
       expect(find.text('Unused budget goes to (optional)'), findsOneWidget);
-      expect(find.text('New Laptop'), findsOneWidget);
+      expect(find.text('Fixed bill'), findsOneWidget);
+      expect(find.text('Archived'), findsOneWidget);
+    });
+
+    testWidgets('income types are on the plan, with their tax type', (tester) async {
+      await pump(tester, const MonthlyPlanScreen(), linked, fullScreen: true);
+      final types = find.text('INCOME TYPES');
+      await tester.scrollUntilVisible(
+        types,
+        300,
+        scrollable: find
+            .descendant(of: find.byType(ListView).last, matching: find.byType(Scrollable))
+            .first,
+      );
+      final row = find.descendant(
+        of: find.ancestor(of: types, matching: find.byType(SectionCard)),
+        matching: find.text('Bonus'),
+      );
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.text('Edit income type'), findsOneWidget);
+      expect(find.text('For income tax'), findsOneWidget);
+      expect(find.text('Fixed bill'), findsNothing);
     });
 
     testWidgets('closing September lists what will be saved', (tester) async {

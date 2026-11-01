@@ -13,6 +13,7 @@ import '../../ui/widgets.dart';
 import '../entries/entries_screen.dart';
 import '../loans/loan_sheets.dart';
 import 'move_sheet.dart';
+import 'use_pot_sheets.dart';
 
 /// One savings pot or goal: balance, where the money is, actions and
 /// history.
@@ -37,7 +38,6 @@ class FundScreen extends ConsumerWidget {
             if (ledger.cell(a.id, fund.id) != 0) (account: a, amount: ledger.cell(a.id, fund.id)),
         ];
         final owed = ledger.owedToFund(fund.id);
-        final spending = ledger.spendingFund.id;
         final bank = defaultAccount(ledger, AccountType.bank).id;
         final biggest = where
             .where((w) => w.account.type.isLiquid)
@@ -101,33 +101,53 @@ class FundScreen extends ConsumerWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  FilledButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('Deposit'),
-                    onPressed: () => showMoveSheet(
-                      context,
-                      title: 'Deposit to ${fund.name}',
-                      from: (account: bank, fund: spending),
-                      to: (account: bank, fund: fund.id),
-                      lockTo: false,
-                      action: 'Deposit',
+                  if (fund.kind != FundKind.unplanned)
+                    FilledButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Deposit'),
+                      onPressed: () async {
+                        final floating = await ref.read(repositoryProvider).unplannedFund();
+                        if (!context.mounted) return;
+                        await showMoveSheet(
+                          context,
+                          title: 'Deposit to ${fund.name}',
+                          from: (account: bank, fund: floating),
+                          to: (account: bank, fund: fund.id),
+                          lockTo: false,
+                          action: 'Deposit',
+                        );
+                      },
                     ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    label: const Text('Use money'),
+                    onPressed: total <= 0 ? null : () => showUsePot(context, fund, source),
                   ),
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.remove),
-                    label: const Text('Withdraw'),
-                    onPressed: total <= 0
-                        ? null
-                        : () => showMoveSheet(
-                            context,
-                            title: 'Withdraw from ${fund.name}',
-                            hint: 'Moves money back to Spending. To borrow it with a charge, use Borrow.',
-                            from: (account: source, fund: fund.id),
-                            to: (account: source, fund: spending),
-                            action: 'Withdraw',
-                          ),
+                    icon: const Icon(Icons.call_split),
+                    label: const Text('Move to a section'),
+                    onPressed: total <= 0 ? null : () => showMoveToSection(context, fund, source),
                   ),
-                  if (fund.kind != FundKind.investment)
+                  if (fund.kind != FundKind.unplanned)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.air),
+                      label: const Text('To Floating'),
+                      onPressed: total <= 0
+                          ? null
+                          : () async {
+                              final floating = await ref.read(repositoryProvider).unplannedFund();
+                              if (!context.mounted) return;
+                              await showMoveSheet(
+                                context,
+                                title: 'Move ${fund.name} to Floating',
+                                from: (account: source, fund: fund.id),
+                                to: (account: source, fund: floating),
+                                lockTo: true,
+                                action: 'Move',
+                              );
+                            },
+                    ),
+                  if (fund.kind != FundKind.investment && fund.kind != FundKind.unplanned)
                     OutlinedButton.icon(
                       icon: const Icon(Icons.handshake_outlined),
                       label: const Text('Borrow'),
@@ -192,7 +212,7 @@ class FundScreen extends ConsumerWidget {
               ),
               if (p > saved)
                 Text(
-                  '${formatTaka(p - saved)} more than saved; it comes from Spending.',
+                  "${formatTaka(p - saved)} more than saved; it comes from this month's money.",
                   style: TextStyle(color: status.warn),
                 )
               else if (p > 0 && p < saved)

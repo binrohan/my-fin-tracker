@@ -152,7 +152,7 @@ void main() {
       final bike = fund('Motorbike');
       await repo.buyGoal(
         goalId: bike,
-        spendingFund: fund('Spending'),
+        spendingFund: fund('This month'),
         payFromAccount: account('Bank').id,
         goalMoney: [
           for (final a in ledger.accountsOfType((t) => t.isLiquid))

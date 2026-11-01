@@ -48,7 +48,7 @@ For how to use the app, see the [user manual](docs/user-manual.html).
 |---|---|
 | UI | Flutter (Material 3), [go_router](https://pub.dev/packages/go_router) |
 | State | [Riverpod 3](https://pub.dev/packages/flutter_riverpod) |
-| Storage | [Drift](https://pub.dev/packages/drift) (SQLite), schema version 5 with tested upgrades |
+| Storage | [Drift](https://pub.dev/packages/drift) (SQLite), schema version 8 with tested upgrades |
 | Reports | [pdf](https://pub.dev/packages/pdf), [printing](https://pub.dev/packages/printing) |
 | Platform | Android only (tested on a Galaxy S24) |
 

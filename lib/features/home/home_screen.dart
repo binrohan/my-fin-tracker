@@ -547,7 +547,7 @@ class _WhatItsFor extends StatelessWidget {
             Icon(Icons.chevron_right, size: 20, color: status.muted),
           ],
         ),
-        AmountRow('Spending', o.spending, detail: 'this month'),
+        AmountRow('This month', o.spending, detail: 'in your sections'),
         AmountRow(o.savingsName, o.savings),
         if (o.savedForThings != 0)
           AmountRow('Saved for things', o.savedForThings, detail: 'goals and pots'),
@@ -557,7 +557,7 @@ class _WhatItsFor extends StatelessWidget {
             o.heldForNext,
             detail: 'spending money, parked',
           ),
-        AmountRow('Unplanned', o.unplanned, detail: 'nothing planned for it yet'),
+        AmountRow('Floating', o.unplanned, detail: 'not tied to any month'),
       ],
     );
   }

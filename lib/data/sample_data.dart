@@ -26,7 +26,7 @@ Future<void> loadSampleData(AppDatabase db) => db.transaction(() async {
   final bank = await accountId('Bank');
   final cash = await accountId('Cash');
   final bkash = await accountId('bKash');
-  final spending = await fundId('Spending');
+  final spending = await fundId('This month');
   final savings = await fundId('Monthly Savings');
   final investments = await fundId('Investments');
 

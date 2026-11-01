@@ -73,7 +73,7 @@ void main() {
     await repo.payBills(
       [for (final b in due) (categoryId: b.category.id, amount: b.remaining)],
       today,
-      (account: account('Bank'), fund: fund('Spending')),
+      (account: account('Bank'), fund: fund('This month')),
     );
     await reload();
     expect(ledger.unpaidFixedBills(oct), isEmpty);
@@ -99,7 +99,7 @@ void main() {
     expect(decoded.items.last.accountId, account('DPS · Bank'));
 
     const nov = Period(2026, 11);
-    final bank = (account: account('Bank'), fund: fund('Spending'));
+    final bank = (account: account('Bank'), fund: fund('This month'));
     await repo.income(DateTime(2026, 11, 1), taka(85000), categoryId: category('Salary'), to: bank);
     await repo.applyAllocation(decoded, DateTime(2026, 11, 1), bank);
     await reload();
@@ -117,21 +117,21 @@ void main() {
         veg.date,
         taka(400),
         categoryId: veg.categoryId!,
-        from: (account: account('Cash'), fund: fund('Spending')),
+        from: (account: account('Cash'), fund: fund('This month')),
         note: veg.note,
       ),
     );
     await reload();
     expect(line(oct, 'Ration').actual, taka(4400));
     expect(ledger.entries.where((e) => e.id == veg.id), isEmpty);
-    expect(ledger.cell(account('Cash'), fund('Spending')), taka(2750));
+    expect(ledger.cell(account('Cash'), fund('This month')), taka(2750));
   });
 
   test('matching the bank balance records the difference', () async {
     final bank = account('Bank');
     final id = await repo.matchBalance(
       date: today,
-      pot: (account: bank, fund: fund('Spending')),
+      pot: (account: bank, fund: fund('This month')),
       appBalance: ledger.accountBalance(bank),
       realBalance: taka(123500),
     );
@@ -146,7 +146,7 @@ void main() {
     expect(
       await repo.matchBalance(
         date: today,
-        pot: (account: bank, fund: fund('Spending')),
+        pot: (account: bank, fund: fund('This month')),
         appBalance: taka(5),
         realBalance: taka(5),
       ),
@@ -166,7 +166,7 @@ void main() {
     });
 
     test('closing with "move leftover to savings"', () async {
-      final spending = fund('Spending');
+      final spending = fund('This month');
       final leftovers = [
         for (final a in ledger.accountsOfType((t) => t.isLiquid))
           (account: a.id, amount: ledger.cell(a.id, spending, before: sep.end)),
@@ -190,10 +190,10 @@ void main() {
     await db.resetAllData();
     await reload();
     await repo.setStartingBalances(DateTime(2026, 11, 1), [
-      ((account: account('Bank'), fund: fund('Spending')), taka(40000)),
+      ((account: account('Bank'), fund: fund('This month')), taka(40000)),
       ((account: account('Bank'), fund: fund('Monthly Savings')), taka(100000)),
-      ((account: account('Cash'), fund: fund('Spending')), taka(3000)),
-      ((account: account('bKash'), fund: fund('Spending')), 0),
+      ((account: account('Cash'), fund: fund('This month')), taka(3000)),
+      ((account: account('bKash'), fund: fund('This month')), 0),
     ]);
     await reload();
     expect(ledger.entries.length, 3, reason: 'zero amounts are skipped');

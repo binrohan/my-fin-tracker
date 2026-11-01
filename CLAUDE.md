@@ -25,7 +25,7 @@ Build uses JDK 21 (set via `flutter config --jdk-dir`); don't change the user's 
 ## Where things are
 - `lib/ledger/` pure logic, no Flutter: `ledger.dart` (balances, budgets, plans), `free_to_spend.dart`,
   `reminders.dart`, `insights.dart`, `afford.dart`, `tax.dart`, `zakat.dart`, `sms.dart`, `allocation.dart`.
-- `lib/data/` Drift DB (`database.dart`, schema **7**), `ledger_repository.dart` (all writes),
+- `lib/data/` Drift DB (`database.dart`, schema **8**), `ledger_repository.dart` (all writes),
   `backup.dart` (.mft zip), `receipts.dart`, `sms_inbox.dart`, `metal_prices.dart`.
 - `lib/features/<screen>/` one folder per screen; `lib/app/` theme, router, providers, widgets/lock.
 - `android/app/src/main/kotlin/.../` MainActivity (SMS channel) and 3 home-screen widgets.

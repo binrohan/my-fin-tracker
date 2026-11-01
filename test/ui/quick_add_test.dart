@@ -107,7 +107,8 @@ void main() {
     // Most used first; nothing chosen yet, so save is disabled.
     expect(find.text('Ration'), findsOneWidget);
     expect(find.text('Choose a category'), findsOneWidget);
-    expect(find.text('Cash · Spending'), findsOneWidget);
+    expect(find.text('PAID FROM'), findsOneWidget);
+    expect(find.text('Cash'), findsOneWidget);
 
     for (final key in ['3', '5', '0']) {
       await tester.tap(find.text(key).last);
@@ -199,7 +200,7 @@ void main() {
     expect(repo.purchases.single, (item: 'Bus tickets', amount: taka(2400), entryId: 41));
   });
 
-  testWidgets('paid-from picker with many accounts and goals fits and scrolls', (tester) async {
+  testWidgets('paid-from lists only accounts, even with many goals', (tester) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 1080 / 384;
     addTearDown(tester.view.reset);
@@ -244,18 +245,14 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cash · Spending'));
+    await tester.tap(find.text('Cash'));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull, reason: 'no overflow');
-    expect(find.text('Goal number 10'), findsOneWidget);
-    expect(find.text('Refrigerator'), findsNothing, reason: 'achieved goals are hidden');
-    expect(find.text('Investments'), findsNothing, reason: 'not a place to pay from');
-    // The button stays reachable.
+    expect(find.text('Goal number 10'), findsNothing, reason: 'only the places money is');
+    expect(find.text('Monthly Savings'), findsNothing);
     await tester.tap(find.text('City Bank'));
-    await tester.pump();
-    await tester.tap(find.text('Use this'));
     await tester.pumpAndSettle();
-    expect(find.text('City Bank · Spending'), findsOneWidget);
+    expect(find.text('City Bank'), findsOneWidget);
   });
 }

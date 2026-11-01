@@ -201,10 +201,7 @@ void main() {
       ),
     );
     final l = await Ledger.load(old);
-    expect(
-      l.categoryLines(const Period(2026, 10), CategoryKind.expense).single.budget,
-      taka(14000),
-    );
+    expect(l.categoryLines(const Period(2026, 10), CategoryKind.expense).first.budget, taka(14000));
     expect(
       (await old.customSelect('PRAGMA user_version').getSingle()).data.values.single,
       old.schemaVersion,

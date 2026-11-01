@@ -115,7 +115,7 @@ class _SaveBudgetSheetState extends ConsumerState<_SaveBudgetSheet> {
       title: 'Save to a pot · ${widget.period.label}',
       children: [
         Text(
-          'Lowers this month\'s budget and moves the money from Spending into the pot. '
+          'Lowers this month\'s budget and moves the money into the pot. '
           'Your Monthly plan does not change.',
           style: TextStyle(color: status.muted, fontSize: 13),
         ),
@@ -161,7 +161,7 @@ class _SaveBudgetSheetState extends ConsumerState<_SaveBudgetSheet> {
               ? '${category?.name ?? 'This category'} has nothing left to save this month.'
               : amount > limit
               ? 'At most ${formatTaka(limit)}'
-                    '${inAccount < unspent ? ' (Spending money in this account)' : ' (still unspent)'}.'
+                    '${inAccount < unspent ? ' (this month\'s money in this account)' : ' (still unspent)'}.'
               : '${formatTaka(unspent)} of its budget is still unspent.',
           style: TextStyle(color: amount > limit ? status.bad : status.muted, fontSize: 13),
         ),
@@ -229,9 +229,12 @@ class SavedThisMonth extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${ledger.categories[e.categoryId]?.name} → '
-                  '${ledger.funds[ledger.postingsOf(e.id).where((p) => p.amount > 0).firstOrNull?.fundId]?.name}'
-                  ' · ${formatTaka(e.amount)}',
+                  ledger.isFundedFromPot(e)
+                      ? '${ledger.funds[ledger.postingsOf(e.id).where((p) => p.amount < 0).firstOrNull?.fundId]?.name} → '
+                            '${ledger.categories[e.categoryId]?.name} · ${formatTaka(e.amount)}'
+                      : '${ledger.categories[e.categoryId]?.name} → '
+                            '${ledger.funds[ledger.postingsOf(e.id).where((p) => p.amount > 0).firstOrNull?.fundId]?.name}'
+                            ' · ${formatTaka(e.amount)}',
                   style: TextStyle(color: status.muted, fontSize: 13),
                 ),
               ),
@@ -240,10 +243,12 @@ class SavedThisMonth extends ConsumerWidget {
                 onPressed: () async {
                   if (!await confirm(
                     context,
-                    title: 'Undo this save?',
-                    body:
-                        'The money goes back to Spending and the budget back to '
-                        '${ledger.categories[e.categoryId]?.name}.',
+                    title: 'Undo this?',
+                    body: ledger.isFundedFromPot(e)
+                        ? 'The money goes back to the pot and the budget of '
+                              '${ledger.categories[e.categoryId]?.name} comes down.'
+                        : 'The money comes back and the budget returns to '
+                              '${ledger.categories[e.categoryId]?.name}.',
                     action: 'Undo',
                   )) {
                     return;

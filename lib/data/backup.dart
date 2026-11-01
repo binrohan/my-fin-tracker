@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:intl/intl.dart';
 
 import 'database.dart';
+import 'default_data.dart';
 import 'receipts.dart';
 
 /// A backup is a zip (`.mft`) holding:
@@ -152,6 +153,8 @@ class Backup {
         b.insertAll(db.budgetMoves, rows(db.budgetMoves).map(BudgetMove.fromJson));
         b.insertAll(db.trackerAmounts, rows(db.trackerAmounts).map(TrackerAmount.fromJson));
       });
+      // Backups made before these existed.
+      await setupFloatingAndMisc(db, DateTime.now());
     });
     await receipts?.replaceAll(backup.receipts);
   }

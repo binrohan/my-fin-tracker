@@ -126,7 +126,7 @@ class _Breakdown extends StatelessWidget {
       const Label('This month'),
       AmountRow('Left to spend', a.leftToSpend),
       AmountRow('Budgets still waiting', -a.planned, signed: true),
-      AmountRow('Unplanned', a.unplanned, total: true),
+      AmountRow('Not in a budget', a.unplanned, total: true),
       AmountRow('This purchase', -a.amount, signed: true),
       AmountRow('Left to spend after', a.after, total: true, signed: a.after < 0),
     ],

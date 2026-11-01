@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show OrderingTerm, innerJoin;
 import '../core/money.dart';
 import '../core/period.dart';
 import '../data/database.dart';
+import '../data/default_data.dart';
 import 'allocation.dart';
 import 'enums.dart';
 
@@ -262,7 +263,9 @@ class Ledger {
     if (kind == CategoryKind.expense) {
       repaidFromBudget(p).forEach((c, v) => actual.update(c, (x) => x + v, ifAbsent: () => v));
     }
-    final budget = budgetsFor(p);
+    final budget = {...budgetsFor(p)};
+    final misc = miscCategory;
+    if (kind == CategoryKind.expense && misc != null) budget[misc.id] = miscBudget(p);
     final delta = withMoves ? budgetDeltas(p) : const <int, Poisha>{};
 
     // Moves into or out of a category and everything under it.
@@ -291,8 +294,47 @@ class Ledger {
 
     return [
       for (final c in categories.values)
-        if (c.parentId == null && c.kind == kind && _visibleIn(c, p)) build(c),
+        if (c.parentId == null && c.kind == kind && c.id != misc?.id && _visibleIn(c, p)) build(c),
+      // Misc always comes last.
+      if (kind == CategoryKind.expense && misc != null) build(misc),
     ]..removeWhere((l) => l.category.archived && l.actual == 0);
+  }
+
+  /// The section that takes what the Monthly plan's expenses leave
+  /// unassigned.
+  CategoryRow? get miscCategory => categories[int.tryParse(settings[miscCategorySetting] ?? '')];
+
+  /// Misc's budget in month [p]: the plan's monthly expenses minus every
+  /// other section's budget. Months before Misc existed have none.
+  Poisha miscBudget(Period p) {
+    final misc = miscCategory;
+    final from = settings[miscFromSetting];
+    if (misc == null || (from != null && p.toString().compareTo(from) < 0)) return 0;
+    final target = planFor(p).expenseTarget ?? 0;
+    return math.max(0, target - _assignedBudgets(budgetsFor(p)));
+  }
+
+  /// The budgets of every section but Misc: a section's own, or the sum of
+  /// its subsections.
+  Poisha _assignedBudgets(Map<int, Poisha> budgets) {
+    Poisha of(CategoryRow c) {
+      final own = budgets[c.id] ?? 0;
+      if (own > 0) return own;
+      return categories.values
+          .where((x) => x.parentId == c.id && !x.archived)
+          .fold(0, (t, x) => t + of(x));
+    }
+
+    return categories.values
+        .where(
+          (c) =>
+              c.kind == CategoryKind.expense &&
+              c.parentId == null &&
+              !c.archived &&
+              !isSlot(c) &&
+              c.id != miscCategory?.id,
+        )
+        .fold(0, (t, c) => t + of(c));
   }
 
   /// The budget of each category in a month. A budget set in one month
@@ -680,18 +722,28 @@ class Ledger {
   }
 
   /// Budget saved to pots during month [p], by category.
-  Map<int, Poisha> savedDuring(Period p) {
-    final saved = <int, Poisha>{};
+  Map<int, Poisha> savedDuring(Period p) => _budgetMovesWithPots(p, intoMonth: false);
+
+  /// Pot money moved into a section's budget during month [p], by category.
+  Map<int, Poisha> fundedFromPots(Period p) => _budgetMovesWithPots(p, intoMonth: true);
+
+  Map<int, Poisha> _budgetMovesWithPots(Period p, {required bool intoMonth}) {
+    final found = <int, Poisha>{};
     for (final e in entries) {
       if (e.type == EntryType.move &&
           e.budgetSave == true &&
           e.categoryId != null &&
-          p.contains(e.date)) {
-        saved.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
+          p.contains(e.date) &&
+          isFundedFromPot(e) == intoMonth) {
+        found.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
       }
     }
-    return saved;
+    return found;
   }
+
+  /// A budget move whose money came out of a pot into this month's money.
+  bool isFundedFromPot(Entry e) =>
+      postingsOf(e.id).any((l) => l.fundId == spendingFund.id && l.amount > 0);
 
   /// What closing [p] saves from categories linked to a pot: each linked
   /// category's unused budget (nothing if it went over). A linked section
@@ -754,7 +806,8 @@ class Ledger {
   ];
 
   /// Net budget moved into (+) or out of (−) each category in month [p],
-  /// including budget saved to a pot during the month.
+  /// including budget saved to a pot and pot money moved in during the
+  /// month.
   Map<int, Poisha> budgetDeltas(Period p) {
     final d = <int, Poisha>{};
     for (final m in movesIn(p)) {
@@ -763,6 +816,9 @@ class Ledger {
     }
     savedDuring(p).forEach((category, amount) {
       d.update(category, (v) => v - amount, ifAbsent: () => -amount);
+    });
+    fundedFromPots(p).forEach((category, amount) {
+      d.update(category, (v) => v + amount, ifAbsent: () => amount);
     });
     return d;
   }

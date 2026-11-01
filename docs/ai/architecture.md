@@ -31,12 +31,25 @@
   budget; `savedAtCloseIn` / `savedAtClose(line)` count them as used (report "Saved" column,
   Spend tab).
 
+- **Misc** (setting `misc_category`): `miscBudget(p)` = plan's `expenseTarget` − other sections, not
+  stored; none before `misc_from` (YYYY-MM, set when upgrading). Always the last line.
+- Pots: `usePot` = expense with no category (no budget effect, not editable in quick add, left out
+  of the report's Actual). `moveToSection` = move with `budget_save` and a category, pot → this
+  month; `isFundedFromPot` tells it apart from a save to a pot, `fundedFromPots` raises the budget.
+
+## Words in the UI
+- `FundKind.spending` is shown as **This month** and `FundKind.unplanned` as **Floating**; code and
+  enums keep the old names. Neither "Spending" nor picking this fund is offered: Quick add asks for
+  an account only (`pickAccount`), `pickPot` hides it unless it is already chosen.
+- Expense categories are edited only in Monthly plan → Expenses, income types in → Income
+  (`showCategoryEditor`, lib/features/setup/category_editor.dart).
+
 ## Monthly plan (lib/ledger/allocation.dart)
 - `AllocationPlan` JSON in settings. Dated: base key `allocation_plan`, changes from a month in
   `allocation_plan@YYYY-MM`. Always read with `ledger.planFor(period)` (or `latestPlan`).
 - The plan is a **blueprint** used when income arrives (`latestPlan`). `receiveIncome`:
   pots filled at once (moves "Salary plan"), spending part → Spending or the nextMonth fund
-  (parked, `IncomeTo.nextMonth`), the rest → the **Unplanned** fund (`FundKind.unplanned`, not
+  (parked, `IncomeTo.nextMonth`), the rest → the **Floating** fund (`FundKind.unplanned`, not
   monthly). Release on the 1st only moves parked money; it splits only when
   split_on_release_<month> == 'true' (old data). 'done' = split handled.
   `splitHeldSalary` (run on app start) splits a salary parked whole by versions ≤ 1.4.3, for this
@@ -52,7 +65,7 @@ split_on_release_<YYYY-MM>, theme_mode, theme_palette, theme_pure_black.
 
 ## Schema history (lib/data/database.dart; fixtures in test/fixtures)
 2 investments/purchases/trackers · 3 categories.savings_fund_id · 4 slots + budget_moves ·
-5 entries.receipt · 6 entries.budget_save · 7 tracker_amounts.
+5 entries.receipt · 6 entries.budget_save · 7 tracker_amounts · 8 data only: fund names, Misc (`setupFloatingAndMisc`, also run after a restore).
 Backups (`backup.dart`) list every table; older backups restore with missing tables empty.
 
 ## Android side

@@ -31,7 +31,7 @@ class MoneyDetailsScreen extends ConsumerWidget {
               SectionCard(
                 children: [
                   const Label('Every pot'),
-                  AmountRow('Spending', ledger.fundBalance(ledger.spendingFund.id)),
+                  AmountRow('This month', ledger.fundBalance(ledger.spendingFund.id)),
                   for (final kind in [FundKind.savings, FundKind.goal])
                     for (final f in ledger.fundsOfKind(kind))
                       if (ledger.fundBalance(f.id) != 0 || kind == FundKind.savings)
@@ -144,7 +144,7 @@ class PotsTable extends StatelessWidget {
     ];
     // Sector name → the funds it adds up.
     final sectors = <(String, List<int>)>[
-      ('Spending', [ledger.spendingFund.id]),
+      ('This month', [ledger.spendingFund.id]),
       for (final f in ledger.fundsOfKind(FundKind.savings)) (f.name, [f.id]),
       ('Goals', [for (final f in ledger.fundsOfKind(FundKind.goal)) f.id]),
       (

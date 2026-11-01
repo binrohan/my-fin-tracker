@@ -134,6 +134,30 @@ class PickerField extends StatelessWidget {
 }
 
 /// Lets you choose an account and a fund ("Cash · Spending").
+/// Asks for one of the places money is: Bank, Cash, bKash…
+Future<int?> pickAccount(
+  BuildContext context,
+  Ledger ledger, {
+  required String title,
+  required int initial,
+}) => showDialog<int>(
+  context: context,
+  builder: (context) => SimpleDialog(
+    title: Text(title),
+    children: [
+      for (final a in ledger.accountsOfType((t) => t.isLiquid))
+        if (!a.archived || a.id == initial)
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, a.id),
+            child: Text(
+              a.name,
+              style: a.id == initial ? const TextStyle(fontWeight: FontWeight.w700) : null,
+            ),
+          ),
+    ],
+  ),
+);
+
 Future<Pot?> pickPot(
   BuildContext context,
   Ledger ledger, {
@@ -157,6 +181,7 @@ Future<Pot?> pickPot(
             (!f.archived &&
                 f.achievedAt == null &&
                 f.kind != FundKind.nextMonth &&
+                f.kind != FundKind.spending &&
                 (includeInvestments || f.kind != FundKind.investment)),
       )
       .toList();

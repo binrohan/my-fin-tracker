@@ -12,6 +12,8 @@ import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
+import '../../ledger/tax.dart';
+import '../setup/category_editor.dart';
 
 /// The monthly plan in three steps: what comes in (Income), what each taka
 /// is for (Split), and how the expense part breaks down (Expenses).
@@ -352,7 +354,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
                   title: const Text('For next month'),
                   subtitle: Text(
                     r.forNextMonth
-                        ? 'Held when it arrives; released into Spending on the 1st'
+                        ? 'Held when it arrives; released into that month on the 1st'
                         : 'Spent in the month it arrives',
                   ),
                   value: r.forNextMonth,
@@ -404,6 +406,39 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
         ),
         const Divider(),
         AmountRow('Planned income a month', _plannedIncome, total: true),
+        const SizedBox(height: 12),
+        SectionCard(
+          children: [
+            const Label('Income types'),
+            for (final c in ledger.categories.values)
+              if (c.kind == CategoryKind.income)
+                InkWell(
+                  onTap: () => showCategoryEditor(context, ref, ledger, existing: c),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      spacing: 8,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            c.name,
+                            style: TextStyle(
+                              color: c.archived ? status.muted : null,
+                              decoration: c.archived ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          incomeTaxType(ledger, c.id).label,
+                          style: TextStyle(color: status.muted, fontSize: 12),
+                        ),
+                        const Icon(Icons.edit_outlined, size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+          ],
+        ),
       ],
     );
   }
@@ -557,12 +592,17 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
         if (c.kind == CategoryKind.expense &&
             c.parentId == null &&
             !c.archived &&
-            !ledger.isSlot(c))
+            !ledger.isSlot(c) &&
+            c.id != ledger.miscCategory?.id)
           c,
     ];
     List<CategoryRow> subsOf(int id) => [
       for (final c in ledger.categories.values)
         if (c.parentId == id && !c.archived) c,
+    ];
+    final archived = [
+      for (final c in ledger.categories.values)
+        if (c.kind == CategoryKind.expense && c.archived && !ledger.isSlot(c)) c,
     ];
     final sectionsTotal = sections.fold<Poisha>(0, (t, c) => t + _value(_budget(c.id)));
     final target = _value(_expenseTarget);
@@ -575,7 +615,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
             Row(
               children: [
                 const Expanded(child: Label('Monthly expenses')),
-                _AddsUp(parts: sectionsTotal, whole: target),
+                if (sectionsTotal > target) _AddsUp(parts: sectionsTotal, whole: target),
               ],
             ),
             Money(target, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
@@ -583,11 +623,27 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
               'Sections ${formatTaka(sectionsTotal)}. Applies from ${_period.label} on.',
               style: TextStyle(color: status.muted, fontSize: 13),
             ),
+            Text(
+              'Tap a name to rename it, set a due day, link a pot or archive it.',
+              style: TextStyle(color: status.muted, fontSize: 13),
+            ),
           ],
         ),
         const SizedBox(height: 12),
         for (final section in sections) ...[
           _sectionCard(ledger, section, subsOf(section.id)),
+          const SizedBox(height: 12),
+        ],
+        if (ledger.miscCategory != null) ...[
+          SectionCard(
+            children: [
+              AmountRow(
+                ledger.miscCategory!.name,
+                target > sectionsTotal ? target - sectionsTotal : 0,
+                detail: 'Whatever your sections leave',
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
         ],
         Align(
@@ -602,6 +658,20 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
             },
           ),
         ),
+        if (archived.isNotEmpty)
+          SectionCard(
+            children: [
+              const Label('Archived'),
+              for (final c in archived)
+                InkWell(
+                  onTap: () => showCategoryEditor(context, ref, ledger, existing: c),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(c.name, style: TextStyle(color: status.muted)),
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }
@@ -616,9 +686,10 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
           children: [
             Expanded(
               child: _NameWithLink(
-                name: section.name,
-                link: ledger.funds[section.savingsFundId]?.name,
+                ledger: ledger,
+                category: section,
                 bold: true,
+                onTap: () => showCategoryEditor(context, ref, ledger, existing: section),
               ),
             ),
             SizedBox(
@@ -634,7 +705,11 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
               spacing: 12,
               children: [
                 Expanded(
-                  child: _NameWithLink(name: sub.name, link: ledger.funds[sub.savingsFundId]?.name),
+                  child: _NameWithLink(
+                    ledger: ledger,
+                    category: sub,
+                    onTap: () => showCategoryEditor(context, ref, ledger, existing: sub),
+                  ),
                 ),
                 SizedBox(
                   width: 124,
@@ -718,24 +793,57 @@ class _Balance extends StatelessWidget {
   }
 }
 
-/// A category name, with "Unused → New Laptop" under it when linked.
+/// A category name, tap to edit, with its due day and "Unused → New Laptop"
+/// under it when it has them.
 class _NameWithLink extends StatelessWidget {
-  const _NameWithLink({required this.name, this.link, this.bold = false});
+  const _NameWithLink({
+    required this.ledger,
+    required this.category,
+    required this.onTap,
+    this.bold = false,
+  });
 
-  final String name;
-  final String? link;
+  final Ledger ledger;
+  final CategoryRow category;
+  final VoidCallback onTap;
   final bool bold;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(name, style: bold ? const TextStyle(fontWeight: FontWeight.w700, fontSize: 16) : null),
-      if (link != null)
-        Text(
-          'Unused → $link',
-          style: TextStyle(color: StatusColors.of(context).muted, fontSize: 12),
+  Widget build(BuildContext context) {
+    final details = [
+      if (category.isFixed)
+        category.dueDay == null ? 'Fixed bill' : 'Fixed · due day ${category.dueDay}',
+      if (ledger.funds[category.savingsFundId] case final f?) 'Unused → ${f.name}',
+    ];
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 4,
+              children: [
+                Flexible(
+                  child: Text(
+                    category.name,
+                    style: bold ? const TextStyle(fontWeight: FontWeight.w700, fontSize: 16) : null,
+                  ),
+                ),
+                const Icon(Icons.edit_outlined, size: 14),
+              ],
+            ),
+            if (details.isNotEmpty)
+              Text(
+                details.join(' · '),
+                style: TextStyle(color: StatusColors.of(context).muted, fontSize: 12),
+              ),
+          ],
         ),
-    ],
-  );
+      ),
+    );
+  }
 }

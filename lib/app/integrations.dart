@@ -193,7 +193,7 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
               duration: const Duration(seconds: 8),
               content: Text(
                 'Salary split as planned: ${formatTaka(split.setAside)} to your pots'
-                '${split.unplanned > 0 ? ', ${formatTaka(split.unplanned)} to Unplanned' : ''}',
+                '${split.unplanned > 0 ? ', ${formatTaka(split.unplanned)} to Floating' : ''}',
               ),
             ),
           );

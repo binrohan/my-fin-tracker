@@ -556,6 +556,34 @@ class LedgerRepository {
         }
       });
 
+  /// Spends pot money directly: it comes off the pot and the account, and no
+  /// monthly section or budget is touched.
+  Future<int> usePot(DateTime date, Poisha amount, Pot from, String note) => _write(
+    date: date,
+    type: EntryType.expense,
+    amount: amount,
+    postings: [(from, -amount)],
+    note: note,
+  );
+
+  /// Moves pot money into a section for month of [date]: the section's budget
+  /// grows by the amount, and the money joins this month's.
+  Future<int> moveToSection(
+    DateTime date,
+    Poisha amount, {
+    required Pot from,
+    required int categoryId,
+    required int spendingFund,
+  }) => _write(
+    date: date,
+    type: EntryType.move,
+    amount: amount,
+    categoryId: categoryId,
+    budgetSave: true,
+    postings: [(from, -amount), ((account: from.account, fund: spendingFund), amount)],
+    note: 'From pot to budget',
+  );
+
   /// Money back for an expense (a cancelled ticket): a negative expense in
   /// the same category and tracker, dated when the money came back, into
   /// [to]. It lowers what the category and tracker spent in that month.
@@ -616,7 +644,7 @@ class LedgerRepository {
 
   static String splitOnReleaseKey(Period month) => 'split_on_release_$month';
 
-  /// The "Unplanned" pot: money nothing is planned for yet, not tied to a
+  /// The "Floating" pot: money nothing is planned for yet, not tied to a
   /// month. Created on first use.
   Future<int> unplannedFund() async {
     final existing = await (db.select(
@@ -625,7 +653,7 @@ class LedgerRepository {
     if (existing != null) return existing.id;
     return db
         .into(db.funds)
-        .insert(FundsCompanion.insert(name: 'Unplanned', kind: FundKind.unplanned));
+        .insert(FundsCompanion.insert(name: 'Floating', kind: FundKind.unplanned));
   }
 
   /// Records an income and puts it where it belongs, all at once:

@@ -59,7 +59,8 @@ class QuickAddPrefill {
 }
 
 bool canEditInQuickAdd(Entry e) =>
-    (e.type == EntryType.expense && e.amount > 0) ||
+    // Pot money used directly has no category to edit.
+    (e.type == EntryType.expense && e.amount > 0 && e.categoryId != null) ||
     e.type == EntryType.income ||
     e.type == EntryType.move;
 
@@ -97,7 +98,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
   /// Income received now for next month; null: as the plan says for this
   /// income type.
-  bool? _forNextMonth;
   int? _trackerId;
 
   /// The purchase record of the entry being edited, kept so shop and
@@ -148,12 +148,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
     final e = widget.editing;
     if (e == null) {
-      _from =
-          potFromSetting(ledger, ledger.settings[_lastExpensePot]) ??
-          (account: cash, fund: spending);
-      _to =
-          potFromSetting(ledger, ledger.settings[_lastIncomePot]) ??
-          (account: bank, fund: spending);
+      // Only the account is remembered: the money is always this month's.
+      _from = (
+        account: potFromSetting(ledger, ledger.settings[_lastExpensePot])?.account ?? cash,
+        fund: spending,
+      );
+      _to = (
+        account: potFromSetting(ledger, ledger.settings[_lastIncomePot])?.account ?? bank,
+        fund: spending,
+      );
       if (widget.mode case final m?) _mode = m;
       if (widget.prefill case final p?) {
         _mode = p.mode;
@@ -309,24 +312,22 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
         note: note,
         trackerId: _trackerId,
       ),
-      // Parked for next month; the main income is split as planned now.
-      QuickAddMode.income when _holdForNextMonth(ledger) => repo.receiveIncome(
-        _date,
-        amount,
-        categoryId: _categoryId!,
-        account: _to.account,
-        to: IncomeTo.nextMonth,
-        // Editing an amount never splits again; a new salary is split now.
-        split: widget.editing == null && ledger.latestPlan.categoryId == _categoryId
-            ? ledger.latestPlan
-            : null,
-        note: note,
-      ),
-      QuickAddMode.income => repo.income(
+      // An edit keeps the entry where it is and never splits again.
+      QuickAddMode.income when widget.editing != null => repo.income(
         _date,
         amount,
         categoryId: _categoryId!,
         to: _to,
+        note: note,
+      ),
+      // As the Monthly plan says; income it doesn't know of floats.
+      QuickAddMode.income => repo.receiveIncome(
+        _date,
+        amount,
+        categoryId: _categoryId!,
+        account: _to.account,
+        to: _incomeGoesTo(ledger),
+        split: ledger.latestPlan.categoryId == _categoryId ? ledger.latestPlan : null,
         note: note,
       ),
       QuickAddMode.move => repo.move(_date, amount, from: _from, to: _to, note: note),
@@ -362,47 +363,29 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
     if (_mode == QuickAddMode.income) await repo.setSetting(_lastIncomePot, potSetting(_to));
 
     navigator.pop(true);
-    final held = _mode == QuickAddMode.income && _holdForNextMonth(ledger);
     final what = switch (_mode) {
-      _ when held =>
-        '${ledger.categories[_categoryId]?.name} ${formatTaka(amount)} held for '
-            '${Period.of(_date).next.label}',
       QuickAddMode.move => 'Moved ${formatTaka(amount)}',
+      QuickAddMode.income when editing == null && _incomeGoesTo(ledger) == IncomeTo.unplanned =>
+        '${ledger.categories[_categoryId]?.name} ${formatTaka(amount)} → Floating',
+      QuickAddMode.income when editing == null && _incomeGoesTo(ledger) == IncomeTo.nextMonth =>
+        '${ledger.categories[_categoryId]?.name} ${formatTaka(amount)} recorded · '
+            'expense part held for ${Period.of(_date).next.label}',
       _ =>
         '${editing == null ? 'Saved' : 'Updated'} ${formatTaka(amount)} · '
             '${ledger.categories[_categoryId]?.name}',
     };
-
-    final plan = ledger.planFor(Period.of(_date));
-    // Held income is split when it is released on the 1st, not now.
-    final offerPlan =
-        editing == null &&
-        !held &&
-        _mode == QuickAddMode.income &&
-        !plan.isEmpty &&
-        plan.categoryId == _categoryId;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(what),
-          duration: Duration(seconds: offerPlan ? 10 : 3),
-          action: offerPlan
-              ? SnackBarAction(
-                  label: 'Set aside ${formatTaka(plan.total)}',
-                  onPressed: () => repo.applyAllocation(plan, _date, _to),
-                )
-              : null,
-        ),
-      );
+      ..showSnackBar(SnackBar(content: Text(what)));
   }
 
-  /// Hold this income for next month: the chip if touched, otherwise the
-  /// plan's setting for this income type.
-  bool _holdForNextMonth(Ledger ledger) =>
-      _forNextMonth ??
-      ledger.planFor(Period.of(_date)).sourceFor(_categoryId)?.forNextMonth ??
-      false;
+  /// Where new income goes: a type in the Monthly plan as planned (held for
+  /// next month or this month's); anything else to Floating.
+  IncomeTo _incomeGoesTo(Ledger ledger) {
+    final source = ledger.latestPlan.sourceFor(_categoryId);
+    if (source == null) return IncomeTo.unplanned;
+    return source.forNextMonth ? IncomeTo.nextMonth : IncomeTo.spending;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -423,18 +406,12 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       chips.insert(0, selected);
     }
 
-    Widget potField(String label, Pot pot, ValueChanged<Pot> onPicked) => PickerField(
+    Widget accountField(String label, Pot pot, ValueChanged<Pot> onPicked) => PickerField(
       label: label,
-      value: potLabel(ledger, pot),
+      value: ledger.accounts[pot.account]?.name ?? '',
       onTap: () async {
-        final picked = await pickPot(
-          context,
-          ledger,
-          title: label,
-          initial: pot,
-          includeInvestments: _mode == QuickAddMode.move,
-        );
-        if (picked != null) setState(() => onPicked(picked));
+        final picked = await pickAccount(context, ledger, title: label, initial: pot.account);
+        if (picked != null) setState(() => onPicked((account: picked, fund: pot.fund)));
       },
     );
 
@@ -512,7 +489,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                       selected: c.id == _categoryId,
                       onSelected: (_) => setState(() {
                         _categoryId = c.id;
-                        _forNextMonth = null;
                       }),
                     ),
                   ActionChip(
@@ -522,7 +498,6 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                       if (picked != null) {
                         setState(() {
                           _categoryId = picked.id;
-                          _forNextMonth = null;
                         });
                       }
                     },
@@ -534,24 +509,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
               children: [
                 Expanded(
                   child: switch (_mode) {
-                    QuickAddMode.expense => potField('Paid from', _from, (p) => _from = p),
-                    QuickAddMode.income => potField('Received in', _to, (p) => _to = p),
-                    QuickAddMode.move => potField('From', _from, (p) => _from = p),
+                    QuickAddMode.expense => accountField('Paid from', _from, (p) => _from = p),
+                    QuickAddMode.income => accountField('Received in', _to, (p) => _to = p),
+                    QuickAddMode.move => accountField('From', _from, (p) => _from = p),
                   },
                 ),
                 Expanded(child: dateField),
               ],
             ),
-            if (_mode == QuickAddMode.move) potField('To', _to, (p) => _to = p),
-            if (_mode == QuickAddMode.income && _categoryId != null && widget.editing == null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilterChip(
-                  label: Text('For ${Period.of(_date).next.label}'),
-                  selected: _holdForNextMonth(ledger),
-                  onSelected: (v) => setState(() => _forNextMonth = v),
-                ),
-              ),
+            if (_mode == QuickAddMode.move) accountField('To', _to, (p) => _to = p),
             // One scrolling line, so the number pad stays on screen.
             if (_mode == QuickAddMode.expense)
               SingleChildScrollView(

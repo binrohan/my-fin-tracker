@@ -142,7 +142,7 @@ void main() {
   testWidgets("What it's for opens the details", (tester) async {
     await pump(tester);
     await tester.scrollUntilVisible(find.text('WHAT YOUR MONEY IS FOR'), 300);
-    await tester.scrollUntilVisible(find.textContaining('Unplanned', findRichText: true), 300);
+    await tester.scrollUntilVisible(find.textContaining('Floating', findRichText: true), 300);
     // An outline, one line per kind of money; no table on Home.
     expect(find.text('Sector'), findsNothing);
     expect(find.text('Monthly Savings'), findsOneWidget);
