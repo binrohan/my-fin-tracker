@@ -6,6 +6,13 @@
    (release/ is git-ignored). Signing: `android/key.properties` (git-ignored) → `myfin-release.jks`.
 3. Commit (no AI attribution), `git tag v<version>`.
 
+## Pushing to GitHub
+- Remote `origin` = github.com/binrohan/my-fin-tracker (public; GitHub Pages serves `/docs`:
+  binrohan.github.io/my-fin-tracker — home, privacy, terms, user manual).
+- The `gh` accounts on this machine can't push to it; the personal SSH key can:
+  `GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_personal -o IdentitiesOnly=yes" git push git@github.com:binrohan/my-fin-tracker.git main --tags`
+- Push after every commit, tags included. Never force-push.
+
 ## Installing on the phone (adb)
 ```bash
 adb devices                                  # phone must show "device"

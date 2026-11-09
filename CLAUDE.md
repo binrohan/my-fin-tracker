@@ -10,7 +10,9 @@ Owner: Rohan BK. Currency ৳ BDT, lakh grouping (1,23,456). Months start on the
   `com.myfin.my_fin_tracker.dev` = "My Fin (dev)"). Never uninstall, load example data, reset,
   or write their databases. Update only with `adb install -r`.
 - Before installing: run `tool/dev_db_count.sh before` and check it printed rows; after: `after` + diff.
-- Don't push, publish or change the phone without being asked. Ask before anything destructive.
+- Push to GitHub after each commit without asking (owner's standing OK, 2026-11-09); see
+  `docs/ai/workflow.md` for how. Still ask before changing the phone (other than the usual
+  `install -r`), publishing anything else, or anything destructive (force-push, deleting tags).
 
 ## Commands (Flutter lives at `~/dev/flutter`)
 ```bash
