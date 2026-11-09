@@ -92,7 +92,6 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(segment);
       await tester.pumpAndSettle();
-      expect(find.textContaining('only the income entries in the app'), findsOneWidget);
       final lastYear = find.text('Last year, 2025-26');
       await tester.scrollUntilVisible(lastYear, 300, scrollable: page());
       expect(find.text('Return due Nov 30, 2026'), findsOneWidget);

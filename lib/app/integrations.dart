@@ -10,11 +10,13 @@ import 'package:quick_actions/quick_actions.dart';
 import '../core/money.dart';
 import '../core/period.dart';
 import '../data/auto_backup.dart';
+import '../data/drive_backup.dart';
 import '../data/ledger_repository.dart';
 import '../features/quick_add/quick_add_sheet.dart';
 import '../ledger/free_to_spend.dart';
 import '../ledger/ledger.dart';
 import '../ledger/sms.dart';
+import 'google_drive.dart';
 import 'providers.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -166,6 +168,7 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
   }
 
   bool _releasing = false;
+  bool _uploading = false;
 
   /// On or after the 1st, income held for this month is released into
   /// Spending (and the plan's split runs). Safe to call often: the
@@ -229,6 +232,40 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
     } catch (_) {
       // A failed automatic backup must never stop the app; the backup
       // reminder on Home stays until one succeeds.
+    }
+    await _driveBackup(ledger);
+  }
+
+  /// The weekly encrypted copy on Google Drive, when it is on. Never asks
+  /// anything: if Drive needs you again, Backup & restore says so.
+  Future<void> _driveBackup(Ledger ledger) async {
+    if (_uploading || !DriveBackup.isDue(ledger.settings, DateTime.now())) return;
+    _uploading = true;
+    final repo = ref.read(repositoryProvider);
+    try {
+      final key = await DriveKeyStore.read();
+      final token = await driveAccessToken(interactive: false);
+      if (key == null || token == null) {
+        await repo.setSetting(
+          driveBackupErrorSetting,
+          'Connect Google Drive again to keep backing up.',
+        );
+        return;
+      }
+      await DriveBackup(
+        ref.read(databaseProvider),
+        GoogleDriveStore(token),
+        receipts: await ref.read(receiptStoreProvider.future),
+      ).upload(key);
+    } on DriveAuthException {
+      await repo.setSetting(
+        driveBackupErrorSetting,
+        'Connect Google Drive again to keep backing up.',
+      );
+    } catch (_) {
+      // No network or Drive busy: tried again on the next start.
+    } finally {
+      _uploading = false;
     }
   }
 

@@ -151,20 +151,8 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
               SectionCard(
                 children: [
                   Label('Tax for ${_year.label}'),
-                  AmountRow(
-                    'Projected',
-                    fullYear.tax,
-                    detail: running
-                        ? 'whole year: your entries, estimates and plan'
-                        : 'your entries, and estimates for months without them',
-                  ),
-                  AmountRow(
-                    'Recorded',
-                    recorded.tax,
-                    detail: running
-                        ? 'only income in the app, to ${day.format(today)}'
-                        : 'only income in the app',
-                  ),
+                  AmountRow('Projected', fullYear.tax),
+                  AmountRow('Recorded', recorded.tax),
                   SegmentedButton<bool>(
                     segments: const [
                       ButtonSegment(value: false, label: Text('Projected')),
@@ -173,13 +161,6 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                     selected: {_recorded},
                     showSelectedIcon: false,
                     onSelectionChanged: (v) => setState(() => _recorded = v.single),
-                  ),
-                  Text(
-                    _recorded
-                        ? 'The working below uses only the income entries in the app. Your own '
-                              'figures and the estimates are left out.'
-                        : 'The working below uses the figures in the next card.',
-                    style: muted,
                   ),
                 ],
               ),

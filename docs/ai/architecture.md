@@ -63,6 +63,16 @@ borrow_charge_bp, month_leftover, app_lock, insights_off, home_collapsed, sms_on
 sms_handled, sms_senders, last_backup_at, last_auto_backup_at, auto_backup_off,
 split_on_release_<YYYY-MM>, theme_mode, theme_palette, theme_pure_black.
 
+## Google Drive backup (lib/data/drive_backup.dart, lib/app/google_drive.dart)
+- Weekly, after the local auto backup (`integrations._driveBackup`), when `drive_backup_on` and
+  `drive_backup_last` is 7+ days old. Errors go to `drive_backup_error` (shown on the card).
+- File = `MFTE1` | salt 16 | nonce 12 | mac 16 | AES-256-GCM(.mft). Key = PBKDF2-SHA256,
+  120k rounds, from the password; kept in app support dir `drive_key.json`, never in the DB
+  (so never inside a backup). The password is not stored.
+- Auth: `google_sign_in` 7 authorization only (no `authenticate`, so no web client id needed),
+  scope `drive.appdata`; REST over dart:io `HttpClient`. Files live in `appDataFolder`.
+- Google Cloud needs Android OAuth clients for both package names with their SHA-1s.
+
 ## Schema history (lib/data/database.dart; fixtures in test/fixtures)
 2 investments/purchases/trackers · 3 categories.savings_fund_id · 4 slots + budget_moves ·
 5 entries.receipt · 6 entries.budget_save · 7 tracker_amounts · 8 data only: fund names, Misc (`setupFloatingAndMisc`, also run after a restore).

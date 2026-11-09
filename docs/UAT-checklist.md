@@ -248,9 +248,20 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 ## 25. New in 1.6.1: income tax for this year first
 
 - [ ] Tools → Income tax opens on 2026-27 with no year tabs. The top card shows **Projected** and **Recorded**.
-- [ ] **Recorded** counts only income entries (Oct onward); it is lower than Projected. Typed figures don't change it.
+- [ ] **Recorded** counts only income entries (Oct onward); it is lower than Projected. Typed figures don't change it. No descriptions under the two figures.
 - [ ] Switch to **Recorded**: the working below changes to match.
 - [ ] At the bottom, **Last year, 2025-26 · Return due Nov 30, 2026** opens that year on its own screen. From 1 December the card is gone.
+
+## 26. New in 1.7.0: backup to Google Drive
+
+Needs the Google Cloud setup done first (see docs/ai/status.md).
+- [ ] More → Backup & restore → **Google Drive** → **Connect Google Drive**: the password must be 8+ characters and typed the same twice.
+- [ ] Choose your Google account and allow access. The card says **On** with today's time; a snack says it backed up.
+- [ ] drive.google.com → Settings → **Manage apps**: My Fin Tracker is listed with hidden app data (the files themselves are not visible; that's expected).
+- [ ] **Back up to Drive now** adds one; after more than 8, the oldest go.
+- [ ] **Restore from Drive** in the **dev** app (same Google account): pick a backup → a wrong password says so → the right one shows the restore question. Cancel unless you mean it.
+- [ ] A week later, opening the app uploads by itself (the time on the card changes).
+- [ ] **Turn off**: the card goes back to Connect; Restore from Drive still works with the password.
 
 ---
 
