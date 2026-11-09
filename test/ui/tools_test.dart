@@ -68,7 +68,8 @@ void main() {
     testWidgets('income tax (${brightness.name})', (tester) async {
       await pump(tester, const TaxScreen(), brightness);
       expect(find.text('Income year Jul 2026 to Jun 2027'), findsOneWidget);
-      expect(find.text('2026-27'), findsOneWidget);
+      expect(find.text('TAX FOR 2026-27'), findsOneWidget);
+      expect(find.text('2025-26'), findsNothing, reason: 'last year is not a tab');
       await tester.scrollUntilVisible(
         find.text('Which incomes are taxable'),
         300,
@@ -82,24 +83,24 @@ void main() {
       expect(find.text('Bonus'), findsOneWidget);
       await tester.tapAt(const Offset(20, 40));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('2026-27'), -300, scrollable: page());
-      await tester.scrollUntilVisible(find.text('Up to today').last, 300, scrollable: page());
+      await tester.scrollUntilVisible(find.text('TAX FOR 2026-27'), -300, scrollable: page());
       final segment = find.descendant(
         of: find.byType(SegmentedButton<bool>),
-        matching: find.text('Up to today'),
+        matching: find.text('Recorded'),
       );
       await tester.ensureVisible(segment);
       await tester.pumpAndSettle();
       await tester.tap(segment);
       await tester.pumpAndSettle();
-      expect(find.textContaining('as if the year ended today'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Tax for the year'), 300, scrollable: page());
-      expect(find.text('HOW IT IS WORKED OUT'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('2025-26'), -300, scrollable: page());
-      await tester.ensureVisible(find.text('2025-26'));
+      expect(find.textContaining('only the income entries in the app'), findsOneWidget);
+      final lastYear = find.text('Last year, 2025-26');
+      await tester.scrollUntilVisible(lastYear, 300, scrollable: page());
+      expect(find.text('Return due Nov 30, 2026'), findsOneWidget);
+      await tester.tap(lastYear);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('2025-26'));
-      await tester.pumpAndSettle();
+      expect(find.text('Income tax 2025-26'), findsOneWidget);
+      expect(find.textContaining('return due Nov 30, 2026'), findsOneWidget);
+      expect(find.text('Last year, 2024-25'), findsNothing);
       await tester.pump(const Duration(seconds: 1));
     });
 

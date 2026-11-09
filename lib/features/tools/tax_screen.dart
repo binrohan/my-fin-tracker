@@ -17,7 +17,10 @@ import 'tool_fields.dart';
 /// A simplified income tax estimate for one income year (July to June),
 /// with every step shown.
 class TaxScreen extends ConsumerStatefulWidget {
-  const TaxScreen({super.key});
+  const TaxScreen({super.key, this.year});
+
+  /// The income year to show; the current one when null.
+  final IncomeYear? year;
 
   @override
   ConsumerState<TaxScreen> createState() => _TaxScreenState();
@@ -29,15 +32,15 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
   late SettingSaver _saver;
   SavedTaxInputs? _saved;
 
-  /// Show the steps for income up to today instead of the whole year.
-  bool _soFar = false;
+  /// Show the working for recorded income only, not the projection.
+  bool _recorded = false;
 
   @override
   void initState() {
     super.initState();
     // Read now: ref can't be used once the screen is closing.
     _repo = ref.read(repositoryProvider);
-    _year = IncomeYear.of(ref.read(todayProvider));
+    _year = widget.year ?? IncomeYear.of(ref.read(todayProvider));
     _saver = _saverFor(_year);
   }
 
@@ -55,19 +58,10 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     _saver(saved.encode());
   }
 
-  void _switchYear(IncomeYear year) {
-    _saver.flush();
-    setState(() {
-      _year = year;
-      _saver = _saverFor(year);
-      _saved = null;
-    });
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Income tax'),
+      title: Text(widget.year == null ? 'Income tax' : 'Income tax ${_year.label}'),
       actions: [
         IconButton(
           tooltip: 'Rates and slabs',
@@ -87,22 +81,25 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     final s = _saved ??= SavedTaxInputs.parse(ledger.settings[SavedTaxInputs.settingKey(_year)]);
     final app = TaxFromApp.of(ledger, _year, today);
     final fullYear = computeTax(rules, s.resolve(app));
-    // As if the year ended today: only what your entries show so far.
-    final soFar = computeTax(
+    // Only the income entries in the app: no estimates, no plan, no typed figures.
+    final recorded = computeTax(
       rules,
       TaxInputs(
-        salary: app.salaryToDate,
-        otherIncome: app.otherToDate,
-        investment: app.investmentToDate,
+        salary: app.salarySoFar,
+        otherIncome: app.otherSoFar,
+        investment: app.investedSoFar,
         alreadyPaid: s.alreadyPaid,
         kind: s.kind,
       ),
     );
     final running = _year.contains(today);
     final day = DateFormat.yMMMd();
-    final lastDay = _year.end.subtract(const Duration(days: 1));
     final current = IncomeYear.of(today);
     final month = DateFormat.yMMM();
+    // A year's return is due on 30 November after it ends (Tax Day).
+    final due = DateTime(_year.end.year, 11, 30);
+    final last = IncomeYear(current.startYear - 1);
+    final lastDue = DateTime(last.end.year, 11, 30);
 
     SavedTaxInputs edit({
       Poisha? Function()? salary,
@@ -145,19 +142,46 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 12,
             children: [
-              SegmentedButton<int>(
-                segments: [
-                  for (final y in [current.startYear - 1, current.startYear])
-                    ButtonSegment(value: y, label: Text(IncomeYear(y).label)),
-                ],
-                selected: {_year.startYear},
-                showSelectedIcon: false,
-                onSelectionChanged: (v) => _switchYear(IncomeYear(v.single)),
-              ),
               Text(
                 'Income year ${month.format(_year.start)} to '
-                '${month.format(_year.end.subtract(const Duration(days: 1)))}',
+                '${month.format(_year.end.subtract(const Duration(days: 1)))}'
+                '${running ? '' : ' · return due ${day.format(due)}'}',
                 style: muted,
+              ),
+              SectionCard(
+                children: [
+                  Label('Tax for ${_year.label}'),
+                  AmountRow(
+                    'Projected',
+                    fullYear.tax,
+                    detail: running
+                        ? 'whole year: your entries, estimates and plan'
+                        : 'your entries, and estimates for months without them',
+                  ),
+                  AmountRow(
+                    'Recorded',
+                    recorded.tax,
+                    detail: running
+                        ? 'only income in the app, to ${day.format(today)}'
+                        : 'only income in the app',
+                  ),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Projected')),
+                      ButtonSegment(value: true, label: Text('Recorded')),
+                    ],
+                    selected: {_recorded},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (v) => setState(() => _recorded = v.single),
+                  ),
+                  Text(
+                    _recorded
+                        ? 'The working below uses only the income entries in the app. Your own '
+                              'figures and the estimates are left out.'
+                        : 'The working below uses the figures in the next card.',
+                    style: muted,
+                  ),
+                ],
               ),
               SectionCard(
                 children: [
@@ -231,35 +255,19 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
             ],
           ),
         ),
-        if (running)
-          SectionCard(
-            children: [
-              const Label('Tax for this income year'),
-              AmountRow(
-                'Full year',
-                fullYear.tax,
-                detail: 'to ${day.format(lastDay)}, with your plan',
-              ),
-              AmountRow('Up to today', soFar.tax, detail: 'income to ${day.format(today)}'),
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Full year')),
-                  ButtonSegment(value: true, label: Text('Up to today')),
-                ],
-                selected: {_soFar},
-                showSelectedIcon: false,
-                onSelectionChanged: (v) => setState(() => _soFar = v.single),
-              ),
-              if (_soFar)
-                Text(
-                  'Tax on income up to today (entries, and the plan for earlier months without '
-                  'entries), as if the year ended today. Your own figures above are for the full '
-                  'year and are not used here.',
-                  style: muted,
-                ),
-            ],
+        _Steps(result: _recorded ? recorded : fullYear, rules: rules),
+        // Last year, while its return can still be filed.
+        if (widget.year == null && !today.isAfter(lastDue))
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.history),
+              title: Text('Last year, ${last.label}'),
+              subtitle: Text('Return due ${day.format(lastDue)}'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => openScreen(context, TaxScreen(year: last)),
+            ),
           ),
-        _Steps(result: running && _soFar ? soFar : fullYear, rules: rules),
         Text(
           'An estimate using ${rules.label}. Check the current rates with NBR or a tax '
           'adviser before you file. Change rates and slabs with the button at the top.',

@@ -141,7 +141,7 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] Zakat → **Next zakat date**: pick a date. **On <date>, in N days** shows the expected net and zakat.
 - [ ] Pick a date that has already passed: the same date next year is used.
 - [ ] Type a different **Wealth grows each month by**: the expected zakat changes. ↺ brings back the app's figure.
-- [ ] Income tax: **Full year** and **Up to today** both show; switching changes the steps.
+- [ ] Income tax: **Projected** and **Recorded** both show; switching changes the steps.
 
 ## 15. New in 1.0.9
 
@@ -167,7 +167,7 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 ## 17. New in 1.1.1
 
 - [ ] Income tax → Salary note reads like "Recorded ৳… + estimated ৳… for 3 months before your entries + plan ৳… for 8 months to come". July–September (before the app) are included.
-- [ ] **Up to today** includes the estimated earlier months.
+- [ ] **Projected** includes the estimated earlier months; **Recorded** does not.
 - [ ] **Which incomes are taxable**: set Bonus to **Not taxable** → it leaves Other taxable income. Set it back.
 - [ ] Monthly plan → Income → Income types → tap one: **For income tax** shows the same choice.
 
@@ -244,6 +244,13 @@ Tip: do sections 1–3 on day one, then use the app normally for a few weeks and
 - [ ] A pot → **Move to a section** ৳100 → Random: Random's budget and Left to spend rise by ৳100; next month's Random doesn't. **Undo** on the Spend tab puts it back.
 - [ ] Close a month: leftover can go to any pot; the rest is **Carried forward**.
 - [ ] A monthly report with a pot used directly: "Not included: ৳… used directly from pots".
+
+## 25. New in 1.6.1: income tax for this year first
+
+- [ ] Tools → Income tax opens on 2026-27 with no year tabs. The top card shows **Projected** and **Recorded**.
+- [ ] **Recorded** counts only income entries (Oct onward); it is lower than Projected. Typed figures don't change it.
+- [ ] Switch to **Recorded**: the working below changes to match.
+- [ ] At the bottom, **Last year, 2025-26 · Return due Nov 30, 2026** opens that year on its own screen. From 1 December the card is gone.
 
 ---
 
