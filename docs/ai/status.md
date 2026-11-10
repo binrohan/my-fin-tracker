@@ -1,6 +1,7 @@
 # Status (update when it changes)
 
-- Current version: **1.7.0** (schema 8). 1.7.0: weekly encrypted backup to Google
+- Current version: **1.7.1** (schema 8). 1.7.1: archiving a category counts from next month
+  (an unpaid bill archived mid-month stays in Bills to pay). 1.7.0: weekly encrypted backup to Google
   Drive. 1.6.1: Tax screen = current year, Projected vs Recorded
   (entries only); last year as a card until 30 Nov. 1.6.0: Owner's model now: money is in sections (This month),
   Floating (not tied to a month), parked (Held for next month) or pots. Salary: pots at once, the

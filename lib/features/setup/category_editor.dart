@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/period.dart';
 import '../../data/database.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
@@ -34,6 +35,7 @@ Future<void> showCategoryEditor(
           (!f.archived || f.id == savingsFund))
         f,
   ];
+  final nextMonth = Period.of(ref.read(todayProvider)).next;
   final hasChildren =
       existing != null && ledger.categories.values.any((c) => c.parentId == existing.id);
 
@@ -132,7 +134,12 @@ Future<void> showCategoryEditor(
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Archived'),
-                subtitle: const Text('Hide from quick add; history stays'),
+                subtitle: Text(
+                  existing.archived
+                      ? 'Hidden from quick add; history stays'
+                      : 'Hidden from quick add now; its budget and bill stop from '
+                            '${nextMonth.label.split(' ').first}. History stays',
+                ),
                 value: archived,
                 onChanged: (v) => setState(() => archived = v),
               ),
@@ -169,6 +176,13 @@ Future<void> showCategoryEditor(
       savingsFundId: Value(type == CategoryKind.expense ? savingsFund : null),
       archived: archived,
     );
+  }
+  // Archiving keeps this month as it is (budget, bill still to pay), like
+  // the Monthly plan: it stops counting from next month.
+  if (existing != null && archived != existing.archived) {
+    final repo = ref.read(repositoryProvider);
+    final key = Ledger.archivedFromKey(id);
+    archived ? await repo.setSetting(key, nextMonth.toString()) : await repo.deleteSetting(key);
   }
   if (type == CategoryKind.income && taxType != incomeTaxType(ledger, id)) {
     await ref

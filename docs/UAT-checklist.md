@@ -265,6 +265,16 @@ Needs the Google Cloud setup done first (see docs/ai/status.md).
 
 ---
 
+## 27. New in 1.7.1: archiving waits for next month
+
+- [ ] Fix the House Rent move made on 10 Nov (archived before 1.7.1, so it's hidden in November): Monthly plan → Expenses → archived **House Rent** (under Fixed) → turn **Archived** off → Save → open it again → turn **Archived** on (the line says "stop from December") → Save.
+- [ ] Home: **Bills to pay** shows House Rent ৳12,500 again; Left to spend after bills drops by ৳12,500 (৳15,370 → ৳2,870 on the 10 Nov backup). Left to spend itself doesn't change.
+- [ ] Tap House Rent in Bills to pay → Quick add opens filled in under the old House Rent; after paying, it shows as paid.
+- [ ] Quick add's category list doesn't offer the archived House Rent.
+- [ ] Monthly plan → Expenses (December) shows only the new House Rent section.
+
+---
+
 ## Issues
 
 | # | Section | What I did | Expected | What happened |

@@ -277,7 +277,7 @@ class Ledger {
       final children = [
         for (final child in categories.values)
           if (child.parentId == c.id && _visibleIn(child, p)) build(child),
-      ]..removeWhere((l) => l.category.archived && l.actual == 0);
+      ]..removeWhere((l) => archivedIn(l.category, p) && l.actual == 0);
       return CategoryLine(
         category: c,
         children: children,
@@ -297,7 +297,20 @@ class Ledger {
         if (c.parentId == null && c.kind == kind && c.id != misc?.id && _visibleIn(c, p)) build(c),
       // Misc always comes last.
       if (kind == CategoryKind.expense && misc != null) build(misc),
-    ]..removeWhere((l) => l.category.archived && l.actual == 0);
+    ]..removeWhere((l) => archivedIn(l.category, p) && l.actual == 0);
+  }
+
+  /// Setting key: the month (YYYY-MM) an archived category stops counting
+  /// from. Archiving keeps this month as it is, like the Monthly plan.
+  static String archivedFromKey(int categoryId) => 'archived_from_$categoryId';
+
+  /// Whether archived category [c] no longer counts in month [p]: from the
+  /// month in [archivedFromKey], or always when archived before 1.7.1.
+  /// Quick add hides it at once either way.
+  bool archivedIn(CategoryRow c, Period p) {
+    if (!c.archived) return false;
+    final from = settings[archivedFromKey(c.id)];
+    return from == null || p.toString().compareTo(from) >= 0;
   }
 
   /// The section that takes what the Monthly plan's expenses leave
@@ -311,17 +324,17 @@ class Ledger {
     final from = settings[miscFromSetting];
     if (misc == null || (from != null && p.toString().compareTo(from) < 0)) return 0;
     final target = planFor(p).expenseTarget ?? 0;
-    return math.max(0, target - _assignedBudgets(budgetsFor(p)));
+    return math.max(0, target - _assignedBudgets(budgetsFor(p), p));
   }
 
   /// The budgets of every section but Misc: a section's own, or the sum of
   /// its subsections.
-  Poisha _assignedBudgets(Map<int, Poisha> budgets) {
+  Poisha _assignedBudgets(Map<int, Poisha> budgets, Period p) {
     Poisha of(CategoryRow c) {
       final own = budgets[c.id] ?? 0;
       if (own > 0) return own;
       return categories.values
-          .where((x) => x.parentId == c.id && !x.archived)
+          .where((x) => x.parentId == c.id && !archivedIn(x, p))
           .fold(0, (t, x) => t + of(x));
     }
 
@@ -330,7 +343,7 @@ class Ledger {
           (c) =>
               c.kind == CategoryKind.expense &&
               c.parentId == null &&
-              !c.archived &&
+              !archivedIn(c, p) &&
               !isSlot(c) &&
               c.id != miscCategory?.id,
         )

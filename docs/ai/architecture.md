@@ -61,7 +61,8 @@
 allocation_plan(@YYYY-MM), tax_rules, tax_inputs_<year>, income_tax_types, zakat_inputs,
 borrow_charge_bp, month_leftover, app_lock, insights_off, home_collapsed, sms_on, sms_since,
 sms_handled, sms_senders, last_backup_at, last_auto_backup_at, auto_backup_off,
-split_on_release_<YYYY-MM>, theme_mode, theme_palette, theme_pure_black.
+split_on_release_<YYYY-MM>, archived_from_<categoryId> (YYYY-MM: an archived category still
+counts before that month, `ledger.archivedIn`; missing = archived before 1.7.1, hidden always), theme_mode, theme_palette, theme_pure_black.
 
 ## Google Drive backup (lib/data/drive_backup.dart, lib/app/google_drive.dart)
 - Weekly, after the local auto backup (`integrations._driveBackup`), when `drive_backup_on` and
