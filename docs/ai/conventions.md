@@ -21,6 +21,8 @@
   - Screens with TextFields have several Scrollables → pass `scrollable: find.byType(Scrollable).first`.
   - Lazy lists: scroll back (`-300`) before tapping things above; `ensureVisible` before `tap`.
   - DB reads/writes inside widget tests need `tester.runAsync`.
+  - Dropdowns in sheets need `isExpanded: true`, or the test font overflows them.
+  - Code that changes the plan or a category must call `repo.ensureMonthSnapshot` first (see architecture.md).
   - `drift` exports `isNull/isNotNull` → `import 'package:drift/drift.dart' hide isNull, isNotNull;`
 - Upgrade tests: create old schema from `test/fixtures/schema_vN.sql`, set `PRAGMA user_version`,
   open, check data and `old.schemaVersion`.

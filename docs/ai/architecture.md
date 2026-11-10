@@ -44,6 +44,18 @@
 - Expense categories are edited only in Monthly plan → Expenses, income types in → Income
   (`showCategoryEditor`, lib/features/setup/category_editor.dart).
 
+## Month snapshot (1.8.0)
+- Setting `month_snapshot_YYYY-MM` = JSON {plan (encoded AllocationPlan), budgets {id: poisha},
+  categories {id: {parent, fixed, due, pot, archived}}} for every expense category but slots.
+  Taken by `repo.ensureMonthSnapshot(p)` (insert-or-ignore, never replaced): on app start
+  (`integrations._snapshotIfDue`, the first open in a month) and before any plan save or category
+  add/edit. Months with one read from it: `planFor`, `budgetsFor`, `categoriesIn(p)` (copies
+  with the month's parent/fixed/due/pot; names live), `archivedIn` (absent from snapshot = added
+  later: counts only with actual). Months without one (before 1.8.0) read live values.
+- `ledger.categories` stays live: quick add, editors and the plan screen (next month) use it.
+  Anything month-specific (categoryLines, budgetRoom, Misc, unused budget at close) goes
+  through `categoriesIn(p)`. Slots, budget moves and saves to pots still change a running month.
+
 ## Monthly plan (lib/ledger/allocation.dart)
 - `AllocationPlan` JSON in settings. Dated: base key `allocation_plan`, changes from a month in
   `allocation_plan@YYYY-MM`. Always read with `ledger.planFor(period)` (or `latestPlan`).
@@ -61,7 +73,7 @@
 allocation_plan(@YYYY-MM), tax_rules, tax_inputs_<year>, income_tax_types, zakat_inputs,
 borrow_charge_bp, month_leftover, app_lock, insights_off, home_collapsed, sms_on, sms_since,
 sms_handled, sms_senders, last_backup_at, last_auto_backup_at, auto_backup_off,
-split_on_release_<YYYY-MM>, archived_from_<categoryId> (YYYY-MM: an archived category still
+split_on_release_<YYYY-MM>, month_snapshot_<YYYY-MM>, archived_from_<categoryId> (YYYY-MM: an archived category still
 counts before that month, `ledger.archivedIn`; missing = archived before 1.7.1, hidden always), theme_mode, theme_palette, theme_pure_black.
 
 ## Google Drive backup (lib/data/drive_backup.dart, lib/app/google_drive.dart)

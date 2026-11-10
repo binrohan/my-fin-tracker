@@ -1200,6 +1200,22 @@ class LedgerRepository {
   Future<void> deleteBudgetsOf(Period p) =>
       (db.delete(db.budgets)..where((b) => b.year.equals(p.year) & b.month.equals(p.month))).go();
 
+  /// Takes month [p]'s snapshot (plan, budgets, categories) if it has none
+  /// yet, so later changes leave the month as it began. Run on app start and
+  /// before any change to the plan or a category.
+  Future<void> ensureMonthSnapshot(Period p) async {
+    final key = Ledger.snapshotKey(p);
+    final have = await (db.select(db.settings)..where((s) => s.key.equals(key))).getSingleOrNull();
+    if (have != null) return;
+    final ledger = await Ledger.load(db);
+    await db
+        .into(db.settings)
+        .insert(
+          SettingsCompanion.insert(key: key, value: ledger.snapshotOf(p)),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+
   Future<void> setSetting(String key, String value) =>
       db.into(db.settings).insertOnConflictUpdate(SettingsCompanion.insert(key: key, value: value));
 }

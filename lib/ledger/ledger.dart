@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:drift/drift.dart' show OrderingTerm, innerJoin;
+import 'package:drift/drift.dart' show OrderingTerm, Value, innerJoin;
 
 import '../core/money.dart';
 import '../core/period.dart';
@@ -268,14 +269,16 @@ class Ledger {
     if (kind == CategoryKind.expense && misc != null) budget[misc.id] = miscBudget(p);
     final delta = withMoves ? budgetDeltas(p) : const <int, Poisha>{};
 
+    final cats = categoriesIn(p);
+
     // Moves into or out of a category and everything under it.
     Poisha deltaUnder(int id) =>
         (delta[id] ?? 0) +
-        categories.values.where((c) => c.parentId == id).fold(0, (t, c) => t + deltaUnder(c.id));
+        cats.values.where((c) => c.parentId == id).fold(0, (t, c) => t + deltaUnder(c.id));
 
     CategoryLine build(CategoryRow c) {
       final children = [
-        for (final child in categories.values)
+        for (final child in cats.values)
           if (child.parentId == c.id && _visibleIn(child, p)) build(child),
       ]..removeWhere((l) => archivedIn(l.category, p) && l.actual == 0);
       return CategoryLine(
@@ -293,10 +296,10 @@ class Ledger {
     }
 
     return [
-      for (final c in categories.values)
+      for (final c in cats.values)
         if (c.parentId == null && c.kind == kind && c.id != misc?.id && _visibleIn(c, p)) build(c),
       // Misc always comes last.
-      if (kind == CategoryKind.expense && misc != null) build(misc),
+      if (kind == CategoryKind.expense && misc != null) build(cats[misc.id] ?? misc),
     ]..removeWhere((l) => archivedIn(l.category, p) && l.actual == 0);
   }
 
@@ -308,6 +311,14 @@ class Ledger {
   /// month in [archivedFromKey], or always when archived before 1.7.1.
   /// Quick add hides it at once either way.
   bool archivedIn(CategoryRow c, Period p) {
+    // A month with a snapshot counts the categories it began with: one
+    // archived later still counts, one added later only if spent on.
+    final snap = _frozen(c) ? _snapshot(p) : null;
+    if (snap != null) return snap.categories[c.id]?.archived ?? true;
+    return _archivedLive(c, p);
+  }
+
+  bool _archivedLive(CategoryRow c, Period p) {
     if (!c.archived) return false;
     final from = settings[archivedFromKey(c.id)];
     return from == null || p.toString().compareTo(from) >= 0;
@@ -330,15 +341,16 @@ class Ledger {
   /// The budgets of every section but Misc: a section's own, or the sum of
   /// its subsections.
   Poisha _assignedBudgets(Map<int, Poisha> budgets, Period p) {
+    final cats = categoriesIn(p);
     Poisha of(CategoryRow c) {
       final own = budgets[c.id] ?? 0;
       if (own > 0) return own;
-      return categories.values
+      return cats.values
           .where((x) => x.parentId == c.id && !archivedIn(x, p))
           .fold(0, (t, x) => t + of(x));
     }
 
-    return categories.values
+    return cats.values
         .where(
           (c) =>
               c.kind == CategoryKind.expense &&
@@ -352,7 +364,9 @@ class Ledger {
 
   /// The budget of each category in a month. A budget set in one month
   /// stays in force for later months until it is changed.
-  Map<int, Poisha> budgetsFor(Period p) {
+  Map<int, Poisha> budgetsFor(Period p) => _snapshot(p)?.budgets ?? _liveBudgetsFor(p);
+
+  Map<int, Poisha> _liveBudgetsFor(Period p) {
     final key = p.year * 12 + p.month;
     final sorted = [...budgets]
       ..sort((a, b) => (a.year * 12 + a.month).compareTo(b.year * 12 + b.month));
@@ -872,7 +886,7 @@ class Ledger {
     int? at = categoryId;
     while (at != null) {
       final line = lines[at];
-      final category = categories[at];
+      final category = categoriesIn(p)[at];
       if (line != null && category != null) {
         final hasOwn = line.children.isEmpty || (budgetsFor(p)[at] ?? 0) > 0;
         if (hasOwn && line.budget > 0) return (categoryId: at, left: line.remaining);
@@ -1025,6 +1039,65 @@ class Ledger {
     ];
   }
 
+  // ------------------------------------------------------- month snapshot
+
+  /// Setting key of month [p]'s snapshot: the Monthly plan, budgets and
+  /// expense categories (section, fixed bill, due day, pot, archived) as
+  /// they were when the month began. A month with one reads them from it, so
+  /// changing the plan or a category never changes a month already running.
+  /// Months before 1.8.0 have none and read the live values.
+  static String snapshotKey(Period p) => 'month_snapshot_$p';
+
+  bool hasSnapshot(Period p) => settings.containsKey(snapshotKey(p));
+
+  final _snapshots = <Period, _MonthSnapshot?>{};
+  _MonthSnapshot? _snapshot(Period p) =>
+      _snapshots.putIfAbsent(p, () => _MonthSnapshot.parse(settings[snapshotKey(p)]));
+
+  /// Expense categories other than slots are frozen by a snapshot; slots
+  /// belong to one month and are made during it.
+  bool _frozen(CategoryRow c) => c.kind == CategoryKind.expense && !isSlot(c);
+
+  final _categoriesIn = <Period, Map<int, CategoryRow>>{};
+
+  /// The categories as month [p] sees them: with a snapshot, each one's
+  /// section, fixed bill, due day and pot as the month began (names stay
+  /// current).
+  Map<int, CategoryRow> categoriesIn(Period p) => _categoriesIn.putIfAbsent(p, () {
+    final snap = _snapshot(p);
+    if (snap == null) return categories;
+    return {
+      for (final c in categories.values)
+        c.id: switch (snap.categories[c.id]) {
+          final s? when _frozen(c) => c.copyWith(
+            parentId: Value(s.parentId),
+            isFixed: s.isFixed,
+            dueDay: Value(s.dueDay),
+            savingsFundId: Value(s.savingsFundId),
+          ),
+          _ => c,
+        },
+    };
+  });
+
+  /// Month [p]'s snapshot from the live plan, budgets and categories, to
+  /// store under [snapshotKey].
+  String snapshotOf(Period p) => jsonEncode({
+    'plan': _livePlanFor(p).encode(),
+    'budgets': {for (final MapEntry(:key, :value) in _liveBudgetsFor(p).entries) '$key': value},
+    'categories': {
+      for (final c in categories.values)
+        if (_frozen(c))
+          '${c.id}': {
+            'parent': c.parentId,
+            'fixed': c.isFixed,
+            'due': c.dueDay,
+            'pot': c.savingsFundId,
+            'archived': _archivedLive(c, p),
+          },
+    },
+  });
+
   // --------------------------------------------------------- monthly plan
 
   /// The setting holding the plan that applies from [p] on.
@@ -1046,6 +1119,11 @@ class Ledger {
   /// is none, the earliest change: a plan made in October is the best guess
   /// for July too).
   AllocationPlan planFor(Period p) {
+    if (_snapshot(p) case final snap?) return AllocationPlan.parse(snap.plan);
+    return _livePlanFor(p);
+  }
+
+  AllocationPlan _livePlanFor(Period p) {
     final changes = planChanges;
     final from = changes.where((c) => c.compareTo(p) <= 0).lastOrNull;
     if (from != null) return AllocationPlan.parse(settings[planKeyFrom(from)]);
@@ -1413,4 +1491,41 @@ class SlotStatus {
   final List<BudgetMove> moves;
 
   Poisha get left => budget - spent;
+}
+
+/// A month's plan, budgets and expense categories as the month began
+/// (see [Ledger.snapshotKey]).
+class _MonthSnapshot {
+  _MonthSnapshot(this.plan, this.budgets, this.categories);
+
+  final String plan;
+  final Map<int, Poisha> budgets;
+  final Map<int, ({int? parentId, bool isFixed, int? dueDay, int? savingsFundId, bool archived})>
+  categories;
+
+  static _MonthSnapshot? parse(String? json) {
+    if (json == null || json.isEmpty) return null;
+    try {
+      final m = jsonDecode(json) as Map<String, dynamic>;
+      return _MonthSnapshot(
+        m['plan'] as String,
+        {
+          for (final MapEntry(:key, :value) in (m['budgets'] as Map<String, dynamic>).entries)
+            int.parse(key): value as int,
+        },
+        {
+          for (final MapEntry(:key, :value) in (m['categories'] as Map<String, dynamic>).entries)
+            int.parse(key): (
+              parentId: value['parent'] as int?,
+              isFixed: value['fixed'] as bool,
+              dueDay: value['due'] as int?,
+              savingsFundId: value['pot'] as int?,
+              archived: value['archived'] as bool,
+            ),
+        },
+      );
+    } catch (_) {
+      return null; // Unreadable: the month reads the live values.
+    }
+  }
 }

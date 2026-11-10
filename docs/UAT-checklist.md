@@ -275,6 +275,18 @@ Needs the Google Cloud setup done first (see docs/ai/status.md).
 
 ---
 
+## 28. New in 1.8.0: each month runs on a snapshot
+
+- [ ] Before installing: House Rent (under Fixed) was re-archived on 1.7.1, and Bills to pay shows it (section 27). Otherwise November keeps it hidden.
+- [ ] First open after the update: nothing on Home, Spend or Bills to pay changes.
+- [ ] Monthly plan → Expenses → **Electricity** → turn **Fixed bill** off → Save: Home still lists Electricity in Bills to pay until it's paid this month. Turn it back on afterwards.
+- [ ] Add a section **Test**, give it a budget, Save the plan: November's Spend tab doesn't show it and the totals don't change. Archive it afterwards.
+- [ ] Change a budget in the plan and Save: November's budget for it stays; the plan shows the new one (December).
+- [ ] The note at the top of Monthly plan says changes apply from December and November keeps the plan it began with.
+- [ ] Move budget and slots on the Spend tab still change November straight away.
+
+---
+
 ## Issues
 
 | # | Section | What I did | Expected | What happened |

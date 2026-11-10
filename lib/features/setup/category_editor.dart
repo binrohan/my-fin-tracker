@@ -65,6 +65,7 @@ Future<void> showCategoryEditor(
             if (existing == null || (!hasChildren && existing.parentId != null))
               DropdownButtonFormField<int?>(
                 initialValue: parentId,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Inside',
                   border: OutlineInputBorder(),
@@ -154,6 +155,8 @@ Future<void> showCategoryEditor(
     if (context.mounted) showSnack(context, 'It needs a name');
     return;
   }
+  // This month keeps the categories it began with.
+  await ref.read(repositoryProvider).ensureMonthSnapshot(Period.of(ref.read(todayProvider)));
   final dueDay = int.tryParse(due.text);
   final validDue = (dueDay != null && dueDay >= 1 && dueDay <= 31 && fixed) ? dueDay : null;
   final int id;

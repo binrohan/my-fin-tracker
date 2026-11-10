@@ -519,6 +519,8 @@ void main() {
             .descendant(of: find.byType(ListView).last, matching: find.byType(Scrollable))
             .first,
       );
+      await tester.ensureVisible(find.text('Mine'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Mine'));
       await tester.pumpAndSettle();
       expect(find.text('Edit Mine'), findsOneWidget);

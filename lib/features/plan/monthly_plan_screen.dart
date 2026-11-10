@@ -136,6 +136,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
   Future<void> _save(Ledger ledger) async {
     final target = _period;
     final repo = ref.read(repositoryProvider);
+    await _keepThisMonth();
     final plan = AllocationPlan(
       categoryId: _incomes.any((r) => r.categoryId == _trigger)
           ? _trigger
@@ -167,6 +168,9 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
     showSnack(context, 'Monthly plan saved. Used when income arrives.');
   }
 
+  /// This month keeps the plan and categories it began with.
+  Future<void> _keepThisMonth() => ref.read(repositoryProvider).ensureMonthSnapshot(_thisMonth);
+
   /// How the plan is used, above the tabs.
   Widget _topNote() {
     final status = StatusColors.of(context);
@@ -174,8 +178,9 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Text(
-        'A blueprint: used when income arrives. Budgets apply from ${month(_period)}; '
-        'to change ${month(_thisMonth)}, use Move budget on the Spend tab.',
+        'A blueprint: used when income arrives. Changes here apply from ${month(_period)}; '
+        '${month(_thisMonth)} keeps the plan it began with (use Move budget on the Spend '
+        'tab to change it).',
         style: TextStyle(color: status.muted, fontSize: 12.5),
       ),
     );
@@ -654,6 +659,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
             onPressed: () async {
               final name = await _askName('New section', hint: 'e.g. Transport');
               if (name == null) return;
+              await _keepThisMonth();
               await ref.read(setupRepositoryProvider).addCategory(name, CategoryKind.expense);
             },
           ),
@@ -735,6 +741,7 @@ class _MonthlyPlanScreenState extends ConsumerState<MonthlyPlanScreen> {
               onPressed: () async {
                 final name = await _askName('New subsection of ${section.name}');
                 if (name == null) return;
+                await _keepThisMonth();
                 await ref
                     .read(setupRepositoryProvider)
                     .addCategory(

@@ -160,6 +160,7 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
       _openPending();
     }
     _updateWidget(ledger, hideAmount: lockOn);
+    _snapshotIfDue(ledger);
     _releaseIfDue(ledger);
     if (!_backupChecked) {
       _backupChecked = true;
@@ -168,6 +169,21 @@ class _AppIntegrationsState extends ConsumerState<AppIntegrations> with WidgetsB
   }
 
   bool _releasing = false;
+  bool _snapshotting = false;
+
+  /// The first time the app runs in a month, keep that month's plan and
+  /// categories as they are, so later changes start next month.
+  Future<void> _snapshotIfDue(Ledger ledger) async {
+    final month = Period.of(DateTime.now());
+    if (_snapshotting || ledger.hasSnapshot(month)) return;
+    _snapshotting = true;
+    try {
+      await ref.read(repositoryProvider).ensureMonthSnapshot(month);
+    } finally {
+      _snapshotting = false;
+    }
+  }
+
   bool _uploading = false;
 
   /// On or after the 1st, income held for this month is released into
