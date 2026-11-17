@@ -267,6 +267,12 @@ Future<void> showEntryDetails(BuildContext context, Entry shown) => showModalBot
               icon: const Icon(Icons.handshake_outlined),
               label: Text(_isLoanCreation(entry) ? 'Open the loan to change it' : 'Open the loan'),
             ),
+          if (entry.type == EntryType.move && entry.categoryId != null)
+            Text(
+              'Tied to the ${ledger.categories[entry.categoryId]?.name} budget. To change it, '
+              'delete it and do it again.',
+              style: TextStyle(color: status.muted, fontSize: 13),
+            ),
           Row(
             spacing: 8,
             children: [

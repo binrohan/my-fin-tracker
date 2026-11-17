@@ -111,10 +111,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pumpAndSettle();
-    if (bill.category.savingsFundId != null) {
-      await tester.tap(find.text('Pay ${formatTaka(bill.remaining)}'));
-      await tester.pumpAndSettle();
-    }
+    // Pay, or pay into a pot.
+    expect(find.textContaining('Pay into '), findsOneWidget);
+    await tester.tap(find.text('Pay ${formatTaka(bill.remaining)}'));
+    await tester.pumpAndSettle();
     final chip = tester.widget<ChoiceChip>(
       find.ancestor(of: find.text(bill.category.name).last, matching: find.byType(ChoiceChip)),
     );
@@ -122,6 +122,45 @@ void main() {
     expect(
       find.textContaining(formatTaka(bill.remaining, symbol: false), findRichText: true),
       findsWidgets,
+    );
+  });
+
+  testWidgets('a bill paid into a pot as cash is no longer due', (tester) async {
+    final bill = await tester.runAsync(
+      () async => (await Ledger.load(db)).unpaidFixedBills(const Period(2026, 10)).first,
+    );
+    await pump(tester);
+    await tester.scrollUntilVisible(find.text('BILLS TO PAY'), 300);
+    final row = find.descendant(
+      of: find.ancestor(of: find.text('BILLS TO PAY'), matching: find.byType(CollapsibleCard)),
+      matching: find.text(bill!.category.name),
+    );
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Pay into '));
+    await tester.pumpAndSettle();
+    expect(find.text('Pay ${bill.category.name} into a pot'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Cash'));
+    await tester.pumpAndSettle();
+    final pay = find.textContaining('Pay ${formatTaka(bill.remaining)} into ');
+    await tester.ensureVisible(pay);
+    await tester.pumpAndSettle();
+    await tester.tap(pay);
+    await tester.pumpAndSettle();
+    final after = await tester.runAsync(() => Ledger.load(db));
+    expect(
+      after!.unpaidFixedBills(const Period(2026, 10)).map((b) => b.category.id),
+      isNot(contains(bill.category.id)),
+    );
+    final cash = after.accounts.values.firstWhere((a) => a.name == 'Cash').id;
+    expect(after.paidToPots(const Period(2026, 10)), {bill.category.id: bill.remaining});
+    expect(
+      after.funds.keys
+          .where((f) => f != after.spendingFund.id)
+          .fold<Poisha>(0, (t, f) => t + after.cell(cash, f)),
+      greaterThanOrEqualTo(bill.remaining),
     );
   });
 

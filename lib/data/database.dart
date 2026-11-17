@@ -98,6 +98,11 @@ class Entries extends Table {
   /// A move that saves part of [categoryId]'s budget to a pot during the
   /// month: it lowers that month's budget. (Month-close moves don't.)
   BoolColumn get budgetSave => boolean().nullable()();
+
+  /// A move that pays [categoryId]'s bill into a pot during the month (e.g.
+  /// the Cycle instalment into the Cycle pot, as cash): it counts as spent in
+  /// that category, and the money stays yours in the pot.
+  BoolColumn get paidToPot => boolean().nullable()();
 }
 
 /// A signed amount on one (account, fund) pair. Every balance in the app is
@@ -245,7 +250,7 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openOnDevice() => driftDatabase(name: 'my_fin_tracker');
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -281,6 +286,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 7) {
         // Tracker amounts from outside your accounts.
         await m.createTable(trackerAmounts);
+      }
+      // Before the data step below, which reads through the new tables.
+      if (from < 9) {
+        // A bill paid into a pot: counts as spent.
+        await m.addColumn(entries, entries.paidToPot);
       }
       if (from < 8) {
         // No schema change: "This month", "Floating" and the Misc section.

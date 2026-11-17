@@ -7,7 +7,6 @@ import '../../app/theme.dart';
 import '../../core/money.dart';
 import '../../core/period.dart';
 import '../../data/database.dart';
-import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
 import '../../ui/forms.dart';
 import '../../ui/widgets.dart';
@@ -166,10 +165,8 @@ class _SlotTile extends ConsumerWidget {
 
 /// Categories budget can come from or go back to: this month's leaf
 /// expense categories, not slots.
-List<CategoryRow> _budgetCategories(Ledger ledger, Period period) => [
-  for (final c in ledger.leafCategories(CategoryKind.expense))
-    if (!ledger.isSlot(c)) c,
-];
+List<CategoryRow> _budgetCategories(Ledger ledger, Period period) =>
+    ledger.budgetCategoriesIn(period);
 
 class _AmountRow {
   _AmountRow(this.category, [Poisha amount = 0])

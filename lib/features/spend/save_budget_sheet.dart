@@ -56,10 +56,7 @@ class _SaveBudgetSheetState extends ConsumerState<_SaveBudgetSheet> {
 
   /// Leaf expense categories (not slots), linked ones with money left first.
   List<CategoryRow> _categories(Ledger ledger) {
-    final list = [
-      for (final c in ledger.leafCategories(CategoryKind.expense))
-        if (!ledger.isSlot(c)) c,
-    ];
+    final list = ledger.budgetCategoriesIn(widget.period);
     int rank(CategoryRow c) =>
         c.savingsFundId != null && ledger.movableFrom(c.id, widget.period) > 0 ? 0 : 1;
     return list..sort((a, b) => rank(a).compareTo(rank(b)));
@@ -67,7 +64,7 @@ class _SaveBudgetSheetState extends ConsumerState<_SaveBudgetSheet> {
 
   void _pickCategory(Ledger ledger, int id) {
     _category = id;
-    final linked = ledger.categories[id]?.savingsFundId;
+    final linked = ledger.categoriesIn(widget.period)[id]?.savingsFundId;
     if (linked != null && savingPots(ledger).any((f) => f.id == linked)) _fund = linked;
     _amount.text = amountText(ledger.movableFrom(id, widget.period));
   }

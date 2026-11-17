@@ -17,7 +17,7 @@ Owner: Rohan BK. Currency ৳ BDT, lakh grouping (1,23,456). Months start on the
 ## Commands (Flutter lives at `~/dev/flutter`)
 ```bash
 ~/dev/flutter/bin/flutter analyze
-~/dev/flutter/bin/flutter test                       # ~275 tests, ~20 s
+~/dev/flutter/bin/flutter test                       # ~330 tests, ~25 s
 ~/dev/flutter/bin/dart format -l 100 lib test        # project width is 100, not 80
 ~/dev/flutter/bin/dart run build_runner build        # after changing lib/data/database.dart
 tool/build_release.sh                                 # release (arm64) + debug APKs into release/
@@ -27,7 +27,7 @@ Build uses JDK 21 (set via `flutter config --jdk-dir`); don't change the user's 
 ## Where things are
 - `lib/ledger/` pure logic, no Flutter: `ledger.dart` (balances, budgets, plans), `free_to_spend.dart`,
   `reminders.dart`, `insights.dart`, `afford.dart`, `tax.dart`, `zakat.dart`, `sms.dart`, `allocation.dart`.
-- `lib/data/` Drift DB (`database.dart`, schema **8**), `ledger_repository.dart` (all writes),
+- `lib/data/` Drift DB (`database.dart`, schema **9**), `ledger_repository.dart` (all writes),
   `backup.dart` (.mft zip), `receipts.dart`, `sms_inbox.dart`, `metal_prices.dart`.
 - `lib/features/<screen>/` one folder per screen; `lib/app/` theme, router, providers, widgets/lock.
 - `android/app/src/main/kotlin/.../` MainActivity (SMS channel) and 3 home-screen widgets.

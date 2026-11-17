@@ -285,6 +285,15 @@ Needs the Google Cloud setup done first (see docs/ai/status.md).
 - [ ] The note at the top of Monthly plan says changes apply from December and November keeps the plan it began with.
 - [ ] Move budget and slots on the Spend tab still change November straight away.
 
+## 29. New in 1.9.0: pay a bill into a pot; Move budget lists this month's categories
+
+- [ ] Before installing (dev): note Bills to pay, and find the earlier Cycle move in Entries (the one edited from bank to cash).
+- [ ] After installing: nothing on Home, Spend or Bills to pay changes; row counts match.
+- [ ] Entries → that Cycle move: there's no **Edit**, only Delete, with a note that it's tied to a budget (only if it still has the Cycle category; a plain move can still be edited).
+- [ ] Delete the earlier Cycle move. Home → Bills to pay → **Cycle** → **Pay into Cycle parked** → From: Bank, Kept in: **Cash** → Pay. Cycle leaves Bills to pay; Spend shows Cycle spent in full; *Cycle parked* has the money in Cash; Left to spend after bills doesn't change.
+- [ ] Spend → **Move budget** → From: **Abbu** is in the list for November (even after the December plan changed it), with its budget left.
+- [ ] Tap another bill → **Pay** still opens Quick add filled in.
+
 ---
 
 ## Issues

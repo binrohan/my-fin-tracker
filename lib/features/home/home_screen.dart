@@ -22,6 +22,7 @@ import '../plan/record_income_sheet.dart';
 import '../quick_add/quick_add_sheet.dart';
 import '../setup/starting_balances_screen.dart';
 import '../sms/sms_screen.dart';
+import '../spend/pay_into_pot_sheet.dart';
 import '../spend/save_budget_sheet.dart';
 import '../spend/spend_screen.dart';
 import '../entries/entries_screen.dart';
@@ -442,12 +443,12 @@ class _BillsToPay extends ConsumerWidget {
     );
   }
 
-  /// Pays one bill in Quick add, filled in. A bill linked to a pot (e.g.
-  /// Rice Bag) can be saved there instead.
+  /// Pays one bill in Quick add, filled in, or into a pot (its linked one
+  /// first): counted as paid, the money kept in the pot.
   Future<void> _payBill(BuildContext context, WidgetRef ref, CategoryLine bill) async {
-    final pot = ledger.funds[bill.category.savingsFundId];
-    if (pot != null) {
-      final save = await showModalBottomSheet<bool>(
+    if (savingPots(ledger).isNotEmpty) {
+      final pot = ledger.funds[bill.category.savingsFundId];
+      final intoPot = await showModalBottomSheet<bool>(
         context: context,
         useRootNavigator: true,
         showDragHandle: true,
@@ -460,14 +461,14 @@ class _BillsToPay extends ConsumerWidget {
             ),
             OutlinedButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text('Save to ${pot.name}'),
+              child: Text('Pay into ${pot?.name ?? 'a pot'}'),
             ),
           ],
         ),
       );
-      if (save == null || !context.mounted) return;
-      if (save) {
-        await showSaveBudgetSheet(context, period, categoryId: bill.category.id);
+      if (intoPot == null || !context.mounted) return;
+      if (intoPot) {
+        await showPayIntoPotSheet(context, period, categoryId: bill.category.id);
         return;
       }
     }

@@ -263,6 +263,7 @@ class Ledger {
     }
     if (kind == CategoryKind.expense) {
       repaidFromBudget(p).forEach((c, v) => actual.update(c, (x) => x + v, ifAbsent: () => v));
+      paidToPots(p).forEach((c, v) => actual.update(c, (x) => x + v, ifAbsent: () => v));
     }
     final budget = {...budgetsFor(p)};
     final misc = miscCategory;
@@ -387,6 +388,23 @@ class Ledger {
           !categories.values.any((x) => x.parentId == c.id && !x.archived))
         c,
   ];
+
+  /// Expense categories with a budget line in month [p] as the month sees
+  /// them (its snapshot): no subsections that month, not slots, not archived
+  /// for it. A change in the Monthly plan (a new subsection, archiving)
+  /// waits for next month, and so does its effect on this list. For Move
+  /// budget, slots and Save to pot.
+  List<CategoryRow> budgetCategoriesIn(Period p) {
+    final cats = categoriesIn(p);
+    bool counts(CategoryRow c) => !isSlot(c) && !archivedIn(c, p);
+    return [
+      for (final c in cats.values)
+        if (c.kind == CategoryKind.expense &&
+            counts(c) &&
+            !cats.values.any((x) => x.parentId == c.id && counts(x)))
+          c,
+    ];
+  }
 
   bool isSlot(CategoryRow c) => c.slotYear != null && c.slotMonth != null;
 
@@ -723,6 +741,7 @@ class Ledger {
     for (final e in entries) {
       if (e.type == EntryType.move &&
           e.budgetSave != true &&
+          e.paidToPot != true &&
           e.categoryId != null &&
           p.contains(e.date)) {
         saved.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
@@ -746,6 +765,21 @@ class Ledger {
       }
     }
     return repaid;
+  }
+
+  /// Bills paid into pots in month [p], by category. They count as spent
+  /// there, like an expense, though the money stays in the pot.
+  Map<int, Poisha> paidToPots(Period p) {
+    final paid = <int, Poisha>{};
+    for (final e in entries) {
+      if (e.type == EntryType.move &&
+          e.paidToPot == true &&
+          e.categoryId != null &&
+          p.contains(e.date)) {
+        paid.update(e.categoryId!, (v) => v + e.amount, ifAbsent: () => e.amount);
+      }
+    }
+    return paid;
   }
 
   /// Budget saved to pots during month [p], by category.

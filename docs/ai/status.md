@@ -1,6 +1,10 @@
 # Status (update when it changes)
 
-- Current version: **1.8.0** (schema 8). 1.8.0: each month runs on a snapshot of the plan,
+- Current version: **1.9.0** (schema 9). 1.9.0: Bills to pay → Pay into a pot (counts as
+  paid, money kept in the pot in any account, e.g. bank money put aside as cash); moves tied to a
+  budget are no longer editable in Quick add (an edit turned the owner's Cycle save into a plain
+  move, so the bill came back); Move budget / slots / Save to pot list the month's categories from
+  its snapshot (Abbu missing after the December plan changed it). 1.8.0: each month runs on a snapshot of the plan,
   budgets and categories taken at its first app open; changes start next month. 1.7.1: archiving a category counts from next month
   (an unpaid bill archived mid-month stays in Bills to pay). 1.7.0: weekly encrypted backup to Google
   Drive. 1.6.1: Tax screen = current year, Projected vs Recorded
@@ -13,6 +17,10 @@
   for November then becomes ৳52,000).
 - The owner started using the app for real in October 2026 and stopped the Excel sheet.
   Raise from November: salary ~৳1,00,000 arrives 26 Oct, held for November (plan saved "From November").
+
+- Owner's data after 1.9.0: the Cycle move edited to cash (Nov 2026) is a plain move now; the
+  owner should delete it and redo it with Pay into a pot (UAT section 29). Not checked against
+  the phone's data: it was not connected.
 
 ## Waiting for the owner's go
 - Asked 2026-11-09, discussed, not started: an AI model in the app (on-device first suggested);

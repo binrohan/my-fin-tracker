@@ -27,6 +27,7 @@ class LedgerRepository {
     int? trackerId,
     String note = '',
     bool? budgetSave,
+    bool? paidToPot,
   }) {
     assert(
       amount >= 0 || type == EntryType.expense,
@@ -45,6 +46,7 @@ class LedgerRepository {
               trackerId: Value(trackerId),
               note: Value(note),
               budgetSave: Value(budgetSave),
+              paidToPot: Value(paidToPot),
             ),
           );
       for (final (pot, value) in postings) {
@@ -620,6 +622,33 @@ class LedgerRepository {
       ((account: account, fund: fundId), amount),
     ],
     note: 'Saved from $categoryName budget',
+  );
+
+  /// Pays [amount] of a bill into a pot: the money leaves this month's
+  /// money in [fromAccount] and lands in [fundId] in [toAccount] (the bank's
+  /// money put aside as cash, say). It counts as spent in [categoryId], so
+  /// the bill is paid; spend it later from the pot with no budget effect.
+  /// Delete the entry to undo.
+  Future<int> payIntoPot({
+    required int categoryId,
+    required String categoryName,
+    required int fromAccount,
+    required int spendingFund,
+    required int toAccount,
+    required int fundId,
+    required Poisha amount,
+    required DateTime date,
+  }) => _write(
+    date: date,
+    type: EntryType.move,
+    amount: amount,
+    categoryId: categoryId,
+    paidToPot: true,
+    postings: [
+      ((account: fromAccount, fund: spendingFund), -amount),
+      ((account: toAccount, fund: fundId), amount),
+    ],
+    note: '$categoryName paid into the pot',
   );
 
   // -------------------------------------------------- income for next month

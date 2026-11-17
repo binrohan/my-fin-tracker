@@ -2117,6 +2117,16 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("budget_save" IN (0, 1))'),
   );
+  static const VerificationMeta _paidToPotMeta = const VerificationMeta('paidToPot');
+  @override
+  late final GeneratedColumn<bool> paidToPot = GeneratedColumn<bool>(
+    'paid_to_pot',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("paid_to_pot" IN (0, 1))'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2130,6 +2140,7 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     createdAt,
     receipt,
     budgetSave,
+    paidToPot,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2186,6 +2197,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         budgetSave.isAcceptableOrUnknown(data['budget_save']!, _budgetSaveMeta),
       );
     }
+    if (data.containsKey('paid_to_pot')) {
+      context.handle(
+        _paidToPotMeta,
+        paidToPot.isAcceptableOrUnknown(data['paid_to_pot']!, _paidToPotMeta),
+      );
+    }
     return context;
   }
 
@@ -2232,6 +2249,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         DriftSqlType.bool,
         data['${effectivePrefix}budget_save'],
       ),
+      paidToPot: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}paid_to_pot'],
+      ),
     );
   }
 
@@ -2265,6 +2286,11 @@ class Entry extends DataClass implements Insertable<Entry> {
   /// A move that saves part of [categoryId]'s budget to a pot during the
   /// month: it lowers that month's budget. (Month-close moves don't.)
   final bool? budgetSave;
+
+  /// A move that pays [categoryId]'s bill into a pot during the month (e.g.
+  /// the Cycle instalment into the Cycle pot, as cash): it counts as spent in
+  /// that category, and the money stays yours in the pot.
+  final bool? paidToPot;
   const Entry({
     required this.id,
     required this.date,
@@ -2277,6 +2303,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     required this.createdAt,
     this.receipt,
     this.budgetSave,
+    this.paidToPot,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2304,6 +2331,9 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || budgetSave != null) {
       map['budget_save'] = Variable<bool>(budgetSave);
     }
+    if (!nullToAbsent || paidToPot != null) {
+      map['paid_to_pot'] = Variable<bool>(paidToPot);
+    }
     return map;
   }
 
@@ -2320,6 +2350,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: Value(createdAt),
       receipt: receipt == null && nullToAbsent ? const Value.absent() : Value(receipt),
       budgetSave: budgetSave == null && nullToAbsent ? const Value.absent() : Value(budgetSave),
+      paidToPot: paidToPot == null && nullToAbsent ? const Value.absent() : Value(paidToPot),
     );
   }
 
@@ -2337,6 +2368,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       receipt: serializer.fromJson<String?>(json['receipt']),
       budgetSave: serializer.fromJson<bool?>(json['budgetSave']),
+      paidToPot: serializer.fromJson<bool?>(json['paidToPot']),
     );
   }
   @override
@@ -2354,6 +2386,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'receipt': serializer.toJson<String?>(receipt),
       'budgetSave': serializer.toJson<bool?>(budgetSave),
+      'paidToPot': serializer.toJson<bool?>(paidToPot),
     };
   }
 
@@ -2369,6 +2402,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     DateTime? createdAt,
     Value<String?> receipt = const Value.absent(),
     Value<bool?> budgetSave = const Value.absent(),
+    Value<bool?> paidToPot = const Value.absent(),
   }) => Entry(
     id: id ?? this.id,
     date: date ?? this.date,
@@ -2381,6 +2415,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     createdAt: createdAt ?? this.createdAt,
     receipt: receipt.present ? receipt.value : this.receipt,
     budgetSave: budgetSave.present ? budgetSave.value : this.budgetSave,
+    paidToPot: paidToPot.present ? paidToPot.value : this.paidToPot,
   );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -2395,6 +2430,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       receipt: data.receipt.present ? data.receipt.value : this.receipt,
       budgetSave: data.budgetSave.present ? data.budgetSave.value : this.budgetSave,
+      paidToPot: data.paidToPot.present ? data.paidToPot.value : this.paidToPot,
     );
   }
 
@@ -2411,7 +2447,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
           ..write('receipt: $receipt, ')
-          ..write('budgetSave: $budgetSave')
+          ..write('budgetSave: $budgetSave, ')
+          ..write('paidToPot: $paidToPot')
           ..write(')'))
         .toString();
   }
@@ -2429,6 +2466,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     createdAt,
     receipt,
     budgetSave,
+    paidToPot,
   );
   @override
   bool operator ==(Object other) =>
@@ -2444,7 +2482,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.note == this.note &&
           other.createdAt == this.createdAt &&
           other.receipt == this.receipt &&
-          other.budgetSave == this.budgetSave);
+          other.budgetSave == this.budgetSave &&
+          other.paidToPot == this.paidToPot);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -2459,6 +2498,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<DateTime> createdAt;
   final Value<String?> receipt;
   final Value<bool?> budgetSave;
+  final Value<bool?> paidToPot;
   const EntriesCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
@@ -2471,6 +2511,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.createdAt = const Value.absent(),
     this.receipt = const Value.absent(),
     this.budgetSave = const Value.absent(),
+    this.paidToPot = const Value.absent(),
   });
   EntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -2484,6 +2525,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.createdAt = const Value.absent(),
     this.receipt = const Value.absent(),
     this.budgetSave = const Value.absent(),
+    this.paidToPot = const Value.absent(),
   }) : date = Value(date),
        type = Value(type),
        amount = Value(amount);
@@ -2499,6 +2541,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<DateTime>? createdAt,
     Expression<String>? receipt,
     Expression<bool>? budgetSave,
+    Expression<bool>? paidToPot,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2512,6 +2555,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (createdAt != null) 'created_at': createdAt,
       if (receipt != null) 'receipt': receipt,
       if (budgetSave != null) 'budget_save': budgetSave,
+      if (paidToPot != null) 'paid_to_pot': paidToPot,
     });
   }
 
@@ -2527,6 +2571,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Value<DateTime>? createdAt,
     Value<String?>? receipt,
     Value<bool?>? budgetSave,
+    Value<bool?>? paidToPot,
   }) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -2540,6 +2585,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       createdAt: createdAt ?? this.createdAt,
       receipt: receipt ?? this.receipt,
       budgetSave: budgetSave ?? this.budgetSave,
+      paidToPot: paidToPot ?? this.paidToPot,
     );
   }
 
@@ -2579,6 +2625,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (budgetSave.present) {
       map['budget_save'] = Variable<bool>(budgetSave.value);
     }
+    if (paidToPot.present) {
+      map['paid_to_pot'] = Variable<bool>(paidToPot.value);
+    }
     return map;
   }
 
@@ -2595,7 +2644,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
           ..write('receipt: $receipt, ')
-          ..write('budgetSave: $budgetSave')
+          ..write('budgetSave: $budgetSave, ')
+          ..write('paidToPot: $paidToPot')
           ..write(')'))
         .toString();
   }
@@ -7827,6 +7877,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<DateTime> createdAt,
   Value<String?> receipt,
   Value<bool?> budgetSave,
+  Value<bool?> paidToPot,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<int> id,
@@ -7840,6 +7891,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<DateTime> createdAt,
   Value<String?> receipt,
   Value<bool?> budgetSave,
+  Value<bool?> paidToPot,
 });
 
 final class $$EntriesTableReferences extends BaseReferences<_$AppDatabase, $EntriesTable, Entry> {
@@ -7939,6 +7991,9 @@ class $$EntriesTableFilterComposer extends Composer<_$AppDatabase, $EntriesTable
 
   ColumnFilters<bool> get budgetSave =>
       $composableBuilder(column: $table.budgetSave, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get paidToPot =>
+      $composableBuilder(column: $table.paidToPot, builder: (column) => ColumnFilters(column));
 
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
@@ -8048,6 +8103,9 @@ class $$EntriesTableOrderingComposer extends Composer<_$AppDatabase, $EntriesTab
   ColumnOrderings<bool> get budgetSave =>
       $composableBuilder(column: $table.budgetSave, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get paidToPot =>
+      $composableBuilder(column: $table.paidToPot, builder: (column) => ColumnOrderings(column));
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -8118,6 +8176,9 @@ class $$EntriesTableAnnotationComposer extends Composer<_$AppDatabase, $EntriesT
 
   GeneratedColumn<bool> get budgetSave =>
       $composableBuilder(column: $table.budgetSave, builder: (column) => column);
+
+  GeneratedColumn<bool> get paidToPot =>
+      $composableBuilder(column: $table.paidToPot, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -8238,6 +8299,7 @@ class $$EntriesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> receipt = const Value.absent(),
                 Value<bool?> budgetSave = const Value.absent(),
+                Value<bool?> paidToPot = const Value.absent(),
               }) => EntriesCompanion(
                 id: id,
                 date: date,
@@ -8250,6 +8312,7 @@ class $$EntriesTableTableManager
                 createdAt: createdAt,
                 receipt: receipt,
                 budgetSave: budgetSave,
+                paidToPot: paidToPot,
               ),
           createCompanionCallback:
               ({
@@ -8264,6 +8327,7 @@ class $$EntriesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> receipt = const Value.absent(),
                 Value<bool?> budgetSave = const Value.absent(),
+                Value<bool?> paidToPot = const Value.absent(),
               }) => EntriesCompanion.insert(
                 id: id,
                 date: date,
@@ -8276,6 +8340,7 @@ class $$EntriesTableTableManager
                 createdAt: createdAt,
                 receipt: receipt,
                 budgetSave: budgetSave,
+                paidToPot: paidToPot,
               ),
           withReferenceMapper: (p0) => p0
               .map(

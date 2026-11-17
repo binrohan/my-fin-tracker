@@ -23,6 +23,12 @@
 - Loan repayments out of Spending can carry `entries.category_id`: `repaidFromBudget` counts
   them as spent in that category (`categoryLines` actual), not a budget change. Not in
   `summary.expenses` (they are repay entries); the report's Actual total adds them.
+- **Bills paid into a pot** (1.9.0): move entries with a category and `entries.paid_to_pot = true`
+  (`repo.payIntoPot`, Home → Bills to pay → Pay into a pot), from (any account, Spending) to
+  (any liquid account, pot). `paidToPots(p)` adds them to the category's actual, like
+  `repaidFromBudget`; not in `summary.expenses`, added to the report's Actual total. Excluded from
+  `savedAtCloseIn`. Moves with a category are not editable in Quick add (`canEditInQuickAdd`):
+  a rewrite would make a plain move and lose the tie.
 - `budgetRoom(category, period)` = budget left to check an expense against (Quick add's
   "Over the X budget" step offers Move budget / Record anyway).
 - Month close is manual (`closeMonth`): unused budget → linked pots (`categories.savings_fund_id`),
@@ -53,6 +59,8 @@
   with the month's parent/fixed/due/pot; names live), `archivedIn` (absent from snapshot = added
   later: counts only with actual). Months without one (before 1.8.0) read live values.
 - `ledger.categories` stays live: quick add, editors and the plan screen (next month) use it.
+  Pickers that change a running month's budget (Move budget, slots, Save to pot) list
+  `budgetCategoriesIn(p)` (month view), not `leafCategories` (live).
   Anything month-specific (categoryLines, budgetRoom, Misc, unused budget at close) goes
   through `categoriesIn(p)`. Slots, budget moves and saves to pots still change a running month.
 
@@ -88,7 +96,8 @@ counts before that month, `ledger.archivedIn`; missing = archived before 1.7.1, 
 
 ## Schema history (lib/data/database.dart; fixtures in test/fixtures)
 2 investments/purchases/trackers · 3 categories.savings_fund_id · 4 slots + budget_moves ·
-5 entries.receipt · 6 entries.budget_save · 7 tracker_amounts · 8 data only: fund names, Misc (`setupFloatingAndMisc`, also run after a restore).
+5 entries.receipt · 6 entries.budget_save · 7 tracker_amounts · 8 data only: fund names, Misc (`setupFloatingAndMisc`, also run after a restore) ·
+9 entries.paid_to_pot (added before the v8 data step in `onUpgrade`).
 Backups (`backup.dart`) list every table; older backups restore with missing tables empty.
 
 ## Android side

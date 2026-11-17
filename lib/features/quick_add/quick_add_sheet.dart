@@ -62,7 +62,9 @@ bool canEditInQuickAdd(Entry e) =>
     // Pot money used directly has no category to edit.
     (e.type == EntryType.expense && e.amount > 0 && e.categoryId != null) ||
     e.type == EntryType.income ||
-    e.type == EntryType.move;
+    // A move tied to a budget (saved to a pot, paid into a pot, from a pot,
+    // month close) would lose that tie as a plain move: delete and redo it.
+    (e.type == EntryType.move && e.categoryId == null);
 
 class QuickAddSheet extends ConsumerStatefulWidget {
   const QuickAddSheet({super.key, this.editing, this.prefill, this.mode});

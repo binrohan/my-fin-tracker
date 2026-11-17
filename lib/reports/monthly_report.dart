@@ -266,11 +266,13 @@ List<pw.Widget> _expenses(Ledger ledger, Period p, PeriodSummary s) {
   }
   // Loan repayments paid from a budget count as spent there.
   final repaid = ledger.repaidFromBudget(p).values.fold<Poisha>(0, (t, v) => t + v);
+  // So do bills paid into a pot.
+  final paidToPots = ledger.paidToPots(p).values.fold<Poisha>(0, (t, v) => t + v);
   // Pot money used directly has no category, and no part in the budgets.
   final fromPots = ledger.entries
       .where((e) => e.type == EntryType.expense && e.categoryId == null && p.contains(e.date))
       .fold<Poisha>(0, (t, e) => t + e.amount);
-  final spent = s.expenses - fromPots + repaid;
+  final spent = s.expenses - fromPots + repaid + paidToPots;
   final diff = spent + savedTotal - s.budget;
   rows.add(
     ReportRow(
