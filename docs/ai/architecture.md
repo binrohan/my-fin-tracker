@@ -60,7 +60,9 @@
   later: counts only with actual). Months without one (before 1.8.0) read live values.
 - `ledger.categories` stays live: quick add, editors and the plan screen (next month) use it.
   Pickers that change a running month's budget (Move budget, slots, Save to pot) list
-  `budgetCategoriesIn(p)` (month view), not `leafCategories` (live).
+  `budgetCategoriesIn(p)` (month view), not `leafCategories` (live). `leafCategories(kind,
+  month:)` (Quick add, loan repay, buy from goal) = live leaves ∪ `budgetCategoriesIn(month)`:
+  new categories at once, archived/split ones until the month ends (1.9.1).
   Anything month-specific (categoryLines, budgetRoom, Misc, unused budget at close) goes
   through `categoriesIn(p)`. Slots, budget moves and saves to pots still change a running month.
 

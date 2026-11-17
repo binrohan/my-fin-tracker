@@ -294,6 +294,12 @@ Needs the Google Cloud setup done first (see docs/ai/status.md).
 - [ ] Spend → **Move budget** → From: **Abbu** is in the list for November (even after the December plan changed it), with its budget left.
 - [ ] Tap another bill → **Pay** still opens Quick add filled in.
 
+## 30. New in 1.9.1: archived categories stay in Quick add until the month ends
+
+- [ ] Quick add → Expense: the old **Abbu** (archived from December) is still offered in November, and the new **Cycle** is offered too.
+- [ ] Loans → repay from this month's money → "counts as spent from" lists the old Abbu while it has budget left.
+- [ ] On 1 December, the archived ones are gone from Quick add.
+
 ---
 
 ## Issues

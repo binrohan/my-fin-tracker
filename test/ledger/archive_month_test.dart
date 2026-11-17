@@ -82,9 +82,16 @@ void main() {
     expect(ledger.miscBudget(oct), misc);
   });
 
-  test('quick add hides it at once', () async {
+  test('quick add keeps it until the month ends', () async {
     await archive('Electricity', from: '2026-11');
-    final names = ledger.leafCategories(CategoryKind.expense, month: oct).map((c) => c.name);
-    expect(names, isNot(contains('Electricity')));
+    Iterable<String> names(Period p) =>
+        ledger.leafCategories(CategoryKind.expense, month: p).map((c) => c.name);
+    expect(names(oct), contains('Electricity'));
+    expect(names(const Period(2026, 11)), isNot(contains('Electricity')));
+    // Without a month (nothing month-specific) it is gone at once.
+    expect(
+      ledger.leafCategories(CategoryKind.expense).map((c) => c.name),
+      isNot(contains('Electricity')),
+    );
   });
 }

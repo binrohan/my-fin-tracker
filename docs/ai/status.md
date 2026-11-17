@@ -1,6 +1,8 @@
 # Status (update when it changes)
 
-- Current version: **1.9.0** (schema 9). 1.9.0: Bills to pay → Pay into a pot (counts as
+- Current version: **1.9.1** (schema 9). 1.9.1: archived/split categories stay in Quick add,
+  buy-from-goal and loan repay-from-budget until the month ends (owner chose this 2026-11-17,
+  replacing 1.7.1's "hidden from quick add at once"). 1.9.0: Bills to pay → Pay into a pot (counts as
   paid, money kept in the pot in any account, e.g. bank money put aside as cash); moves tied to a
   budget are no longer editable in Quick add (an edit turned the owner's Cycle save into a plain
   move, so the bill came back); Move budget / slots / Save to pot list the month's categories from

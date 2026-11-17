@@ -187,6 +187,20 @@ void main() {
       expect(names(nov), contains('Abbu 2'));
     });
 
+    test('quick add offers the old and the new until the month ends', () async {
+      await setup.updateCategory(category('Random'), archived: true);
+      await repo.setSetting(Ledger.archivedFromKey(category('Random')), nov.toString());
+      await setup.addCategory('Abbu', CategoryKind.expense, parentId: category('Ration'));
+      await reload();
+      Iterable<String> quick(Period p) =>
+          ledger.leafCategories(CategoryKind.expense, month: p).map((c) => c.name);
+      expect(quick(oct), containsAll(['Random', 'Ration', 'Abbu']));
+      expect(quick(oct).where((n) => n == 'Random'), hasLength(1));
+      expect(quick(nov), contains('Abbu'));
+      expect(quick(nov), isNot(contains('Random')));
+      expect(quick(nov), isNot(contains('Ration')));
+    });
+
     test('no slots, no sections', () async {
       expect(names(oct), isNot(contains('Fixed')));
       expect(names(oct), containsAll(['House Rent', 'Ration', 'Random', 'Cycle']));

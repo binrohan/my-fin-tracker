@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/money.dart';
+import '../../core/period.dart';
 import '../../data/database.dart';
 import '../../ledger/enums.dart';
 import '../../ledger/ledger.dart';
@@ -185,7 +186,7 @@ class FundScreen extends ConsumerWidget {
       text: amountText(ledger.fundBalance(goal.id, liquidOnly: true)),
     );
     final note = TextEditingController(text: goal.name);
-    final categories = ledger.leafCategories(CategoryKind.expense);
+    final categories = ledger.leafCategories(CategoryKind.expense, month: Period.current());
     var categoryId = categories
         .firstWhere((c) => c.name == 'Random', orElse: () => categories.first)
         .id;

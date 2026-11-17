@@ -344,9 +344,13 @@ class _RepaySheetState extends ConsumerState<_RepaySheet> {
     super.dispose();
   }
 
-  /// Budgets it can come out of, the most money left first.
+  /// Budgets it can come out of, the most money left first: the month's
+  /// categories as it began (its snapshot) and its slots.
   List<CategoryRow> _budgets(Ledger ledger, Period period) => [
-    for (final c in ledger.leafCategories(CategoryKind.expense, month: period))
+    for (final c in [
+      ...ledger.budgetCategoriesIn(period),
+      for (final s in ledger.slotsIn(period)) s.category,
+    ])
       if (ledger.movableFrom(c.id, period) > 0) c,
   ]..sort((a, b) => ledger.movableFrom(b.id, period).compareTo(ledger.movableFrom(a.id, period)));
 

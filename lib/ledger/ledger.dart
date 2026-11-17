@@ -310,7 +310,7 @@ class Ledger {
 
   /// Whether archived category [c] no longer counts in month [p]: from the
   /// month in [archivedFromKey], or always when archived before 1.7.1.
-  /// Quick add hides it at once either way.
+  /// Quick add keeps it until then (`leafCategories` with a month).
   bool archivedIn(CategoryRow c, Period p) {
     // A month with a snapshot counts the categories it began with: one
     // archived later still counts, one added later only if spent on.
@@ -378,16 +378,23 @@ class Ledger {
   }
 
   /// Categories you can put an entry on: those without sub-categories.
-  /// Categories you can put an entry on: those without sub-categories.
-  /// Slots are included only for their own [month].
-  List<CategoryRow> leafCategories(CategoryKind kind, {Period? month}) => [
-    for (final c in categories.values)
-      if (c.kind == kind &&
-          !c.archived &&
-          (!isSlot(c) || (month != null && _visibleIn(c, month))) &&
-          !categories.values.any((x) => x.parentId == c.id && !x.archived))
-        c,
-  ];
+  /// Slots are included only for their own [month]. With a [month], expense
+  /// categories that month still counts (archived or split for next month)
+  /// stay too, until it ends: changes start next month.
+  List<CategoryRow> leafCategories(CategoryKind kind, {Period? month}) {
+    final stillThisMonth = month != null && kind == CategoryKind.expense
+        ? {for (final c in budgetCategoriesIn(month)) c.id}
+        : const <int>{};
+    return [
+      for (final c in categories.values)
+        if (stillThisMonth.contains(c.id) ||
+            (c.kind == kind &&
+                !c.archived &&
+                (!isSlot(c) || (month != null && _visibleIn(c, month))) &&
+                !categories.values.any((x) => x.parentId == c.id && !x.archived)))
+          c,
+    ];
+  }
 
   /// Expense categories with a budget line in month [p] as the month sees
   /// them (its snapshot): no subsections that month, not slots, not archived
